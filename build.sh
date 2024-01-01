@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-RUN_NAME="cloudmind.collection"
+RUN_NAME="cloudmind.content"
 
 mkdir -p output/bin
 cp script/* output/

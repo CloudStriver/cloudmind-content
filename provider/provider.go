@@ -8,6 +8,7 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/label"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/redis"
 	"github.com/google/wire"
 )
@@ -22,6 +23,7 @@ var ApplicationSet = wire.NewSet(
 	service.PostSet,
 	service.CommentSet,
 	service.LabelSet,
+	service.UserSet,
 )
 
 var InfrastructureSet = wire.NewSet(
@@ -38,4 +40,6 @@ var MapperSet = wire.NewSet(
 	post.NewEsMapper,
 	comment.NewMongoMapper,
 	label.NewMongoMapper,
+	user.NewEsMapper,
+	user.NewMongoMapper,
 )

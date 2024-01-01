@@ -33,7 +33,7 @@ Redis:
 
 Mongo:
   Url: mongodb://localhost:27017/?connect=direct
-  DB: cloudmind_contentcenter
+  DB: cloudmind_content
 
 Cache:
   - Host: localhost:36379
