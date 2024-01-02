@@ -1,4 +1,4 @@
-Name: content
+Name: cloudmind-content
 ListenOn: 0.0.0.0:2002
 Mode: dev
 Elasticsearch:
