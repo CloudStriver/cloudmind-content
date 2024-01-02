@@ -2,7 +2,9 @@ package user
 
 import (
 	"context"
+	"errors"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/zeromicro/go-zero/core/stores/monc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -75,10 +77,11 @@ func (m *MongoMapper) FindOne(ctx context.Context, id string) (*User, error) {
 	var data User
 	key := PrefixUserCacheKey + id
 	err = m.conn.FindOne(ctx, key, &data, bson.M{"_id": oid})
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		return &data, nil
-
+	case errors.Is(err, monc.ErrNotFound):
+		return nil, consts.ErrNotFound
 	default:
 		return nil, err
 	}

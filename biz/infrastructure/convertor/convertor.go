@@ -20,12 +20,12 @@ func UserMapperToUserDetail(in *usermapper.User) *gencontent.UserDetail {
 	}
 }
 
-func UserDetailToUserMapper(in *gencontent.UserDetail) *usermapper.User {
+func UserDetailToUserMapper(in *gencontent.UserDetailInfo) *usermapper.User {
 	ID, _ := primitive.ObjectIDFromHex(in.UserId)
 	return &usermapper.User{
 		ID:          ID,
 		Name:        in.Name,
-		Sex:         in.GetSex(),
+		Sex:         int32(in.GetSex()),
 		FullName:    in.FullName,
 		IdCard:      in.IdCard,
 		Description: in.Description,
