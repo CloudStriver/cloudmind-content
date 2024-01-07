@@ -63,7 +63,6 @@ func (s *UserServiceImpl) SearchUser(ctx context.Context, req *gencontent.Search
 	for _, u := range user {
 		resp.Users = append(resp.Users, convertor.UserMapperToUser(u))
 	}
-
 	return resp, nil
 }
 
@@ -102,7 +101,7 @@ func (s *UserServiceImpl) CreateUser(ctx context.Context, req *gencontent.Create
 	if _, err = s.UserMongoMapper.Insert(ctx, &usermapper.User{
 		ID:          ID,
 		Name:        req.UserInfo.Name,
-		Sex:         int32(req.UserInfo.Sex),
+		Sex:         req.UserInfo.Sex,
 		Description: consts.DefaultDescription,
 		Url:         consts.DefaultAvatarUrl,
 	}); err != nil {
