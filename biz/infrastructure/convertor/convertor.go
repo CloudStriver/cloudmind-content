@@ -27,7 +27,7 @@ func UserDetailToUserMapper(in *gencontent.UserDetailInfo) *usermapper.User {
 	return &usermapper.User{
 		ID:          ID,
 		Name:        in.Name,
-		Sex:         in.GetSex(),
+		Sex:         int32(in.GetSex()),
 		FullName:    in.FullName,
 		IdCard:      in.IdCard,
 		Description: in.Description,
