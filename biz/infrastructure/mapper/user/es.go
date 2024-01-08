@@ -7,6 +7,7 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
+	"github.com/CloudStriver/go-pkg/utils/util/log"
 	"github.com/bytedance/sonic"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
@@ -33,6 +34,7 @@ func (e *EsMapper) Search(ctx context.Context, keyword string, popts *pagination
 	p := esp.NewEsPaginator(pagination.NewRawStore(sorter), popts)
 	s, sa, err := p.MakeSortOptions(ctx)
 	if err != nil {
+		log.CtxError(ctx, "创建索引异常[%v]\n", err)
 		return nil, 0, err
 	}
 	res, err := e.es.Search().Index(e.IndexName).Request(&search.Request{
