@@ -26,8 +26,8 @@ Log:
   Encoding: plain
 
 Redis:
-  Host: 118.89.172.143:6379
-  Type: node
+  Host: 118.89.172.143:6379,192.144.226.115:6379,134.175.180.149:6379
+  Type: cluster
   Pass: 5201314LS
   Key: ""
 
@@ -36,9 +36,10 @@ Mongo:
   DB: cloudmind_content
 
 Cache:
-  - host: 118.89.172.143:6379
-    type: node
+  - host: 118.89.172.143:6379,192.144.226.115:6379,134.175.180.149:6379
+    type: cluster
     pass: 5201314LS
+
 EtcdConf:
   Hosts:
     - 118.89.172.143:2379
