@@ -1,6 +1,6 @@
 module github.com/CloudStriver/cloudmind-content
 
-go 1.21.0
+go 1.20
 
 require (
 	github.com/CloudStriver/go-pkg v0.0.0-20231229114943-910edcb8788d
