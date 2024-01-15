@@ -3,9 +3,9 @@ ListenOn: 0.0.0.0:2002
 Mode: dev
 Elasticsearch:
   Addresses:
-    - http://localhost:9200
+    - http://118.89.172.143:9200
   Username: elastic
-  Password:
+  Password: 5201314LS
 ##Monitoring
 Prometheus:
   Host: 0.0.0.0
@@ -15,7 +15,7 @@ Prometheus:
 ##Link Tracking
 Telemetry:
   Name: content
-  Endpoint: http://localhost:14268/api/traces
+  Endpoint: http://118.89.172.143:14268/api/traces
   Sampler: 1.0
   Batcher: jaeger
 
@@ -26,19 +26,22 @@ Log:
   Encoding: plain
 
 Redis:
-  Host: localhost:36379
-  Type: node
-  Pass: admin
+  Host: 118.89.172.143:6379,192.144.226.115:6379,134.175.180.149:6379
+  Type: cluster
+  Pass: 5201314LS
   Key: ""
 
 Mongo:
-  Url: mongodb://localhost:27017/?connect=direct
+  Url: mongodb://root:123@118.89.172.143:27017,192.144.226.115:27017,134.175.180.149:27017/?replSet=rs0
   DB: cloudmind_content
 
 Cache:
-  - Host: localhost:36379
-    Pass: admin
+  - host: 118.89.172.143:6379,192.144.226.115:6379,134.175.180.149:6379
+    type: cluster
+    pass: 5201314LS
 
 EtcdConf:
   Hosts:
-    - localhost:2379
+    - 118.89.172.143:2379
+    - 192.144.226.115:2379
+    - 134.175.180.149:2379

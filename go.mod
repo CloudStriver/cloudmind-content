@@ -4,8 +4,7 @@ go 1.20
 
 require (
 	github.com/CloudStriver/go-pkg v0.0.0-20231229114943-910edcb8788d
-	github.com/CloudStriver/service-idl-gen-go v0.0.0-20231227131904-e146acf60e9d
-	github.com/bytedance/gopkg v0.0.0-20231219111115-a5eedbe96960
+	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240102102004-0a94d07773bf
 	github.com/bytedance/sonic v1.10.2
 	github.com/cloudwego/kitex v0.8.0
 	github.com/elastic/go-elasticsearch/v8 v8.11.1
@@ -27,6 +26,7 @@ require (
 	github.com/apache/thrift v0.16.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bufbuild/protocompile v0.7.1 // indirect
+	github.com/bytedance/gopkg v0.0.0-20231219111115-a5eedbe96960 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
