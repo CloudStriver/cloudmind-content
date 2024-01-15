@@ -102,8 +102,6 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 			log.CtxError(ctx, "查询文件列表: 发生异常[%v]\n", err)
 			return resp, err
 		}
-	} else {
-
 	}
 
 	resp.Total = total
