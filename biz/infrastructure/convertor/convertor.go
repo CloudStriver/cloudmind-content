@@ -1,6 +1,7 @@
 package convertor
 
 import (
+	"fmt"
 	usermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -21,6 +22,7 @@ func UserMapperToUserDetail(in *usermapper.User) *gencontent.UserDetail {
 }
 
 func UserDetailToUserMapper(in *gencontent.UserDetailInfo) *usermapper.User {
+	fmt.Println(in)
 	ID, _ := primitive.ObjectIDFromHex(in.UserId)
 	return &usermapper.User{
 		ID:          ID,
