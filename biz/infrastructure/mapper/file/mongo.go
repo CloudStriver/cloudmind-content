@@ -67,7 +67,7 @@ type (
 )
 
 func NewMongoMapper(config *config.Config) IMongoMapper {
-	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.Cache)
+	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
 	return &MongoMapper{
 		conn: conn,
 	}
@@ -90,11 +90,10 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 
 func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*File, error) {
 	var data File
-
 	if fopts.OnlyFileId != nil {
 		_, err := primitive.ObjectIDFromHex(*fopts.OnlyFileId)
 		if err != nil {
-			return nil, err
+			return nil, consts.ErrInvalidId
 		}
 	}
 
@@ -131,7 +130,6 @@ func (m *MongoMapper) Count(ctx context.Context, fopts *FilterOptions) (int64, e
 
 func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, error) {
 	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
-
 	filter := makeMongoFilter(fopts)
 	sort, err := p.MakeSortOptions(ctx, filter)
 	if err != nil {
@@ -144,6 +142,9 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 		Limit: popts.Limit,
 		Skip:  popts.Offset,
 	}); err != nil {
+		if errorx.Is(err, monc.ErrNotFound) {
+			return nil, consts.ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -154,16 +155,15 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 		}
 	}
 	if len(data) > 0 {
-		err = p.StoreCursor(ctx, data[0], data[len(data)-1])
-		if err != nil {
+		if err = p.StoreCursor(ctx, data[0], data[len(data)-1]); err != nil {
 			return nil, err
 		}
 	}
+
 	return data, nil
 }
 
 func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, error) {
-
 	var size AggregateSizeResult
 	pipeline := mongo.Pipeline{
 		{
@@ -181,10 +181,9 @@ func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, e
 		},
 	}
 
-	result, err := m.conn.Database().Collection("cloudmind_content").Aggregate(ctx, pipeline)
+	result, err := m.conn.Database().Collection("cloudmind_contentcenter").Aggregate(ctx, pipeline)
 	switch {
 	case err == nil:
-
 		if result.Next(ctx) {
 			err = result.Decode(&size)
 			if err != nil {
@@ -269,7 +268,7 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 func (m *MongoMapper) Delete(ctx context.Context, id string) (int64, error) {
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return 0, consts.ErrInvalidObjectId
+		return 0, consts.ErrInvalidId
 	}
 	key := prefixFileCacheKey + id
 	resp, err := m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid})

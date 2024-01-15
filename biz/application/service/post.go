@@ -121,7 +121,7 @@ var PostSet = wire.NewSet(
 //func (s *PostService) UpdatePost(ctx context.Context, req *content.UpdatePostReq) (*content.UpdatePostResp, error) {
 //	oid, err := primitive.ObjectIDFromHex(req.Id)
 //	if err != nil {
-//		return nil, consts.ErrInvalidObjectId
+//		return nil, consts.ErrInvalidId
 //	}
 //	err = s.PostMongoMapper.Update(ctx, &post.Post{
 //		ID:       oid,

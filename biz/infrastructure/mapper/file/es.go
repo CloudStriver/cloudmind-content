@@ -116,7 +116,7 @@ func (m *EsMapper) Search(ctx context.Context, communityId, keyword string, skip
 		oid := hit.Id_
 		cat.ID, err = primitive.ObjectIDFromHex(oid)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, consts.ErrInvalidId
 		}
 		cats = append(cats, cat)
 	}

@@ -9,7 +9,6 @@ import (
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
 	"github.com/kitex-contrib/obs-opentelemetry/tracing"
-	etcd "github.com/kitex-contrib/registry-etcd"
 	"net"
 )
 
@@ -24,15 +23,9 @@ func main() {
 		panic(err)
 	}
 
-	r, err := etcd.NewEtcdRegistry(s.Config.EtcdConf.Hosts)
-	if err != nil {
-		panic(err)
-	}
-
 	svr := contentservice.NewServer(
 		s,
 		server.WithServiceAddr(addr),
-		server.WithRegistry(r),
 		server.WithSuite(tracing.NewServerSuite()),
 		server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{ServiceName: s.Name}),
 		server.WithMiddleware(middleware.LogMiddleware(s.Name)),

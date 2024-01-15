@@ -39,7 +39,7 @@ type (
 )
 
 func NewMongoMapper(config *config.Config) IMongoMapper {
-	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.Cache)
+	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
 	return &MongoMapper{
 		conn: conn,
 	}
@@ -63,7 +63,7 @@ func (m *MongoMapper) Insert(ctx context.Context, data *Label) (string, error) {
 func (m *MongoMapper) FindOne(ctx context.Context, id string) (*Label, error) {
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, consts.ErrInvalidObjectId
+		return nil, consts.ErrInvalidId
 	}
 	var data Label
 	key := prefixLabelCacheKey + id
@@ -88,7 +88,7 @@ func (m *MongoMapper) Update(ctx context.Context, data *Label) error {
 func (m *MongoMapper) Delete(ctx context.Context, id string) (int64, error) {
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return 0, consts.ErrInvalidObjectId
+		return 0, consts.ErrInvalidId
 	}
 	key := prefixLabelCacheKey + id
 	resp, err := m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid})
