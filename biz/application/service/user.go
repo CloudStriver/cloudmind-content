@@ -63,7 +63,6 @@ func (s *UserServiceImpl) SearchUser(ctx context.Context, req *gencontent.Search
 	for _, u := range user {
 		resp.Users = append(resp.Users, convertor.UserMapperToUser(u))
 	}
-
 	return resp, nil
 }
 
