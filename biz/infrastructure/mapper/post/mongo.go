@@ -69,7 +69,7 @@ func (f *Flag) GetFlag(flag Flag) bool {
 }
 
 func NewMongoMapper(config *config.Config) IMongoMapper {
-	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.Cache)
+	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
 	return &MongoMapper{
 		conn: conn,
 	}
@@ -86,7 +86,7 @@ func NewMongoMapper(config *config.Config) IMongoMapper {
 //	}
 //	oid, err := primitive.ObjectIDFromHex(id)
 //	if err != nil {
-//		return consts.ErrInvalidObjectId
+//		return consts.ErrInvalidId
 //	}
 //	_, err = m.conn.UpdateOne(ctx, prefixPostCacheKey+id, bson.M{consts.ID: oid}, bson.M{
 //		"$bit": bson.M{
@@ -191,7 +191,7 @@ func (m *MongoMapper) Insert(ctx context.Context, data *Post) error {
 func (m *MongoMapper) FindOne(ctx context.Context, id string) (*Post, error) {
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, consts.ErrInvalidObjectId
+		return nil, consts.ErrInvalidId
 	}
 
 	var data Post
@@ -217,7 +217,7 @@ func (m *MongoMapper) Update(ctx context.Context, data *Post) error {
 func (m *MongoMapper) Delete(ctx context.Context, id string) error {
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return consts.ErrInvalidObjectId
+		return consts.ErrInvalidId
 	}
 	key := prefixPostCacheKey + id
 	_, err = m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid})

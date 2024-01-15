@@ -10,10 +10,10 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/adaptor"
 	"github.com/CloudStriver/cloudmind-content/biz/application/service"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/comment"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/label"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/redis"
 )
 
@@ -25,8 +25,10 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		return nil, err
 	}
 	iMongoMapper := file.NewMongoMapper(configConfig)
+	sharefileIMongoMapper := sharefile.NewMongoMapper(configConfig)
 	fileService := &service.FileService{
-		FileMongoMapper: iMongoMapper,
+		FileMongoMapper:      iMongoMapper,
+		ShareFileMongoMapper: sharefileIMongoMapper,
 	}
 	postIMongoMapper := post.NewMongoMapper(configConfig)
 	iEsMapper := post.NewEsMapper(configConfig)
@@ -37,20 +39,15 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		PostEsMapper:    iEsMapper,
 		Redis:           redisRedis,
 	}
-	commentIMongoMapper := comment.NewMongoMapper(configConfig)
-	commentService := &service.CommentService{
-		CommentModel: commentIMongoMapper,
-	}
 	labelIMongoMapper := label.NewMongoMapper(configConfig)
 	labelService := &service.LabelService{
 		LabelMongoMapper: labelIMongoMapper,
 	}
 	contentServerImpl := &adaptor.ContentServerImpl{
-		Config:         configConfig,
-		FileService:    fileService,
-		PostService:    postService,
-		CommentService: commentService,
-		LabelService:   labelService,
+		Config:       configConfig,
+		FileService:  fileService,
+		PostService:  postService,
+		LabelService: labelService,
 	}
 	return contentServerImpl, nil
 }

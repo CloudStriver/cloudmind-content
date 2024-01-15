@@ -3,7 +3,6 @@ package provider
 import (
 	"github.com/CloudStriver/cloudmind-content/biz/application/service"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/comment"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/label"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
@@ -20,7 +19,6 @@ var AllProvider = wire.NewSet(
 var ApplicationSet = wire.NewSet(
 	service.FileSet,
 	service.PostSet,
-	service.CommentSet,
 	service.LabelSet,
 )
 
@@ -36,6 +34,5 @@ var MapperSet = wire.NewSet(
 	sharefile.NewMongoMapper,
 	post.NewMongoMapper,
 	post.NewEsMapper,
-	comment.NewMongoMapper,
 	label.NewMongoMapper,
 )

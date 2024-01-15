@@ -1,44 +1,32 @@
-Name: content
-ListenOn: 0.0.0.0:2002
+Name: cloudmind.content
+ListenOn: 0.0.0.0:8080
 Mode: dev
-Elasticsearch:
-  Addresses:
-    - http://localhost:9200
-  Username: elastic
-  Password:
-##Monitoring
+
 Prometheus:
   Host: 0.0.0.0
-  Port: 4002
+  Port: 4003
   Path: /metrics
 
-##Link Tracking
-Telemetry:
-  Name: content
-  Endpoint: http://localhost:14268/api/traces
-  Sampler: 1.0
-  Batcher: jaeger
-
 Log:
-  ServiceName: content
-  Level: info
-  Mode: console
-  Encoding: plain
-
-Redis:
-  Host: localhost:36379
-  Type: node
-  Pass: admin
-  Key: ""
+  Encoding: json
+  Level: debug
+  Stat: false
 
 Mongo:
-  Url: mongodb://localhost:27017/?connect=direct
-  DB: cloudmind_contentcenter
+  URL: mongodb+srv://root:FhfzRPcLfF@mongodb-headless.mongodb.svc.cluster.local/?tls=false
+  DB: cloudmind_content
 
-Cache:
-  - Host: localhost:36379
-    Pass: admin
+CacheConf:
+  - Host: redis-master.redis:6379
 
-EtcdConf:
-  Hosts:
-    - localhost:2379
+Elasticsearch:
+  Addresses:
+    - https://es-elasticsearch.elasticsearch:9200
+  Username: elastic
+  Password: cloudmind
+
+Telemetry:
+  Endpoint: http://jaeger-collector.istio-system:14268/api/traces
+
+Redis:
+  Host: redis-master.redis:6379

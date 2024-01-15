@@ -14,10 +14,6 @@ type ElasticsearchConf struct {
 	Password  string
 }
 
-type EtcdConf struct {
-	Hosts []string
-}
-
 type Config struct {
 	service.ServiceConf
 	ListenOn string
@@ -25,10 +21,9 @@ type Config struct {
 		URL string
 		DB  string
 	}
-	Cache         cache.CacheConf
+	CacheConf     cache.CacheConf
 	Elasticsearch ElasticsearchConf
 	Redis         *redis.RedisConf
-	EtcdConf      EtcdConf
 }
 
 func NewConfig() (*Config, error) {
