@@ -14,6 +14,7 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/label"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/redis"
 )
 
@@ -43,11 +44,20 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 	labelService := &service.LabelService{
 		LabelMongoMapper: labelIMongoMapper,
 	}
+	userMongoMapper := user.NewMongoMapper(configConfig)
+	userEsMapper := user.NewEsMapper(configConfig)
+	userServiceImpl := &service.UserServiceImpl{
+		Config:          configConfig,
+		UserMongoMapper: userMongoMapper,
+		UserEsMapper:    userEsMapper,
+		Redis:           redisRedis,
+	}
 	contentServerImpl := &adaptor.ContentServerImpl{
 		Config:       configConfig,
 		FileService:  fileService,
 		PostService:  postService,
 		LabelService: labelService,
+		UserService:  userServiceImpl,
 	}
 	return contentServerImpl, nil
 }

@@ -12,6 +12,31 @@ type ContentServerImpl struct {
 	FileService  service.IFileService
 	PostService  service.IPostService
 	LabelService service.ILabelService
+	UserService  service.UserService
+}
+
+func (s *ContentServerImpl) DeleteUser(ctx context.Context, req *content.DeleteUserReq) (resp *content.DeleteUserResp, err error) {
+	return s.UserService.DeleteUser(ctx, req)
+}
+
+func (s *ContentServerImpl) UpdateUser(ctx context.Context, req *content.UpdateUserReq) (resp *content.UpdateUserResp, err error) {
+	return s.UserService.UpdateUser(ctx, req)
+}
+
+func (s *ContentServerImpl) GetUser(ctx context.Context, req *content.GetUserReq) (resp *content.GetUserResp, err error) {
+	return s.UserService.GetUser(ctx, req)
+}
+
+func (s *ContentServerImpl) SearchUser(ctx context.Context, req *content.SearchUserReq) (resp *content.SearchUserResp, err error) {
+	return s.UserService.SearchUser(ctx, req)
+}
+
+func (s *ContentServerImpl) CreateUser(ctx context.Context, req *content.CreateUserReq) (resp *content.CreateUserResp, err error) {
+	return s.UserService.CreateUser(ctx, req)
+}
+
+func (s *ContentServerImpl) GetUserDetail(ctx context.Context, req *content.GetUserDetailReq) (resp *content.GetUserDetailResp, err error) {
+	return s.UserService.GetUserDetail(ctx, req)
 }
 
 func (s *ContentServerImpl) GetFolderSize(ctx context.Context, req *content.GetFolderSizeReq) (*content.GetFolderSizeResp, error) {

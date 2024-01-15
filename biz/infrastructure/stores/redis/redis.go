@@ -5,10 +5,6 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/redis"
 )
 
-const (
-	fileId = "fileId"
-)
-
 func NewRedis(config *config.Config) *redis.Redis {
 	return redis.MustNewRedis(*config.Redis)
 }
