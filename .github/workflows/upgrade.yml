@@ -16,7 +16,7 @@ on:
 env:
   REGISTRY: docker.io
   USERNAME: lansongxx
-  IMAGE_NAME: cloudmind-sts
+  IMAGE_NAME: cloudmind-content
 
 jobs:
   build:
@@ -77,8 +77,8 @@ jobs:
 
       - name: Deploy
         run: |
-          mkdir .kube
-          echo "${{ vars.KUBE_CONFIG }}" > .kube/config
+          mkdir $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
           kubectl get deployment ${{ env.IMAGE_NAME }} -n ${{ vars.BASE_TEST_NAMESPACE }} -o yaml |\
-          sed 's/^\(      - image: cloudmind\/${{ env.IMAGE_NAME }}:\).*$/\1${{ needs.build.outputs.version }}/' |\
+          sed 's/^\(      - image: lansongxx\/${{ env.IMAGE_NAME }}:\).*$/\1${{ needs.build.outputs.version }}/' |\
           kubectl apply -f -
