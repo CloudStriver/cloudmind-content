@@ -8,13 +8,13 @@ import (
 )
 
 type IPostService interface {
-	//CreatePost(ctx context.Context, req *content.CreatePostReq) (*content.CreatePostResp, error)
-	//RetrievePost(ctx context.Context, req *content.RetrievePostReq) (*content.RetrievePostResp, error)
-	//UpdatePost(ctx context.Context, req *content.UpdatePostReq) (*content.UpdatePostResp, error)
-	//DeletePost(ctx context.Context, req *content.DeletePostReq) (*content.DeletePostResp, error)
-	//ListPost(ctx context.Context, req *content.ListPostReq) (*content.ListPostResp, error)
-	//CountPost(ctx context.Context, req *content.CountPostReq) (*content.CountPostResp, error)
-	//SetOfficial(ctx context.Context, req *content.SetOfficialReq) (*content.SetOfficialResp, error)
+	CreatePost(ctx context.Context, req *content.CreatePostReq) (*content.CreatePostResp, error)
+	RetrievePost(ctx context.Context, req *content.RetrievePostReq) (*content.RetrievePostResp, error)
+	UpdatePost(ctx context.Context, req *content.UpdatePostReq) (*content.UpdatePostResp, error)
+	DeletePost(ctx context.Context, req *content.DeletePostReq) (*content.DeletePostResp, error)
+	ListPost(ctx context.Context, req *content.ListPostReq) (*content.ListPostResp, error)
+	CountPost(ctx context.Context, req *content.CountPostReq) (*content.CountPostResp, error)
+	SetOfficial(ctx context.Context, req *content.SetOfficialReq) (*content.SetOfficialResp, error)
 }
 
 type PostService struct {
