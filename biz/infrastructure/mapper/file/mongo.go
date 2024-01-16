@@ -44,12 +44,12 @@ type (
 		ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 		UserId      string             `bson:"userId,omitempty" json:"userId,omitempty"`
 		Name        string             `bson:"name,omitempty" json:"name,omitempty"`
-		Type        int32              `bson:"type,omitempty" json:"type,omitempty"`
+		Type        int64              `bson:"type,omitempty" json:"type,omitempty"`
 		Path        string             `bson:"path,omitempty" json:"path,omitempty"`
 		FatherId    string             `bson:"fatherId,omitempty" json:"fatherId,omitempty"`
 		Size        *int64             `bson:"size,omitempty" json:"size,omitempty"`
 		FileMd5     string             `bson:"fileMd5,omitempty" json:"fileMd5,omitempty"`
-		IsDel       int32              `bson:"isDel,omitempty" json:"isDel,omitempty"`
+		IsDel       int64              `bson:"isDel,omitempty" json:"isDel,omitempty"`
 		Tag         []string           `bson:"tag,omitempty" json:"tag,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
 		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`

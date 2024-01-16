@@ -10,7 +10,7 @@ import (
 func UserMapperToUserDetail(in *usermapper.User) *gencontent.UserDetail {
 	return &gencontent.UserDetail{
 		Name:        in.Name,
-		Sex:         in.Sex,
+		Sex:         int64(in.Sex),
 		FullName:    in.FullName,
 		IdCard:      in.IdCard,
 		CreatedAt:   in.CreateAt.UnixMilli(),
@@ -27,7 +27,7 @@ func UserDetailToUserMapper(in *gencontent.UserDetailInfo) *usermapper.User {
 	return &usermapper.User{
 		ID:          ID,
 		Name:        in.Name,
-		Sex:         int32(in.GetSex()),
+		Sex:         in.GetSex(),
 		FullName:    in.FullName,
 		IdCard:      in.IdCard,
 		Description: in.Description,
