@@ -1,47 +1,31 @@
 Name: cloudmind-content
-ListenOn: 0.0.0.0:2002
+ListenOn: 0.0.0.0:8080
 Mode: dev
-Elasticsearch:
-  Addresses:
-    - http://118.89.172.143:9200
-  Username: elastic
-  Password: 5201314LS
-##Monitoring
 Prometheus:
   Host: 0.0.0.0
-  Port: 4002
+  Port: 4003
   Path: /metrics
-
-##Link Tracking
-Telemetry:
-  Name: content
-  Endpoint: http://118.89.172.143:14268/api/traces
-  Sampler: 1.0
-  Batcher: jaeger
-
+EmailConf:
+  Host: smtp.qcloudmail.com
+  Email: 2095621390@cloudmind.top
+  Password: 5201314LSls@
+  Port: 465
 Log:
-  ServiceName: content
-  Level: info
-  Mode: console
-  Encoding: plain
-
-Redis:
-  Host: 118.89.172.143:6379,192.144.226.115:6379,134.175.180.149:6379
-  Type: cluster
-  Pass: 5201314LS
-  Key: ""
-
+  Encoding: json
+  Level: debug
+  Stat: false
 Mongo:
-  Url: mongodb://root:123@118.89.172.143:27017,192.144.226.115:27017,134.175.180.149:27017/?replSet=rs0
-  DB: cloudmind_content
-
-Cache:
-  - host: 118.89.172.143:6379,192.144.226.115:6379,134.175.180.149:6379
-    type: cluster
-    pass: 5201314LS
-
-EtcdConf:
-  Hosts:
-    - 118.89.172.143:2379
-    - 192.144.226.115:2379
-    - 134.175.180.149:2379
+  URL: mongodb+srv://root:FhfzRPcLfF@mongodb-headless.mongodb.svc.cluster.local/?tls=false
+  DB: cloudmind_sts
+CacheConf:
+  -
+    Host: redis-master.redis:6379
+Elasticsearch:
+  Addresses:
+    - https://es-elasticsearch.elasticsearch:9200
+  Username: elastic
+  Password: cloudmind
+Telemetry:
+  Endpoint: http://jaeger-collector.istio-system:14268/api/traces
+Redis:
+  Host: redis-master.redis:6379

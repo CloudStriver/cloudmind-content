@@ -44,14 +44,12 @@ type (
 )
 
 func NewMongoMapper(config *config.Config) UserMongoMapper {
-	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.Cache)
+	cache := config.Cache
+	cache[0].PingTimeout = 5 * time.Second
+	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, cache)
 	return &MongoMapper{
 		conn: conn,
 	}
-}
-
-func (m *MongoMapper) StartClient() *mongo.Client {
-	return m.conn.Database().Client()
 }
 
 func (m *MongoMapper) Insert(ctx context.Context, data *User) (string, error) {

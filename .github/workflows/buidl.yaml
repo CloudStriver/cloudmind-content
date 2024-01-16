@@ -15,10 +15,10 @@ on:
 
 env:
   # Use docker.io for Docker Hub if empty
-  REGISTRY: cloudmind-content
+  REGISTRY: docker.io
   USERNAME: lansongxx
   # github.repository as <account>/<repo>
-  IMAGE_NAME: CloudStriver/cloudmind-content
+  IMAGE_NAME: lansongxx/cloudmind-content
 
 jobs:
   build:

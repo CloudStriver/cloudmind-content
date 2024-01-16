@@ -8,11 +8,13 @@ require (
 	github.com/bytedance/sonic v1.10.2
 	github.com/cloudwego/kitex v0.8.0
 	github.com/elastic/go-elasticsearch/v8 v8.11.1
+	github.com/go-redis/redis/v8 v8.11.6-0.20220405070650-99c79f7041fc
 	github.com/google/wire v0.5.0
 	github.com/jinzhu/copier v0.4.0
 	github.com/kitex-contrib/obs-opentelemetry v0.2.5
 	github.com/kitex-contrib/registry-etcd v0.2.0
 	github.com/mitchellh/mapstructure v1.1.2
+	github.com/redis/go-redis/v9 v9.4.0
 	github.com/samber/lo v1.38.1
 	github.com/xh-polaris/gopkg v0.0.0-20231013165226-76f4d7108b9d
 	github.com/xh-polaris/meowchat-content v1.2.34
@@ -49,7 +51,6 @@ require (
 	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-redis/redis/v8 v8.11.6-0.20220405070650-99c79f7041fc // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect

@@ -25,10 +25,10 @@ type Config struct {
 		URL string
 		DB  string
 	}
-	Cache         cache.CacheConf
 	Elasticsearch ElasticsearchConf
-	Redis         *redis.RedisConf
+	Redis         redis.RedisConf
 	EtcdConf      EtcdConf
+	Cache         cache.CacheConf
 }
 
 func NewConfig() (*Config, error) {
