@@ -9,11 +9,10 @@ import (
 
 type ContentServerImpl struct {
 	*config.Config
-	FileService    service.IFileService
-	PostService    service.IPostService
-	CommentService service.ICommentService
-	LabelService   service.ILabelService
-	UserService    service.UserService
+	FileService  service.IFileService
+	PostService  service.IPostService
+	LabelService service.ILabelService
+	UserService  service.UserService
 }
 
 func (s *ContentServerImpl) DeleteUser(ctx context.Context, req *content.DeleteUserReq) (resp *content.DeleteUserResp, err error) {
@@ -50,31 +49,31 @@ func (s *ContentServerImpl) GetFolderSize(ctx context.Context, req *content.GetF
 	return resp, nil
 }
 
-func (s *ContentServerImpl) GetFileIsExist(ctx context.Context, req *content.GetFileIsExistReq) (res *content.GetFileIsExistResp, err error) {
+func (s *ContentServerImpl) GetFileIsExist(ctx context.Context, req *content.GetFileIsExistReq) (*content.GetFileIsExistResp, error) {
 	return s.FileService.GetFileIsExist(ctx, req)
 }
 
-func (s *ContentServerImpl) GetFile(ctx context.Context, req *content.GetFileReq) (res *content.GetFileResp, err error) {
+func (s *ContentServerImpl) GetFile(ctx context.Context, req *content.GetFileReq) (*content.GetFileResp, error) {
 	return s.FileService.GetFile(ctx, req)
 }
 
-func (s *ContentServerImpl) GetFileList(ctx context.Context, req *content.GetFileListReq) (res *content.GetFileListResp, err error) {
+func (s *ContentServerImpl) GetFileList(ctx context.Context, req *content.GetFileListReq) (*content.GetFileListResp, error) {
 	return s.FileService.GetFileList(ctx, req)
 }
 
-func (s *ContentServerImpl) GetFileCount(ctx context.Context, req *content.GetFileCountReq) (res *content.GetFileCountResp, err error) {
+func (s *ContentServerImpl) GetFileCount(ctx context.Context, req *content.GetFileCountReq) (*content.GetFileCountResp, error) {
 	return s.FileService.GetFileCount(ctx, req)
 }
 
-func (s *ContentServerImpl) UpdateFile(ctx context.Context, req *content.UpdateFileReq) (res *content.UpdateFileResp, err error) {
+func (s *ContentServerImpl) UpdateFile(ctx context.Context, req *content.UpdateFileReq) (*content.UpdateFileResp, error) {
 	return s.FileService.UpdateFile(ctx, req)
 }
 
-func (s *ContentServerImpl) MoveFile(ctx context.Context, req *content.MoveFileReq) (res *content.MoveFileResp, err error) {
+func (s *ContentServerImpl) MoveFile(ctx context.Context, req *content.MoveFileReq) (*content.MoveFileResp, error) {
 	return s.FileService.MoveFile(ctx, req)
 }
 
-func (s *ContentServerImpl) GetFileBySharingCode(ctx context.Context, req *content.GetFileBySharingCodeReq) (res *content.GetFileBySharingCodeResp, err error) {
+func (s *ContentServerImpl) GetFileBySharingCode(ctx context.Context, req *content.GetFileBySharingCodeReq) (*content.GetFileBySharingCodeResp, error) {
 	return s.FileService.GetFileBySharingCode(ctx, req)
 }
 
@@ -82,46 +81,62 @@ func (s *ContentServerImpl) CreateFolder(ctx context.Context, req *content.Creat
 	return s.FileService.CreateFolder(ctx, req)
 }
 
-//func (s *ContentServerImpl) UploadFile(ctx context.Context, req *content.UploadFileReq) (res *content.UploadFileResp, err error) {
-//	return s.FileService.UploadFile(ctx, req)
-//}
-
-func (s *ContentServerImpl) AskUploadFile(ctx context.Context, req *content.AskUploadFileReq) (res *content.AskUploadFileResp, err error) {
-	return s.FileService.AskUploadFile(ctx, req)
-}
-
-func (s *ContentServerImpl) AskUploadFileRollback(ctx context.Context, req *content.AskUploadFileReq) (res *content.AskUploadFileResp, err error) {
-	return s.FileService.AskUploadFileRollback(ctx, req)
-}
-
-func (s *ContentServerImpl) DeleteFile(ctx context.Context, req *content.DeleteFileReq) (res *content.DeleteFileResp, err error) {
+func (s *ContentServerImpl) DeleteFile(ctx context.Context, req *content.DeleteFileReq) (*content.DeleteFileResp, error) {
 	return s.FileService.DeleteFile(ctx, req)
 }
 
-func (s *ContentServerImpl) DeleteShareFile(ctx context.Context, req *content.DeleteShareFileReq) (res *content.DeleteShareFileResp, err error) {
-	return s.FileService.DeleteShareFile(ctx, req)
-}
-
-func (s *ContentServerImpl) DeleteExpiredFiles(ctx context.Context, req *content.DeleteExpiredFilesReq) (res *content.DeleteExpiredFilesResp, err error) {
+func (s *ContentServerImpl) DeleteExpiredFiles(ctx context.Context, req *content.DeleteExpiredFilesReq) (*content.DeleteExpiredFilesResp, error) {
 	return s.FileService.DeleteExpiredFiles(ctx, req)
 }
 
-func (s *ContentServerImpl) DeleteExpiredShareCodes(ctx context.Context, req *content.DeleteExpiredShareCodesReq) (res *content.DeleteExpiredShareCodesResp, err error) {
+func (s *ContentServerImpl) DeleteExpiredShareCodes(ctx context.Context, req *content.DeleteExpiredShareCodesReq) (*content.DeleteExpiredShareCodesResp, error) {
 	return s.FileService.DeleteExpiredShareCodes(ctx, req)
 }
 
-func (s *ContentServerImpl) GetLabel(ctx context.Context, req *content.GetLabelReq) (res *content.GetLabelResp, err error) {
+func (s *ContentServerImpl) GetLabel(ctx context.Context, req *content.GetLabelReq) (*content.GetLabelResp, error) {
 	return s.LabelService.GetLabel(ctx, req)
 }
 
-func (s *ContentServerImpl) CreateLabel(ctx context.Context, req *content.CreateLabelReq) (res *content.CreateLabelResp, err error) {
+func (s *ContentServerImpl) CreateLabel(ctx context.Context, req *content.CreateLabelReq) (*content.CreateLabelResp, error) {
 	return s.LabelService.CreateLabel(ctx, req)
 }
 
-func (s *ContentServerImpl) UpdateLabel(ctx context.Context, req *content.UpdateLabelReq) (res *content.UpdateLabelResp, err error) {
+func (s *ContentServerImpl) UpdateLabel(ctx context.Context, req *content.UpdateLabelReq) (*content.UpdateLabelResp, error) {
 	return s.LabelService.UpdateLabel(ctx, req)
 }
 
-func (s *ContentServerImpl) DeleteLabel(ctx context.Context, req *content.DeleteLabelReq) (res *content.DeleteLabelResp, err error) {
+func (s *ContentServerImpl) DeleteLabel(ctx context.Context, req *content.DeleteLabelReq) (*content.DeleteLabelResp, error) {
 	return s.LabelService.DeleteLabel(ctx, req)
+}
+
+func (s *ContentServerImpl) GetShareList(ctx context.Context, req *content.GetShareListReq) (*content.GetShareListResp, error) {
+	return s.FileService.GetShareList(ctx, req)
+}
+
+func (s *ContentServerImpl) CreateShareCode(ctx context.Context, req *content.CreateShareCodeReq) (*content.CreateShareCodeResp, error) {
+	return s.FileService.CreateShareCode(ctx, req)
+}
+
+func (s *ContentServerImpl) UpdateShareCode(ctx context.Context, req *content.UpdateShareCodeReq) (*content.UpdateShareCodeResp, error) {
+	return s.FileService.UpdateShareCode(ctx, req)
+}
+
+func (s *ContentServerImpl) DeleteShareCode(ctx context.Context, req *content.DeleteShareCodeReq) (*content.DeleteShareCodeResp, error) {
+	return s.FileService.DeleteShareCode(ctx, req)
+}
+
+func (s *ContentServerImpl) ParsingShareCode(ctx context.Context, req *content.ParsingShareCodeReq) (*content.ParsingShareCodeResp, error) {
+	return s.FileService.ParsingShareCode(ctx, req)
+}
+
+func (s *ContentServerImpl) SaveFileToPrivateSpace(ctx context.Context, req *content.SaveFileToPrivateSpaceReq) (res *content.SaveFileToPrivateSpaceResp, err error) {
+	return s.FileService.SaveFileToPrivateSpace(ctx, req)
+}
+
+func (s *ContentServerImpl) AddFileToPublicSpace(ctx context.Context, req *content.AddFileToPublicSpaceReq) (*content.AddFileToPublicSpaceResp, error) {
+	return s.FileService.AddFileToPublicSpace(ctx, req)
+}
+
+func (s *ContentServerImpl) RecoverRecycleBinFile(ctx context.Context, req *content.RecoverRecycleBinFileReq) (*content.RecoverRecycleBinFileResp, error) {
+	return s.FileService.RecoverRecycleBinFile(ctx, req)
 }

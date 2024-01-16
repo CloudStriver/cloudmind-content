@@ -44,9 +44,7 @@ type (
 )
 
 func NewMongoMapper(config *config.Config) UserMongoMapper {
-	cache := config.Cache
-	cache[0].PingTimeout = 5 * time.Second
-	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, cache)
+	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
 	return &MongoMapper{
 		conn: conn,
 	}

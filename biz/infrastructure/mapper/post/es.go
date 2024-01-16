@@ -125,7 +125,7 @@ func (m *EsMapper) Search(ctx context.Context, query []types.Query, fopts *Filte
 		oid := hit.Id_
 		post.ID, err = primitive.ObjectIDFromHex(oid)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, consts.ErrInvalidId
 		}
 		post.Score_ = float64(hit.Score_)
 		posts = append(posts, post)

@@ -12,7 +12,7 @@ WORKDIR /build
 
 ADD go.mod .
 ADD go.sum .
-RUN go mod tidy
+RUN go mod download
 COPY . .
 RUN sh ./build.sh
 

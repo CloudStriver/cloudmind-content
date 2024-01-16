@@ -16,19 +16,19 @@ type FilterOptions struct {
 	DocumentType int32
 }
 
-type MongoFilter struct {
+type MongoFileFilter struct {
 	m bson.M
 	*FilterOptions
 }
 
 func makeMongoFilter(options *FilterOptions) bson.M {
-	return (&MongoFilter{
+	return (&MongoFileFilter{
 		m:             bson.M{},
 		FilterOptions: options,
 	}).toBson()
 }
 
-func (f *MongoFilter) toBson() bson.M {
+func (f *MongoFileFilter) toBson() bson.M {
 	f.CheckOnlyUserId()
 	f.CheckOnlyFileId()
 	f.CheckOnlyFatherId()
@@ -37,38 +37,38 @@ func (f *MongoFilter) toBson() bson.M {
 	return f.m
 }
 
-func (f *MongoFilter) CheckOnlyUserId() {
+func (f *MongoFileFilter) CheckOnlyUserId() {
 	if f.OnlyUserId != nil {
 		f.m[consts.UserId] = *f.OnlyUserId
 	}
 }
 
-func (f *MongoFilter) CheckOnlyFileId() {
+func (f *MongoFileFilter) CheckOnlyFileId() {
 	if f.OnlyFileId != nil {
 		oid, _ := primitive.ObjectIDFromHex(*f.OnlyFileId)
 		f.m[consts.ID] = oid
 	}
 }
 
-func (f *MongoFilter) CheckOnlyFatherId() {
+func (f *MongoFileFilter) CheckOnlyFatherId() {
 	if f.OnlyFatherId != nil {
 		f.m[consts.FatherId] = *f.OnlyFatherId
 	}
 }
 
-func (f *MongoFilter) CheckOnlyFileType() {
+func (f *MongoFileFilter) CheckOnlyFileType() {
 	if f.OnlyFileType != nil {
 		f.m[consts.Type] = *f.OnlyFileType
 	}
 }
 
-func (f *MongoFilter) CheckIsDel() {
+func (f *MongoFileFilter) CheckIsDel() {
 	f.m[consts.IsDel] = f.IsDel
 }
 
-func (f *MongoFilter) CheckDocumentType() {
+func (f *MongoFileFilter) CheckDocumentType() {
 	if f.DocumentType == 2 {
-		f.m[consts.Tag] = bson.M{"$ne": bson.A{}}
+		f.m[consts.Tag] = bson.M{"$ne": nil}
 	}
 }
 

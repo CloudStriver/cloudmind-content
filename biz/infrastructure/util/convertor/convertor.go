@@ -3,6 +3,7 @@ package convertor
 import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/label"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/basic"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
@@ -20,7 +21,7 @@ func ConvertFileSlice(data []*file.File) []*gencontent.FileInfo {
 			FatherId:  d.FatherId,
 			SpaceSize: *d.Size,
 			Md5:       d.FileMd5,
-			UpdateAt:  d.CreateAt.Unix(),
+			UpdateAt:  d.UpdateAt.Unix(),
 		}
 		res[i] = m
 	}
@@ -37,11 +38,36 @@ func ConvertFile(data *file.File) *gencontent.FileInfo {
 		FatherId:  data.FatherId,
 		SpaceSize: *data.Size,
 		Md5:       data.FileMd5,
-		UpdateAt:  data.CreateAt.Unix(),
+		UpdateAt:  data.UpdateAt.Unix(),
 	}
 }
 
-func ParseFileFilter(opts *gencontent.FileFilterOptions) (filter *file.FilterOptions) {
+func ConvertShareFile(data *sharefile.ShareFile) *gencontent.ShareFile {
+	return &gencontent.ShareFile{
+		Code:          data.ID.Hex(),
+		UserId:        data.UserId,
+		Name:          data.Name,
+		Status:        gencontent.Status(data.Status),
+		Limit:         data.Limit,
+		Persons:       data.Persons,
+		EffectiveTime: data.EffectiveTime,
+		BrowseNumber:  *data.BrowseNumber,
+		CreateAt:      data.CreateAt.Unix(),
+		FileList:      data.FileList,
+	}
+}
+
+func ConvertShareCode(data *sharefile.ShareFile) *gencontent.ShareCode {
+	return &gencontent.ShareCode{
+		Code:         data.ID.Hex(),
+		Name:         data.Name,
+		Status:       gencontent.Status(data.Status),
+		BrowseNumber: *data.BrowseNumber,
+		CreateAt:     data.CreateAt.Unix(),
+	}
+}
+
+func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filter *file.FilterOptions) {
 	if opts == nil {
 		filter = &file.FilterOptions{}
 	} else {
@@ -52,6 +78,18 @@ func ParseFileFilter(opts *gencontent.FileFilterOptions) (filter *file.FilterOpt
 			OnlyFileType: opts.OnlyFileType,
 			IsDel:        opts.IsDel,
 			DocumentType: opts.DocumentType,
+		}
+	}
+	return
+}
+
+func ShareFileFilterOptionsToShareCodeOptions(opts *gencontent.ShareFileFilterOptions) (filter *sharefile.ShareCodeOptions) {
+	if opts == nil {
+		filter = &sharefile.ShareCodeOptions{}
+	} else {
+		filter = &sharefile.ShareCodeOptions{
+			OnlyCode:   opts.OnlyCode,
+			OnlyUserId: opts.OnlyUserId,
 		}
 	}
 	return
