@@ -39,10 +39,10 @@ type (
 		UserId        string             `bson:"userId,omitempty" json:"userId,omitempty"`
 		Name          string             `bson:"name,omitempty" json:"name,omitempty"`
 		FileList      []string           `bson:"fileList,omitempty" json:"fileList,omitempty"`
-		Status        int32              `bson:"status,omitempty" json:"status,omitempty"`               // 链接当前状态
-		Limit         int32              `bson:"limit,omitempty" json:"limit,omitempty"`                 // -1：不限制，其余为限制的次数(不包含0) -> 此处为人数限制
+		Status        int64              `bson:"status,omitempty" json:"status,omitempty"`               // 链接当前状态
+		Limit         int64              `bson:"limit,omitempty" json:"limit,omitempty"`                 // -1：不限制，其余为限制的次数(不包含0) -> 此处为人数限制
 		Persons       []string           `bson:"persons,omitempty" json:"persons,omitempty"`             // 当前访问人数
-		EffectiveTime int32              `bson:"effectiveTime,omitempty" json:"effectiveTime,omitempty"` // 有效期
+		EffectiveTime int64              `bson:"effectiveTime,omitempty" json:"effectiveTime,omitempty"` // 有效期
 		BrowseNumber  *int64             `bson:"browseNumber,omitempty" json:"browseNumber,omitempty"`   // 浏览次数
 		CreateAt      time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`           // 创建时间
 	}

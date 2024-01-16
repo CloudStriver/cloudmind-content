@@ -28,7 +28,7 @@ type (
 	User struct {
 		ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 		Name        string             `bson:"name,omitempty" json:"name,omitempty"`
-		Sex         int32              `bson:"sex,omitempty" json:"sex,omitempty"`
+		Sex         int64              `bson:"sex,omitempty" json:"sex,omitempty"`
 		FullName    string             `bson:"fullName,omitempty" json:"fullName,omitempty"`
 		IdCard      string             `bson:"idCard,omitempty" json:"idCard,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
@@ -48,10 +48,6 @@ func NewMongoMapper(config *config.Config) UserMongoMapper {
 	return &MongoMapper{
 		conn: conn,
 	}
-}
-
-func (m *MongoMapper) StartClient() *mongo.Client {
-	return m.conn.Database().Client()
 }
 
 func (m *MongoMapper) Insert(ctx context.Context, data *User) (string, error) {

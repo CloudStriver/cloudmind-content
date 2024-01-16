@@ -11,9 +11,9 @@ type FilterOptions struct {
 	OnlyUserId   *string
 	OnlyFileId   *string
 	OnlyFatherId *string
-	OnlyFileType *int32
-	IsDel        int32
-	DocumentType int32
+	OnlyFileType *int64
+	IsDel        int64
+	DocumentType int64
 }
 
 type MongoFileFilter struct {
