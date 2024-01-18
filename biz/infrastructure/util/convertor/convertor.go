@@ -142,6 +142,7 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 			OnlyFileId:   opts.OnlyFileId,
 			OnlyFatherId: opts.OnlyFatherId,
 			OnlyFileType: opts.OnlyFileType,
+			OnlyTag:      opts.OnlyTag,
 			IsDel:        opts.IsDel,
 			DocumentType: opts.DocumentType,
 		}

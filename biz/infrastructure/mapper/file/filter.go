@@ -13,6 +13,7 @@ type FilterOptions struct {
 	OnlyFileId   *string
 	OnlyFatherId *string
 	OnlyFileType *int64
+	OnlyTag      *string
 	IsDel        int64
 	DocumentType int64
 }
@@ -34,6 +35,7 @@ func (f *MongoFileFilter) toBson() bson.M {
 	f.CheckOnlyFileId()
 	f.CheckOnlyFatherId()
 	f.CheckOnlyFileType()
+	f.CheckIsDel()
 	f.CheckDocumentType()
 	return f.m
 }
@@ -69,7 +71,11 @@ func (f *MongoFileFilter) CheckIsDel() {
 
 func (f *MongoFileFilter) CheckDocumentType() {
 	if f.DocumentType == 2 {
-		f.m[consts.Tag] = bson.M{"$ne": nil}
+		if f.OnlyTag != nil {
+			f.m[consts.Tag] = bson.M{"$elemMatch": bson.M{"$eq": *f.OnlyTag}}
+		} else {
+			f.m[consts.Tag] = bson.M{"$ne": nil}
+		}
 	}
 }
 
