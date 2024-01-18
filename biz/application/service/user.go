@@ -101,7 +101,7 @@ func (s *UserServiceImpl) CreateUser(ctx context.Context, req *gencontent.Create
 	if _, err = s.UserMongoMapper.Insert(ctx, &usermapper.User{
 		ID:          ID,
 		Name:        req.UserInfo.Name,
-		Sex:         req.UserInfo.Sex,
+		Sex:         int64(req.UserInfo.Sex),
 		Description: consts.DefaultDescription,
 		Url:         consts.DefaultAvatarUrl,
 	}); err != nil {

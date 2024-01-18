@@ -50,10 +50,6 @@ func NewMongoMapper(config *config.Config) UserMongoMapper {
 	}
 }
 
-func (m *MongoMapper) StartClient() *mongo.Client {
-	return m.conn.Database().Client()
-}
-
 func (m *MongoMapper) Insert(ctx context.Context, data *User) (string, error) {
 	if data.ID.IsZero() {
 		data.ID = primitive.NewObjectID()

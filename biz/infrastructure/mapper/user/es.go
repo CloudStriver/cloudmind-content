@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
@@ -16,6 +17,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/logx"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"net/http"
 	"time"
 )
 
@@ -99,16 +101,23 @@ func (e *EsMapper) Search(ctx context.Context, keyword string, popts *pagination
 			return nil, 0, err
 		}
 	}
-	return users, total, nil
+	return users, int64(total), nil
 }
 
 func NewEsMapper(config *config.Config) UserEsMapper {
-	es, err := elasticsearch.NewTypedClient(elasticsearch.Config{Addresses: config.Elasticsearch.Addresses, Username: config.Elasticsearch.Username, Password: config.Elasticsearch.Password})
+	es, err := elasticsearch.NewTypedClient(elasticsearch.Config{
+		Addresses: config.Elasticsearch.Addresses,
+		Username:  config.Elasticsearch.Username,
+		Password:  config.Elasticsearch.Password,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	})
 	if err != nil {
 		logx.Errorf("elasticsearch连接异常[%v]\n", err)
 	}
 	return &EsMapper{
 		es:        es,
-		IndexName: fmt.Sprintf("%s.%s", config.Mongo.DB, CollectionName),
+		IndexName: fmt.Sprintf("cloudmind_content.user"),
 	}
 }

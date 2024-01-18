@@ -86,7 +86,7 @@ func (e *EsMapper) Search(ctx context.Context, query []types.Query, fopts *Filte
 		oid := hit.Id_
 		file.ID, err = primitive.ObjectIDFromHex(oid)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, consts.ErrInvalidId
 		}
 		file.Score_ = float64(hit.Score_)
 		files = append(files, file)

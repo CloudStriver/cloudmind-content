@@ -81,11 +81,11 @@ func (s *ContentServerImpl) CreateFolder(ctx context.Context, req *content.Creat
 	return s.FileService.CreateFolder(ctx, req)
 }
 
-func (s *ContentServerImpl) DeleteFile(ctx context.Context, req *content.DeleteFileReq) (*content.DeleteFileResp, error) {
-	return s.FileService.DeleteFile(ctx, req)
+func (s *ContentServerImpl) DeleteShareFile(ctx context.Context, req *content.DeleteShareFileReq) (res *content.DeleteShareFileResp, err error) {
+	return s.FileService.DeleteShareFile(ctx, req)
 }
 
-func (s *ContentServerImpl) GetLabel(ctx context.Context, req *content.GetLabelReq) (*content.GetLabelResp, error) {
+func (s *ContentServerImpl) GetLabel(ctx context.Context, req *content.GetLabelReq) (res *content.GetLabelResp, err error) {
 	return s.LabelService.GetLabel(ctx, req)
 }
 
