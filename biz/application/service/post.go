@@ -24,7 +24,7 @@ type IPostService interface {
 
 type PostService struct {
 	Config          *config.Config
-	PostMongoMapper postmapper.IMongoMapper
+	PostMongoMapper postmapper.IPostMongoMapper
 	PostEsMapper    postmapper.IEsMapper
 	Redis           *redis.Redis
 }
@@ -62,9 +62,11 @@ func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq)
 	if req.SearchOptions != nil {
 		switch o := req.SearchOptions.Type.(type) {
 		case *gencontent.SearchOptions_AllFieldsKey:
-			posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(o), convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions), p, esp.ScoreCursorType)
+			posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(o),
+				convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions), p, esp.ScoreCursorType)
 		case *gencontent.SearchOptions_MultiFieldsKey:
-			posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostMultiFieldsSearchQuery(o), convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions), p, esp.ScoreCursorType)
+			posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostMultiFieldsSearchQuery(o),
+				convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions), p, esp.ScoreCursorType)
 		}
 	} else {
 		posts, total, err = s.PostMongoMapper.FindManyAndCount(ctx, convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions),

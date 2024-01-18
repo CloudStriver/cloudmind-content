@@ -27,7 +27,7 @@ type UserService interface {
 type UserServiceImpl struct {
 	Config          *config.Config
 	UserMongoMapper usermapper.UserMongoMapper
-	UserEsMapper    usermapper.UserEsMapper
+	UserEsMapper    usermapper.IUserEsMapper
 	Redis           *redis.Redis
 }
 

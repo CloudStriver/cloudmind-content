@@ -15,6 +15,26 @@ type ContentServerImpl struct {
 	UserService  service.UserService
 }
 
+func (s *ContentServerImpl) CreatePost(ctx context.Context, req *content.CreatePostReq) (res *content.CreatePostResp, err error) {
+	return s.PostService.CreatePost(ctx, req)
+}
+
+func (s *ContentServerImpl) DeletePost(ctx context.Context, req *content.DeletePostReq) (res *content.DeletePostResp, err error) {
+	return s.PostService.DeletePost(ctx, req)
+}
+
+func (s *ContentServerImpl) UpdatePost(ctx context.Context, req *content.UpdatePostReq) (res *content.UpdatePostResp, err error) {
+	return s.PostService.UpdatePost(ctx, req)
+}
+
+func (s *ContentServerImpl) GetPost(ctx context.Context, req *content.GetPostReq) (res *content.GetPostResp, err error) {
+	return s.PostService.GetPost(ctx, req)
+}
+
+func (s *ContentServerImpl) GetPosts(ctx context.Context, req *content.GetPostsReq) (res *content.GetPostsResp, err error) {
+	return s.PostService.GetPosts(ctx, req)
+}
+
 func (s *ContentServerImpl) DeleteUser(ctx context.Context, req *content.DeleteUserReq) (resp *content.DeleteUserResp, err error) {
 	return s.UserService.DeleteUser(ctx, req)
 }
@@ -61,6 +81,10 @@ func (s *ContentServerImpl) GetFileList(ctx context.Context, req *content.GetFil
 	return s.FileService.GetFileList(ctx, req)
 }
 
+func (s *ContentServerImpl) DeleteFile(ctx context.Context, req *content.DeleteFileReq) (res *content.DeleteFileResp, err error) {
+	return s.FileService.DeleteFile(ctx, req)
+}
+
 func (s *ContentServerImpl) GetFileCount(ctx context.Context, req *content.GetFileCountReq) (*content.GetFileCountResp, error) {
 	return s.FileService.GetFileCount(ctx, req)
 }
@@ -81,19 +105,7 @@ func (s *ContentServerImpl) CreateFolder(ctx context.Context, req *content.Creat
 	return s.FileService.CreateFolder(ctx, req)
 }
 
-func (s *ContentServerImpl) DeleteFile(ctx context.Context, req *content.DeleteFileReq) (*content.DeleteFileResp, error) {
-	return s.FileService.DeleteFile(ctx, req)
-}
-
-func (s *ContentServerImpl) DeleteExpiredFiles(ctx context.Context, req *content.DeleteExpiredFilesReq) (*content.DeleteExpiredFilesResp, error) {
-	return s.FileService.DeleteExpiredFiles(ctx, req)
-}
-
-func (s *ContentServerImpl) DeleteExpiredShareCodes(ctx context.Context, req *content.DeleteExpiredShareCodesReq) (*content.DeleteExpiredShareCodesResp, error) {
-	return s.FileService.DeleteExpiredShareCodes(ctx, req)
-}
-
-func (s *ContentServerImpl) GetLabel(ctx context.Context, req *content.GetLabelReq) (*content.GetLabelResp, error) {
+func (s *ContentServerImpl) GetLabel(ctx context.Context, req *content.GetLabelReq) (res *content.GetLabelResp, err error) {
 	return s.LabelService.GetLabel(ctx, req)
 }
 

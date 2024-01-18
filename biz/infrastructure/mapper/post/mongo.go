@@ -2,6 +2,7 @@ package post
 
 import (
 	"context"
+	"errors"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
@@ -17,11 +18,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const prefixPostCacheKey = "cache:post:"
 const CollectionName = "post"
+const prefixPostCacheKey = "cache:post:"
 
 type (
-	IMongoMapper interface {
+	IPostMongoMapper interface {
 		Insert(ctx context.Context, data *Post) error
 		FindOne(ctx context.Context, id string) (*Post, error)
 		Update(ctx context.Context, data *Post) error
@@ -50,7 +51,7 @@ type (
 	}
 )
 
-func NewMongoMapper(config *config.Config) IMongoMapper {
+func NewMongoMapper(config *config.Config) IPostMongoMapper {
 	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
 	return &MongoMapper{
 		conn: conn,
@@ -138,10 +139,10 @@ func (m *MongoMapper) FindOne(ctx context.Context, id string) (*Post, error) {
 	var data Post
 	key := prefixPostCacheKey + id
 	err = m.conn.FindOne(ctx, key, &data, bson.M{consts.ID: oid})
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		return &data, nil
-	case monc.ErrNotFound:
+	case errors.Is(err, monc.ErrNotFound):
 		return nil, consts.ErrNotFound
 	default:
 		return nil, err

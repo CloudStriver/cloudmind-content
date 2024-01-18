@@ -22,13 +22,13 @@ import (
 )
 
 type (
-	UserEsMapper interface {
+	IUserEsMapper interface {
 		Search(ctx context.Context, keyword string, popts *pagination.PaginationOptions, sorter esp.EsCursor) ([]*User, int64, error)
 	}
 
 	EsMapper struct {
 		es        *elasticsearch.TypedClient
-		IndexName string
+		indexName string
 	}
 )
 
@@ -39,7 +39,7 @@ func (e *EsMapper) Search(ctx context.Context, keyword string, popts *pagination
 		log.CtxError(ctx, "创建索引异常[%v]\n", err)
 		return nil, 0, err
 	}
-	res, err := e.es.Search().Index(e.IndexName).Request(&search.Request{
+	res, err := e.es.Search().Index(e.indexName).Request(&search.Request{
 		Query: &types.Query{
 			Bool: &types.BoolQuery{
 				Must: []types.Query{
@@ -101,10 +101,10 @@ func (e *EsMapper) Search(ctx context.Context, keyword string, popts *pagination
 			return nil, 0, err
 		}
 	}
-	return users, int64(total), nil
+	return users, total, nil
 }
 
-func NewEsMapper(config *config.Config) UserEsMapper {
+func NewEsMapper(config *config.Config) IUserEsMapper {
 	es, err := elasticsearch.NewTypedClient(elasticsearch.Config{
 		Addresses: config.Elasticsearch.Addresses,
 		Username:  config.Elasticsearch.Username,
@@ -118,6 +118,6 @@ func NewEsMapper(config *config.Config) UserEsMapper {
 	}
 	return &EsMapper{
 		es:        es,
-		IndexName: fmt.Sprintf("cloudmind_content.user"),
+		indexName: fmt.Sprintf("%s.%s", config.Mongo.DB, CollectionName),
 	}
 }
