@@ -21,7 +21,7 @@ import (
 
 type (
 	UserEsMapper interface {
-		Search(ctx context.Context, keyword string, popts *pagination.PaginationOptions, sorter esp.EsCursor) ([]*User, int32, error)
+		Search(ctx context.Context, keyword string, popts *pagination.PaginationOptions, sorter esp.EsCursor) ([]*User, int64, error)
 	}
 
 	EsMapper struct {
@@ -30,7 +30,7 @@ type (
 	}
 )
 
-func (e *EsMapper) Search(ctx context.Context, keyword string, popts *pagination.PaginationOptions, sorter esp.EsCursor) ([]*User, int32, error) {
+func (e *EsMapper) Search(ctx context.Context, keyword string, popts *pagination.PaginationOptions, sorter esp.EsCursor) ([]*User, int64, error) {
 	p := esp.NewEsPaginator(pagination.NewRawStore(sorter), popts)
 	s, sa, err := p.MakeSortOptions(ctx)
 	if err != nil {
@@ -99,7 +99,7 @@ func (e *EsMapper) Search(ctx context.Context, keyword string, popts *pagination
 			return nil, 0, err
 		}
 	}
-	return users, int32(total), nil
+	return users, total, nil
 }
 
 func NewEsMapper(config *config.Config) UserEsMapper {

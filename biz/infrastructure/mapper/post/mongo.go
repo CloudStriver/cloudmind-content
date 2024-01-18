@@ -12,8 +12,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const prefixPostCacheKey = "cache:post:"
 const CollectionName = "post"
+const prefixPostCacheKey = "cache:post:"
 
 type (
 	IMongoMapper interface {

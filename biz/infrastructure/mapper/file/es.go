@@ -4,99 +4,69 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"log"
-	"net/http"
-	"time"
-
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
+	"github.com/CloudStriver/go-pkg/utils/pagination"
+	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
+	"github.com/CloudStriver/go-pkg/utils/util/log"
 	"github.com/bytedance/sonic"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/sortorder"
 	"github.com/mitchellh/mapstructure"
+	"github.com/samber/lo"
+	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/trace"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.opentelemetry.io/otel"
 	oteltrace "go.opentelemetry.io/otel/trace"
-
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
+	"net/http"
+	"time"
 )
 
 type (
-	IEsMapper interface {
-		Search(ctx context.Context, communityId, keyword string, skip, count int) ([]*File, int64, error)
+	IFileEsMapper interface {
+		Search(ctx context.Context, query []types.Query, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter esp.EsCursor) ([]*File, int64, error)
 	}
 
 	EsMapper struct {
 		es        *elasticsearch.TypedClient
-		indexName string
+		IndexName string
 	}
 )
 
-func NewEsMapper(config *config.Config) IEsMapper {
-	esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
-		Username:  config.Elasticsearch.Username,
-		Password:  config.Elasticsearch.Password,
-		Addresses: config.Elasticsearch.Addresses,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	return &EsMapper{
-		es:        esClient,
-		indexName: fmt.Sprintf("%s.%s-alias", config.Mongo.DB, CollectionName),
-	}
-}
+func (e *EsMapper) Search(ctx context.Context, query []types.Query, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter esp.EsCursor) ([]*File, int64, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "elasticsearch.Search", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
 
-func (m *EsMapper) Search(ctx context.Context, communityId, keyword string, skip, count int) ([]*File, int64, error) {
-	ctx, span := trace.TracerFromContext(ctx).Start(ctx, "elasticsearch/Search", oteltrace.WithTimestamp(time.Now()), oteltrace.WithSpanKind(oteltrace.SpanKindClient))
-	defer func() {
-		span.End(oteltrace.WithTimestamp(time.Now()))
-	}()
-	res, err := m.es.Search().From(skip).Size(count).Index(m.indexName).Request(&search.Request{
+	p := esp.NewEsPaginator(pagination.NewRawStore(sorter), popts)
+	filter := makeEsFilter(fopts)
+	s, sa, err := p.MakeSortOptions(ctx)
+	if err != nil {
+		log.CtxError(ctx, "创建索引异常[%v]\n", err)
+		return nil, 0, err
+	}
+	res, err := e.es.Search().Index(e.IndexName).Request(&search.Request{
 		Query: &types.Query{
 			Bool: &types.BoolQuery{
-				Must: []types.Query{
-					{
-						MultiMatch: &types.MultiMatchQuery{
-							Query: keyword,
-							//Fields: []string{consts.Details, consts.Name + "^5", consts.Area, consts.Color},
-						},
-					},
-					{
-						Term: map[string]types.TermQuery{
-							//consts.CommunityId: {
-							//	Value: communityId,
-							//},
-						},
-					},
-				},
+				Must:   query,
+				Filter: filter,
 			},
 		},
-		Sort: types.Sort{
-			&types.SortOptions{
-				SortOptions: map[string]types.FieldSort{
-					//consts.Score: {
-					//	Order: &sortorder.Desc,
-					//},
-					consts.CreateAt: {
-						Order: &sortorder.Desc,
-					},
-				},
-			},
-		},
+		Sort:        s,
+		SearchAfter: sa,
+		Size:        lo.ToPtr(int(*popts.Limit)),
 	}).Do(ctx)
 	if err != nil {
+		logx.Errorf("es查询异常[%v]\n", err)
 		return nil, 0, err
 	}
 
 	total := res.Hits.Total.Value
-	cats := make([]*File, 0, 10)
+	files := make([]*File, 0, len(res.Hits.Hits))
 	for _, hit := range res.Hits.Hits {
-		cat := &File{}
+		file := &File{}
 		source := make(map[string]any)
 		err = sonic.Unmarshal(hit.Source_, &source)
 		if err != nil {
@@ -108,17 +78,49 @@ func (m *EsMapper) Search(ctx context.Context, communityId, keyword string, skip
 		if source[consts.UpdateAt], err = time.Parse("2006-01-02T15:04:05Z07:00", source[consts.UpdateAt].(string)); err != nil {
 			return nil, 0, err
 		}
-		err = mapstructure.Decode(source, cat)
+		err = mapstructure.Decode(source, file)
 		if err != nil {
 			return nil, 0, err
 		}
 
 		oid := hit.Id_
-		cat.ID, err = primitive.ObjectIDFromHex(oid)
+		file.ID, err = primitive.ObjectIDFromHex(oid)
 		if err != nil {
-			return nil, 0, consts.ErrInvalidId
+			return nil, 0, err
 		}
-		cats = append(cats, cat)
+		file.Score_ = float64(hit.Score_)
+		files = append(files, file)
 	}
-	return cats, total, nil
+
+	if *popts.Backward {
+		files = lo.Reverse(files)
+	}
+
+	// 更新游标
+	if len(files) > 0 {
+		err = p.StoreCursor(ctx, files[0], files[len(files)-1])
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+	return files, total, nil
+}
+
+func NewEsMapper(config *config.Config) IFileEsMapper {
+
+	esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
+		Username:  config.Elasticsearch.Username,
+		Password:  config.Elasticsearch.Password,
+		Addresses: config.Elasticsearch.Addresses,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	})
+	if err != nil {
+		logx.Errorf("elasticsearch连接异常[%v]\n", err)
+	}
+	return &EsMapper{
+		es:        esClient,
+		IndexName: fmt.Sprintf("%s.%s", config.Mongo.DB, CollectionName),
+	}
 }

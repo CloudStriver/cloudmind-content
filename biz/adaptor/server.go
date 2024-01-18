@@ -85,14 +85,6 @@ func (s *ContentServerImpl) DeleteFile(ctx context.Context, req *content.DeleteF
 	return s.FileService.DeleteFile(ctx, req)
 }
 
-func (s *ContentServerImpl) DeleteExpiredFiles(ctx context.Context, req *content.DeleteExpiredFilesReq) (*content.DeleteExpiredFilesResp, error) {
-	return s.FileService.DeleteExpiredFiles(ctx, req)
-}
-
-func (s *ContentServerImpl) DeleteExpiredShareCodes(ctx context.Context, req *content.DeleteExpiredShareCodesReq) (*content.DeleteExpiredShareCodesResp, error) {
-	return s.FileService.DeleteExpiredShareCodes(ctx, req)
-}
-
 func (s *ContentServerImpl) GetLabel(ctx context.Context, req *content.GetLabelReq) (*content.GetLabelResp, error) {
 	return s.LabelService.GetLabel(ctx, req)
 }

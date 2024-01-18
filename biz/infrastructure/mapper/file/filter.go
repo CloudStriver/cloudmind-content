@@ -1,6 +1,7 @@
 package file
 
 import (
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
@@ -11,9 +12,9 @@ type FilterOptions struct {
 	OnlyUserId   *string
 	OnlyFileId   *string
 	OnlyFatherId *string
-	OnlyFileType *int32
-	IsDel        int32
-	DocumentType int32
+	OnlyFileType *int64
+	IsDel        int64
+	DocumentType int64
 }
 
 type MongoFileFilter struct {
@@ -72,45 +73,46 @@ func (f *MongoFileFilter) CheckDocumentType() {
 	}
 }
 
-//type EsFilter struct {
-//	q []types.Query
-//	*FilterOptions
-//}
-//
-//func makeEsFilter(opts *FilterOptions) []types.Query {
-//	return (&EsFilter{
-//		q:             make([]types.Query, 0),
-//		FilterOptions: opts,
-//	}).toQuery()
-//}
-//
-//func (f *EsFilter) toQuery() []types.Query {
-//	f.checkOnlyUserId()
-//	f.checkOnlyCatId()
-//	f.checkOnlyCommunityId()
-//	return f.q
-//}
-//
-//func (f *EsFilter) checkOnlyUserId() {
-//	if f.OnlyUserId != nil {
-//		f.q = append(f.q, types.Query{
-//			Term: map[string]types.TermQuery{
-//				consts.InitiatorId: {Value: *f.OnlyUserId},
-//			},
-//		})
-//	}
-//}
-//
-//func (f *EsFilter) checkOnlyCatId() {
-//	if f.OnlyCatId != nil {
-//		f.q = append(f.q, types.Query{
-//			Term: map[string]types.TermQuery{
-//				consts.CatId: {Value: *f.OnlyCatId},
-//			},
-//		})
-//	}
-//}
-//
+type EsFilter struct {
+	q []types.Query
+	*FilterOptions
+}
+
+func makeEsFilter(opts *FilterOptions) []types.Query {
+	return (&EsFilter{
+		q:             make([]types.Query, 0),
+		FilterOptions: opts,
+	}).toEsQuery()
+}
+
+func (f *EsFilter) toEsQuery() []types.Query {
+	f.checkOnlyUserId()
+	f.checkOnlyFileId()
+	//f.checkOnlyCommunityId()
+	return f.q
+}
+
+func (f *EsFilter) checkOnlyUserId() {
+	if f.OnlyUserId != nil {
+		f.q = append(f.q, types.Query{
+			Term: map[string]types.TermQuery{
+				consts.UserId: {Value: *f.OnlyUserId},
+			},
+		})
+	}
+}
+
+func (f *EsFilter) checkOnlyFileId() {
+	if f.OnlyFileId != nil {
+		f.q = append(f.q, types.Query{
+			Term: map[string]types.TermQuery{
+				consts.ID: {Value: *f.OnlyFileId},
+			},
+		})
+	}
+}
+
+// 对应查看某个群组的文件列表
 //func (f *EsFilter) checkOnlyCommunityId() {
 //	if f.IncludeGlobal == nil {
 //		if f.OnlyCommunityId != nil {

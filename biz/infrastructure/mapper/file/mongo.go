@@ -5,6 +5,10 @@ import (
 	errorx "errors"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
+	"github.com/CloudStriver/go-pkg/utils/util/log"
+	"github.com/zeromicro/go-zero/core/trace"
+	"go.opentelemetry.io/otel"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"sync"
 
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
@@ -18,7 +22,7 @@ import (
 	"time"
 )
 
-const CollectionName = "File"
+const CollectionName = "file"
 
 var prefixFileCacheKey = "cache:file:"
 
@@ -44,17 +48,18 @@ type (
 		ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 		UserId      string             `bson:"userId,omitempty" json:"userId,omitempty"`
 		Name        string             `bson:"name,omitempty" json:"name,omitempty"`
-		Type        int32              `bson:"type,omitempty" json:"type,omitempty"`
+		Type        int64              `bson:"type,omitempty" json:"type,omitempty"`
 		Path        string             `bson:"path,omitempty" json:"path,omitempty"`
 		FatherId    string             `bson:"fatherId,omitempty" json:"fatherId,omitempty"`
 		Size        *int64             `bson:"size,omitempty" json:"size,omitempty"`
 		FileMd5     string             `bson:"fileMd5,omitempty" json:"fileMd5,omitempty"`
-		IsDel       int32              `bson:"isDel,omitempty" json:"isDel,omitempty"`
+		IsDel       int64              `bson:"isDel,omitempty" json:"isDel,omitempty"`
 		Tag         []string           `bson:"tag,omitempty" json:"tag,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
 		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
 		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
 		DeletedAt   time.Time          `bson:"deletedAt,omitempty" json:"deletedAt,omitempty"`
+		Score_      float64            `bson:"score_,omitempty" json:"score_,omitempty"`
 	}
 
 	MongoMapper struct {
@@ -62,18 +67,35 @@ type (
 	}
 
 	AggregateSizeResult struct {
-		Size int64 `bson:"size"`
+		Size int64 `bson:"size,omitempty"`
 	}
 )
 
 func NewMongoMapper(config *config.Config) IMongoMapper {
 	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
+	indexModel := mongo.IndexModel{
+		Keys: bson.M{
+			"deletedAt": 1, // 索引字段
+		},
+		Options: options.Index().SetExpireAfterSeconds(604800), // 一周后过期
+	}
+	_, err := conn.Indexes().CreateOne(context.Background(), indexModel)
+	if err != nil {
+		log.Error("fileModel TTL index created 失败[%v]\n", err)
+	} else {
+		log.Info("fileModel TTL index created successfully")
+	}
+
 	return &MongoMapper{
 		conn: conn,
 	}
 }
 
 func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.Insert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
 	if data.ID.IsZero() {
 		data.ID = primitive.NewObjectID()
 		data.CreateAt = time.Now()
@@ -89,6 +111,10 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 }
 
 func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*File, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindOne", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
 	var data File
 	if fopts.OnlyFileId != nil {
 		_, err := primitive.ObjectIDFromHex(*fopts.OnlyFileId)
@@ -111,6 +137,10 @@ func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*File,
 }
 
 func (m *MongoMapper) FindByMd5(ctx context.Context, md5 string) (*File, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindByMd5", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
 	var data File
 	err := m.conn.FindOneNoCache(ctx, &data, bson.M{"md5": md5})
 	switch {
@@ -124,11 +154,19 @@ func (m *MongoMapper) FindByMd5(ctx context.Context, md5 string) (*File, error) 
 }
 
 func (m *MongoMapper) Count(ctx context.Context, fopts *FilterOptions) (int64, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.Count", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
 	filter := makeMongoFilter(fopts)
 	return m.conn.CountDocuments(ctx, filter)
 }
 
 func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindMany", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
 	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
 	filter := makeMongoFilter(fopts)
 	sort, err := p.MakeSortOptions(ctx, filter)
@@ -164,6 +202,10 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 }
 
 func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindFolderSize", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
 	var size AggregateSizeResult
 	pipeline := mongo.Pipeline{
 		{
@@ -205,6 +247,10 @@ func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, e
 }
 
 func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, int64, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindManyAndCount", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
 	var data []*File
 	var total int64
 	wait := sync.WaitGroup{}
@@ -241,6 +287,10 @@ func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions
 }
 
 func (m *MongoMapper) Upsert(ctx context.Context, data *File) (*mongo.UpdateResult, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.Upsert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
 	key := prefixFileCacheKey + data.ID.Hex()
 	update := bson.M{
 		"$set": bson.M{"$set": data},
@@ -259,6 +309,10 @@ func (m *MongoMapper) Upsert(ctx context.Context, data *File) (*mongo.UpdateResu
 }
 
 func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResult, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.Update", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
 	data.UpdateAt = time.Now()
 	key := prefixFileCacheKey + data.ID.Hex()
 	res, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data})
@@ -266,6 +320,10 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 }
 
 func (m *MongoMapper) Delete(ctx context.Context, id string) (int64, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.Delete", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return 0, consts.ErrInvalidId
