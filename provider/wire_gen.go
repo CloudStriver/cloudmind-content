@@ -26,9 +26,11 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		return nil, err
 	}
 	iMongoMapper := file.NewMongoMapper(configConfig)
+	iFileEsMapper := file.NewEsMapper(configConfig)
 	sharefileIMongoMapper := sharefile.NewMongoMapper(configConfig)
 	fileService := &service.FileService{
 		FileMongoMapper:      iMongoMapper,
+		FileEsMapper:         iFileEsMapper,
 		ShareFileMongoMapper: sharefileIMongoMapper,
 	}
 	postIMongoMapper := post.NewMongoMapper(configConfig)

@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/CloudStriver/go-pkg v0.0.0-20231229114943-910edcb8788d
-	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240116151820-ed80562ce840
+	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240118081240-b78f7d3e9c74
 	github.com/bytedance/sonic v1.10.2
 	github.com/cloudwego/kitex v0.8.0
 	github.com/elastic/go-elasticsearch/v8 v8.11.1
@@ -16,6 +16,7 @@ require (
 	github.com/xh-polaris/meowchat-content v1.2.34
 	github.com/zeromicro/go-zero v1.6.1
 	go.mongodb.org/mongo-driver v1.13.1
+	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
 	google.golang.org/grpc v1.60.1
 )
@@ -82,7 +83,6 @@ require (
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
-	go.opentelemetry.io/otel v1.19.0 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.19.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.19.0 // indirect

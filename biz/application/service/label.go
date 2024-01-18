@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	labelmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/label"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/util/convertor"
 	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/google/wire"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -31,8 +32,7 @@ func (s *LabelService) GetLabel(ctx context.Context, req *content.GetLabelReq) (
 	if err != nil {
 		return resp, err
 	}
-
-	resp.Label.Value = label.Value
+	resp.Label = convertor.LabelMapperToLabel(label)
 	return resp, nil
 }
 
