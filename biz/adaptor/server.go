@@ -15,6 +15,31 @@ type ContentServerImpl struct {
 	UserService  service.UserService
 }
 
+func (s *ContentServerImpl) CreatePost(ctx context.Context, req *content.CreatePostReq) (res *content.CreatePostResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *ContentServerImpl) DeletePost(ctx context.Context, req *content.DeletePostReq) (res *content.DeletePostResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *ContentServerImpl) UpdatePost(ctx context.Context, req *content.UpdatePostReq) (res *content.UpdatePostResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *ContentServerImpl) GetPost(ctx context.Context, req *content.GetPostReq) (res *content.GetPostResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *ContentServerImpl) GetPosts(ctx context.Context, req *content.GetPostsReq) (res *content.GetPostsResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *ContentServerImpl) DeleteUser(ctx context.Context, req *content.DeleteUserReq) (resp *content.DeleteUserResp, err error) {
 	return s.UserService.DeleteUser(ctx, req)
 }
