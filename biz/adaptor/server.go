@@ -61,6 +61,10 @@ func (s *ContentServerImpl) GetFileList(ctx context.Context, req *content.GetFil
 	return s.FileService.GetFileList(ctx, req)
 }
 
+func (s *ContentServerImpl) DeleteFile(ctx context.Context, req *content.DeleteFileReq) (res *content.DeleteFileResp, err error) {
+	return s.FileService.DeleteFile(ctx, req)
+}
+
 func (s *ContentServerImpl) GetFileCount(ctx context.Context, req *content.GetFileCountReq) (*content.GetFileCountResp, error) {
 	return s.FileService.GetFileCount(ctx, req)
 }
@@ -79,10 +83,6 @@ func (s *ContentServerImpl) GetFileBySharingCode(ctx context.Context, req *conte
 
 func (s *ContentServerImpl) CreateFolder(ctx context.Context, req *content.CreateFolderReq) (*content.CreateFolderResp, error) {
 	return s.FileService.CreateFolder(ctx, req)
-}
-
-func (s *ContentServerImpl) DeleteShareFile(ctx context.Context, req *content.DeleteShareFileReq) (res *content.DeleteShareFileResp, err error) {
-	return s.FileService.DeleteShareFile(ctx, req)
 }
 
 func (s *ContentServerImpl) GetLabel(ctx context.Context, req *content.GetLabelReq) (res *content.GetLabelResp, err error) {
