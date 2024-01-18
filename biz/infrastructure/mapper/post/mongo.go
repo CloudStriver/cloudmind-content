@@ -3,6 +3,11 @@ package post
 import (
 	"context"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
+	"github.com/CloudStriver/go-pkg/utils/pagination"
+	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
+	"github.com/samber/lo"
+	"github.com/zeromicro/go-zero/core/mr"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
@@ -21,10 +26,9 @@ type (
 		FindOne(ctx context.Context, id string) (*Post, error)
 		Update(ctx context.Context, data *Post) error
 		Delete(ctx context.Context, id string) error
-		//FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error)
-		//Count(ctx context.Context, fopts *FilterOptions) (int64, error)
-		//FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, int64, error)
-		//UpdateFlags(ctx context.Context, id string, flags map[Flag]bool) error
+		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error)
+		Count(ctx context.Context, fopts *FilterOptions) (int64, error)
+		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, int64, error)
 	}
 
 	MongoMapper struct {
@@ -35,38 +39,16 @@ type (
 		ID       primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
 		Title    string             `bson:"title,omitempty" `
 		Text     string             `bson:"text,omitempty"`
-		CoverUrl string             `bson:"coverUrl,omitempty"`
+		Url      string             `bson:"url,omitempty"`
 		Tags     []string           `bson:"tags,omitempty"`
 		UserId   string             `bson:"userId,omitempty"`
-		Flags    *Flag              `bson:"flags,omitempty"`
 		UpdateAt time.Time          `bson:"updateAt,omitempty"`
 		CreateAt time.Time          `bson:"createAt,omitempty"`
+		Status   int64              `bson:"status,omitempty"`
 		// 仅ES查询时使用
 		Score_ float64 `bson:"_score,omitempty" json:"_score,omitempty"`
 	}
-
-	Flag int64
 )
-
-const (
-	OfficialFlag = 1 << 0
-)
-
-func (f *Flag) SetFlag(flag Flag, b bool) *Flag {
-	if f == nil {
-		f = new(Flag)
-	}
-	if b {
-		*f |= flag
-	} else {
-		*f &= ^flag
-	}
-	return f
-}
-
-func (f *Flag) GetFlag(flag Flag) bool {
-	return f != nil && (*f&flag) > 0
-}
 
 func NewMongoMapper(config *config.Config) IMongoMapper {
 	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
@@ -75,106 +57,65 @@ func NewMongoMapper(config *config.Config) IMongoMapper {
 	}
 }
 
-//func (m *MongoMapper) UpdateFlags(ctx context.Context, id string, flags map[Flag]bool) error {
-//	var or, and Flag
-//	for flag, v := range flags {
-//		if v {
-//			or += flag
-//		} else {
-//			and += flag
-//		}
-//	}
-//	oid, err := primitive.ObjectIDFromHex(id)
-//	if err != nil {
-//		return consts.ErrInvalidId
-//	}
-//	_, err = m.conn.UpdateOne(ctx, prefixPostCacheKey+id, bson.M{consts.ID: oid}, bson.M{
-//		"$bit": bson.M{
-//			consts.Flags: bson.M{
-//				"and": ^and,
-//				"or":  or,
-//			},
-//		},
-//	})
-//	if err != nil {
-//		return err
-//	}
-//	return nil
-//}
-//
-//func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error) {
-//	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
-//
-//	filter := MakeBsonFilter(fopts)
-//	sort, err := p.MakeSortOptions(ctx, filter)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	var data []*Post
-//	if err := m.conn.Find(ctx, &data, filter, &options.FindOptions{
-//		Sort:  sort,
-//		Limit: popts.Limit,
-//		Skip:  popts.Offset,
-//	}); err != nil {
-//		return nil, err
-//	}
-//
-//	// 如果是反向查询，反转数据
-//	if *popts.Backward {
-//		for i := 0; i < len(data)/2; i++ {
-//			data[i], data[len(data)-i-1] = data[len(data)-i-1], data[i]
-//		}
-//	}
-//	if len(data) > 0 {
-//		err = p.StoreCursor(ctx, data[0], data[len(data)-1])
-//		if err != nil {
-//			return nil, err
-//		}
-//	}
-//	return data, nil
-//}
-//
-//func (m *MongoMapper) Count(ctx context.Context, filter *FilterOptions) (int64, error) {
-//	f := MakeBsonFilter(filter)
-//	return m.conn.CountDocuments(ctx, f)
-//}
-//
-//func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, int64, error) {
-//	var posts []*Post
-//	var total int64
-//	wg := sync.WaitGroup{}
-//	wg.Add(2)
-//	c := make(chan error)
-//	ctx, cancel := context.WithCancel(ctx)
-//	defer cancel()
-//	go func() {
-//		defer wg.Done()
-//		var err error
-//		posts, err = m.FindMany(ctx, fopts, popts, sorter)
-//		if err != nil {
-//			c <- err
-//			return
-//		}
-//	}()
-//	go func() {
-//		defer wg.Done()
-//		var err error
-//		total, err = m.Count(ctx, fopts)
-//		if err != nil {
-//			c <- err
-//			return
-//		}
-//	}()
-//	go func() {
-//		wg.Wait()
-//		defer close(c)
-//	}()
-//	if err := <-c; err != nil {
-//		return nil, 0, err
-//	}
-//	return posts, total, nil
-//}
+func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error) {
+	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
+
+	filter := MakeBsonFilter(fopts)
+	sort, err := p.MakeSortOptions(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var data []*Post
+	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
+		Sort:  sort,
+		Limit: popts.Limit,
+		Skip:  popts.Offset,
+	}); err != nil {
+		return nil, err
+	}
+
+	// 如果是反向查询，反转数据
+	if *popts.Backward {
+		lo.Reverse(data)
+	}
+	if len(data) > 0 {
+		err = p.StoreCursor(ctx, data[0], data[len(data)-1])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return data, nil
+}
+
+func (m *MongoMapper) Count(ctx context.Context, filter *FilterOptions) (int64, error) {
+	f := MakeBsonFilter(filter)
+	return m.conn.CountDocuments(ctx, f)
+}
+
+func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, int64, error) {
+	var (
+		posts           []*Post
+		total           int64
+		err, err1, err2 error
+	)
+	if err = mr.Finish(func() error {
+		total, err1 = m.Count(ctx, fopts)
+		if err1 != nil {
+			return err1
+		}
+		return nil
+	}, func() error {
+		posts, err2 = m.FindMany(ctx, fopts, popts, sorter)
+		if err2 != nil {
+			return err2
+		}
+		return nil
+	}); err != nil {
+		return nil, 0, err
+	}
+	return posts, total, nil
+}
 
 func (m *MongoMapper) Insert(ctx context.Context, data *Post) error {
 	if data.ID.IsZero() {
