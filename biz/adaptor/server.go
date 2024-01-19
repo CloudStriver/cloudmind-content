@@ -16,28 +16,23 @@ type ContentServerImpl struct {
 }
 
 func (s *ContentServerImpl) CreatePost(ctx context.Context, req *content.CreatePostReq) (res *content.CreatePostResp, err error) {
-	//TODO implement me
-	panic("implement me")
+	return s.PostService.CreatePost(ctx, req)
 }
 
 func (s *ContentServerImpl) DeletePost(ctx context.Context, req *content.DeletePostReq) (res *content.DeletePostResp, err error) {
-	//TODO implement me
-	panic("implement me")
+	return s.PostService.DeletePost(ctx, req)
 }
 
 func (s *ContentServerImpl) UpdatePost(ctx context.Context, req *content.UpdatePostReq) (res *content.UpdatePostResp, err error) {
-	//TODO implement me
-	panic("implement me")
+	return s.PostService.UpdatePost(ctx, req)
 }
 
 func (s *ContentServerImpl) GetPost(ctx context.Context, req *content.GetPostReq) (res *content.GetPostResp, err error) {
-	//TODO implement me
-	panic("implement me")
+	return s.PostService.GetPost(ctx, req)
 }
 
 func (s *ContentServerImpl) GetPosts(ctx context.Context, req *content.GetPostsReq) (res *content.GetPostsResp, err error) {
-	//TODO implement me
-	panic("implement me")
+	return s.PostService.GetPosts(ctx, req)
 }
 
 func (s *ContentServerImpl) DeleteUser(ctx context.Context, req *content.DeleteUserReq) (resp *content.DeleteUserResp, err error) {

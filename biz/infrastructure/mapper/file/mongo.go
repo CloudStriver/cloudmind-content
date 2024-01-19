@@ -34,7 +34,8 @@ type (
 		Insert(ctx context.Context, data *File) (string, error)
 		FindOne(ctx context.Context, fopts *FilterOptions) (*File, error)
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, error)
-		FindByMd5(ctx context.Context, md5 string) (*File, error)
+		FindManyNotPagination(ctx context.Context, fopts *FilterOptions) ([]*File, error)
+		FindManyByIds(ctx context.Context, ids []string) ([]*File, error)
 		FindFolderSize(ctx context.Context, path string) (int64, error)
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, int64, error)
 		Upsert(ctx context.Context, data *File) (*mongo.UpdateResult, error)
@@ -52,9 +53,9 @@ type (
 		Path        string             `bson:"path,omitempty" json:"path,omitempty"`
 		FatherId    string             `bson:"fatherId,omitempty" json:"fatherId,omitempty"`
 		Size        *int64             `bson:"size,omitempty" json:"size,omitempty"`
-		FileMd5     string             `bson:"fileMd5,omitempty" json:"fileMd5,omitempty"`
+		Md5         string             `bson:"md5,omitempty" json:"md5,omitempty"`
 		IsDel       int64              `bson:"isDel,omitempty" json:"isDel,omitempty"`
-		Tag         []string           `bson:"tag,omitempty" json:"tag,omitempty"`
+		Tags        []string           `bson:"tags,omitempty" json:"tags,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
 		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
 		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
@@ -70,6 +71,42 @@ type (
 		Size int64 `bson:"size,omitempty"`
 	}
 )
+
+func (m *MongoMapper) FindManyNotPagination(ctx context.Context, fopts *FilterOptions) ([]*File, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindManyNotPagination", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	filter := makeMongoFilter(fopts)
+	var data []*File
+	if err := m.conn.Find(ctx, &data, filter, &options.FindOptions{}); err != nil {
+		if errorx.Is(err, monc.ErrNotFound) {
+			return nil, consts.ErrNotFound
+		}
+		return nil, err
+	}
+	return data, nil
+}
+
+func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*File, error) {
+	var (
+		err  error
+		data []*File
+	)
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindMany", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	if err = m.conn.Find(ctx, &data, bson.M{
+		"_id": bson.M{"$in": ids},
+	}, &options.FindOptions{}); err != nil {
+		if errorx.Is(err, monc.ErrNotFound) {
+			return nil, consts.ErrNotFound
+		}
+		return nil, err
+	}
+	return data, nil
+}
 
 func NewMongoMapper(config *config.Config) IMongoMapper {
 	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
@@ -125,32 +162,14 @@ func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*File,
 
 	filter := makeMongoFilter(fopts)
 	key := prefixFileCacheKey + *fopts.OnlyFileId
-	err := m.conn.FindOne(ctx, key, &data, filter)
-	switch {
-	case err == nil:
-		return &data, nil
-	case errorx.Is(err, monc.ErrNotFound):
-		return nil, consts.ErrNotFound
-	default:
-		return nil, err
+	if err := m.conn.FindOne(ctx, key, &data, filter); err != nil {
+		if errorx.Is(err, monc.ErrNotFound) {
+			return nil, consts.ErrNotFound
+		} else {
+			return nil, err
+		}
 	}
-}
-
-func (m *MongoMapper) FindByMd5(ctx context.Context, md5 string) (*File, error) {
-	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
-	_, span := tracer.Start(ctx, "mongo.FindByMd5", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
-	defer span.End()
-
-	var data File
-	err := m.conn.FindOneNoCache(ctx, &data, bson.M{"md5": md5})
-	switch {
-	case err == nil:
-		return &data, nil
-	case errorx.Is(err, monc.ErrNotFound):
-		return nil, consts.ErrNotFound
-	default:
-		return nil, err
-	}
+	return &data, nil
 }
 
 func (m *MongoMapper) Count(ctx context.Context, fopts *FilterOptions) (int64, error) {
@@ -315,7 +334,7 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 
 	data.UpdateAt = time.Now()
 	key := prefixFileCacheKey + data.ID.Hex()
-	res, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data})
+	res, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID, consts.UserId: data.UserId}, bson.M{"$set": data})
 	return res, err
 }
 

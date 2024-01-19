@@ -2,6 +2,7 @@ package file
 
 import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
@@ -9,13 +10,16 @@ import (
 )
 
 type FilterOptions struct {
-	OnlyUserId   *string
-	OnlyFileId   *string
-	OnlyFatherId *string
-	OnlyFileType *int64
-	OnlyTag      *string
-	IsDel        int64
-	DocumentType int64
+	OnlyUserId       *string
+	OnlyFileId       *string
+	OnlyFileIds      []string
+	OnlyFatherId     *string
+	OnlyFileType     *int64
+	OnlyTags         []string
+	OnlyIsDel        *int64
+	OnlyDocumentType *int64
+	OnlyMd5          *string
+	OnlySetRelation  *int64
 }
 
 type MongoFileFilter struct {
@@ -33,10 +37,12 @@ func makeMongoFilter(options *FilterOptions) bson.M {
 func (f *MongoFileFilter) toBson() bson.M {
 	f.CheckOnlyUserId()
 	f.CheckOnlyFileId()
+	f.CheckOnlyFileIds()
 	f.CheckOnlyFatherId()
 	f.CheckOnlyFileType()
 	f.CheckIsDel()
 	f.CheckDocumentType()
+	f.CheckOnlyMd5()
 	return f.m
 }
 
@@ -53,6 +59,21 @@ func (f *MongoFileFilter) CheckOnlyFileId() {
 	}
 }
 
+func (f *MongoFileFilter) CheckOnlyFileIds() {
+	if f.OnlyFileIds != nil {
+		f.m[consts.ID] = bson.M{
+			"$in": lo.FilterMap[string, primitive.ObjectID](f.OnlyFileIds, func(s string, _ int) (primitive.ObjectID, bool) {
+				oid, err := primitive.ObjectIDFromHex(s)
+				if err != nil {
+					return primitive.ObjectID{}, false
+				} else {
+					return oid, true
+				}
+			}),
+		}
+	}
+}
+
 func (f *MongoFileFilter) CheckOnlyFatherId() {
 	if f.OnlyFatherId != nil {
 		f.m[consts.FatherId] = *f.OnlyFatherId
@@ -66,16 +87,28 @@ func (f *MongoFileFilter) CheckOnlyFileType() {
 }
 
 func (f *MongoFileFilter) CheckIsDel() {
-	f.m[consts.IsDel] = f.IsDel
+	if f.OnlyIsDel != nil {
+		f.m[consts.IsDel] = *f.OnlyIsDel
+	}
 }
 
 func (f *MongoFileFilter) CheckDocumentType() {
-	if f.DocumentType == 2 {
-		if f.OnlyTag != nil {
-			f.m[consts.Tag] = bson.M{"$elemMatch": bson.M{"$eq": *f.OnlyTag}}
+	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == 2 {
+		if f.OnlyTags != nil {
+			if *f.OnlySetRelation == consts.Intersection {
+				f.m[consts.Tag] = bson.M{"$all": f.OnlyTags}
+			} else if *f.OnlySetRelation == consts.UnionSet {
+				f.m[consts.Tag] = bson.M{"$in": f.OnlyTags}
+			}
 		} else {
 			f.m[consts.Tag] = bson.M{"$ne": nil}
 		}
+	}
+}
+
+func (f *MongoFileFilter) CheckOnlyMd5() {
+	if f.OnlyMd5 != nil {
+		f.m[consts.FileMd5] = *f.OnlyMd5
 	}
 }
 
@@ -93,8 +126,6 @@ func makeEsFilter(opts *FilterOptions) []types.Query {
 
 func (f *EsFilter) toEsQuery() []types.Query {
 	f.checkOnlyUserId()
-	f.checkOnlyFileId()
-	//f.checkOnlyCommunityId()
 	return f.q
 }
 
@@ -103,16 +134,6 @@ func (f *EsFilter) checkOnlyUserId() {
 		f.q = append(f.q, types.Query{
 			Term: map[string]types.TermQuery{
 				consts.UserId: {Value: *f.OnlyUserId},
-			},
-		})
-	}
-}
-
-func (f *EsFilter) checkOnlyFileId() {
-	if f.OnlyFileId != nil {
-		f.q = append(f.q, types.Query{
-			Term: map[string]types.TermQuery{
-				consts.ID: {Value: *f.OnlyFileId},
 			},
 		})
 	}

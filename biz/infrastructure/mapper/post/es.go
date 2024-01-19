@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/CloudStriver/go-pkg/utils/pagination"
+	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
 	"log"
 	"net/http"
 	"time"
@@ -14,8 +16,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/mitchellh/mapstructure"
-	"github.com/xh-polaris/gopkg/pagination"
-	"github.com/xh-polaris/gopkg/pagination/esp"
 	"github.com/zeromicro/go-zero/core/trace"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -50,7 +50,7 @@ func NewEsMapper(config *config.Config) IEsMapper {
 	}
 	return &EsMapper{
 		es:        esClient,
-		indexName: fmt.Sprintf("%s.%s-alias", config.Mongo.DB, CollectionName),
+		indexName: fmt.Sprintf("%s.%s", config.Mongo.DB, CollectionName),
 	}
 }
 

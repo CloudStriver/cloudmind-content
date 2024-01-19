@@ -1,73 +1,35 @@
 package post
 
 import (
-	"encoding/json"
-	"fmt"
-
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"go.mongodb.org/mongo-driver/bson"
-
-	"github.com/xh-polaris/meowchat-content/biz/infrastructure/consts"
 )
 
 type FilterOptions struct {
-	OnlyUserId   *string
-	OnlyOfficial *bool
-}
-
-type BaseFilter struct {
-	MustFlags    *Flag
-	MustNotFlags *Flag
-	*FilterOptions
-}
-
-func (f *BaseFilter) CheckOnlyOfficial() {
-	if f.OnlyOfficial != nil {
-		f.MustFlags = f.MustFlags.SetFlag(OfficialFlag, *f.OnlyOfficial)
-	}
+	OnlyUserId *string
+	OnlyPostId *string
+	OnlyTitle  *string
+	OnlyText   *string
+	OnlyTag    *string
+	OnlyStatus *int64
 }
 
 type MongoFilter struct {
 	m bson.M
-	*BaseFilter
+	*FilterOptions
 }
 
 func MakeBsonFilter(options *FilterOptions) bson.M {
 	return (&MongoFilter{
-		m: bson.M{},
-		BaseFilter: &BaseFilter{
-			FilterOptions: options,
-		},
+		m:             bson.M{},
+		FilterOptions: options,
 	}).toBson()
 }
 
 func (f *MongoFilter) toBson() bson.M {
 	f.CheckOnlyUserId()
-	f.CheckOnlyOfficial()
-	f.CheckFlags()
 	return f.m
-}
-
-func (f *MongoFilter) CheckFlags() {
-	if f.MustFlags != nil && *f.MustFlags != 0 {
-		f.m[consts.Flags] = bson.M{"$bitsAllSet": *f.MustFlags}
-	}
-	if f.MustNotFlags != nil && *f.MustNotFlags != 0 {
-		or, exist := f.m["$or"]
-		if !exist {
-			or = bson.A{}
-		}
-
-		_ = append(or.(bson.A), bson.M{
-			consts.Flags: bson.M{
-				"$bitsAllClear": *f.MustNotFlags},
-		}, bson.M{
-			consts.Flags: bson.M{
-				"$exists": false,
-			},
-		})
-		f.m["$or"] = or
-	}
 }
 
 func (f *MongoFilter) CheckOnlyUserId() {
@@ -76,58 +38,51 @@ func (f *MongoFilter) CheckOnlyUserId() {
 	}
 }
 
+func (f *MongoFilter) CheckOnlyPostId() {
+	if f.OnlyPostId != nil {
+		f.m[consts.ID] = *f.OnlyPostId
+	}
+}
+
+func (f *MongoFilter) CheckOnlyTitle() {
+	if f.OnlyTitle != nil {
+		f.m[consts.Title] = *f.OnlyTitle
+	}
+}
+
+func (f *MongoFilter) CheckOnlyText() {
+	if f.OnlyText != nil {
+		f.m[consts.Text] = *f.OnlyText
+	}
+}
+
+func (f *MongoFilter) CheckOnlyTag() {
+	if f.OnlyTag != nil {
+		f.m[consts.Tag] = *f.OnlyTag
+	}
+}
+
+func (f *MongoFilter) CheckOnlyStatus() {
+	if f.OnlyStatus != nil {
+		f.m[consts.Status] = *f.OnlyStatus
+	}
+}
+
 type postFilter struct {
 	q []types.Query
-	*BaseFilter
+	*FilterOptions
 }
 
 func newPostFilter(options *FilterOptions) []types.Query {
 	return (&postFilter{
-		q: make([]types.Query, 0),
-		BaseFilter: &BaseFilter{
-			FilterOptions: options,
-		},
+		q:             make([]types.Query, 0),
+		FilterOptions: options,
 	}).toEsQuery()
 }
 
 func (f *postFilter) toEsQuery() []types.Query {
 	f.CheckOnlyUserId()
-	f.CheckOnlyOfficial()
-	f.CheckFlags()
 	return f.q
-}
-
-func (f *postFilter) CheckFlags() {
-	if f.MustFlags != nil && *f.MustFlags != 0 {
-		raw, _ := json.Marshal(*f.MustFlags)
-		f.q = append(f.q, types.Query{
-			//TODO 也许会造成潜在的性能风险
-			Script: &types.ScriptQuery{
-				Script: types.InlineScript{
-					Source: fmt.Sprintf("doc['%s'].size() != 0 && "+
-						"(doc['%s'].value & params.%s) == params.%s", consts.Flags, consts.Flags, consts.Flags, consts.Flags),
-					Params: map[string]json.RawMessage{
-						consts.Flags: raw,
-					},
-				},
-			},
-		})
-	}
-	if f.MustNotFlags != nil && *f.MustNotFlags != 0 {
-		raw, _ := json.Marshal(*f.MustNotFlags)
-		f.q = append(f.q, types.Query{
-			//TODO 也许会造成潜在的性能风险
-			Script: &types.ScriptQuery{
-				Script: types.InlineScript{
-					Source: fmt.Sprintf("doc['%s'].size() == 0 || "+
-						"(doc['%s'].value & params.%s) == 0", consts.Flags, consts.Flags, consts.Flags),
-					Params: map[string]json.RawMessage{
-						consts.Flags: raw,
-					},
-				},
-			},
-		})
-	}
 }
 
 func (f *postFilter) CheckOnlyUserId() {

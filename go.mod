@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/CloudStriver/go-pkg v0.0.0-20231229114943-910edcb8788d
-	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240118081240-b78f7d3e9c74
+	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240119112304-1bc0557363d3
 	github.com/bytedance/sonic v1.10.2
 	github.com/cloudwego/kitex v0.8.0
 	github.com/elastic/go-elasticsearch/v8 v8.11.1
@@ -12,8 +12,6 @@ require (
 	github.com/kitex-contrib/obs-opentelemetry v0.2.5
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/samber/lo v1.38.1
-	github.com/xh-polaris/gopkg v0.0.0-20231013165226-76f4d7108b9d
-	github.com/xh-polaris/meowchat-content v1.2.34
 	github.com/zeromicro/go-zero v1.6.1
 	go.mongodb.org/mongo-driver v1.13.1
 	go.opentelemetry.io/otel v1.19.0
@@ -44,13 +42,13 @@ require (
 	github.com/elastic/elastic-transport-go/v8 v8.3.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-redis/redis/v8 v8.11.6-0.20220405070650-99c79f7041fc // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/pprof v0.0.0-20230509042627-b1315fad0c5a // indirect
-	github.com/google/uuid v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0 // indirect
 	github.com/iancoleman/strcase v0.2.0 // indirect
 	github.com/jhump/protoreflect v1.15.4 // indirect

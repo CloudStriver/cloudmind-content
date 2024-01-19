@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	labelmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/label"
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/util/convertor"
 	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/google/wire"
 	"go.mongodb.org/mongo-driver/bson/primitive"

@@ -27,7 +27,7 @@ type UserService interface {
 type UserServiceImpl struct {
 	Config          *config.Config
 	UserMongoMapper usermapper.UserMongoMapper
-	UserEsMapper    usermapper.UserEsMapper
+	UserEsMapper    usermapper.IUserEsMapper
 	Redis           *redis.Redis
 }
 
@@ -96,12 +96,12 @@ func (s *UserServiceImpl) CreateUser(ctx context.Context, req *gencontent.Create
 	resp = new(gencontent.CreateUserResp)
 	ID, err := primitive.ObjectIDFromHex(req.UserInfo.UserId)
 	if err != nil {
-		return resp, consts.ErrInvalidObjectId
+		return resp, consts.ErrInvalidId
 	}
 	if _, err = s.UserMongoMapper.Insert(ctx, &usermapper.User{
 		ID:          ID,
 		Name:        req.UserInfo.Name,
-		Sex:         int64(req.UserInfo.Sex),
+		Sex:         req.UserInfo.Sex,
 		Description: consts.DefaultDescription,
 		Url:         consts.DefaultAvatarUrl,
 	}); err != nil {
