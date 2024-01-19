@@ -71,9 +71,9 @@ func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq)
 	} else {
 		posts, total, err = s.PostMongoMapper.FindManyAndCount(ctx, convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions),
 			p, mongop.IdCursorType)
-		if err != nil {
-			return resp, err
-		}
+	}
+	if err != nil {
+		return resp, err
 	}
 
 	if p.LastToken != nil {

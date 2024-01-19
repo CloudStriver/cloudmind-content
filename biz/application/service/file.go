@@ -160,6 +160,9 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 	shareFiles, err = s.FileMongoMapper.FindManyNotPagination(ctx, &filemapper.FilterOptions{
 		OnlyFileIds: shareFile.ShareFile.FileList,
 	})
+	if err != nil {
+		return resp, err
+	}
 	for _, file := range shareFiles {
 		if strings.HasPrefix(file.Path, res.File.Path) {
 			isTrue = true
