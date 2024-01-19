@@ -11,6 +11,7 @@ import (
 
 type FilterOptions struct {
 	OnlyUserId       *string
+	OnlyFileId       *string
 	OnlyFileIds      []string
 	OnlyFatherId     *string
 	OnlyFileType     *int64
@@ -18,6 +19,7 @@ type FilterOptions struct {
 	OnlyIsDel        *int64
 	OnlyDocumentType *int64
 	OnlyMd5          *string
+	OnlySetRelation  *int64
 }
 
 type MongoFileFilter struct {
@@ -34,6 +36,7 @@ func makeMongoFilter(options *FilterOptions) bson.M {
 
 func (f *MongoFileFilter) toBson() bson.M {
 	f.CheckOnlyUserId()
+	f.CheckOnlyFileId()
 	f.CheckOnlyFileIds()
 	f.CheckOnlyFatherId()
 	f.CheckOnlyFileType()
@@ -49,12 +52,23 @@ func (f *MongoFileFilter) CheckOnlyUserId() {
 	}
 }
 
+func (f *MongoFileFilter) CheckOnlyFileId() {
+	if f.OnlyFileId != nil {
+		oid, _ := primitive.ObjectIDFromHex(*f.OnlyFileId)
+		f.m[consts.ID] = oid
+	}
+}
+
 func (f *MongoFileFilter) CheckOnlyFileIds() {
 	if f.OnlyFileIds != nil {
 		f.m[consts.ID] = bson.M{
-			"$in": lo.Map[string, primitive.ObjectID](f.OnlyFileIds, func(s string, _ int) primitive.ObjectID {
-				oid, _ := primitive.ObjectIDFromHex(s)
-				return oid
+			"$in": lo.FilterMap[string, primitive.ObjectID](f.OnlyFileIds, func(s string, _ int) (primitive.ObjectID, bool) {
+				oid, err := primitive.ObjectIDFromHex(s)
+				if err != nil {
+					return primitive.ObjectID{}, false
+				} else {
+					return oid, true
+				}
 			}),
 		}
 	}
@@ -73,13 +87,19 @@ func (f *MongoFileFilter) CheckOnlyFileType() {
 }
 
 func (f *MongoFileFilter) CheckIsDel() {
-	f.m[consts.IsDel] = f.OnlyIsDel
+	if f.OnlyIsDel != nil {
+		f.m[consts.IsDel] = *f.OnlyIsDel
+	}
 }
 
 func (f *MongoFileFilter) CheckDocumentType() {
 	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == 2 {
 		if f.OnlyTags != nil {
-			f.m[consts.Tag] = bson.M{"$elemMatch": f.OnlyTags}
+			if *f.OnlySetRelation == consts.Intersection {
+				f.m[consts.Tag] = bson.M{"$all": f.OnlyTags}
+			} else if *f.OnlySetRelation == consts.UnionSet {
+				f.m[consts.Tag] = bson.M{"$in": f.OnlyTags}
+			}
 		} else {
 			f.m[consts.Tag] = bson.M{"$ne": nil}
 		}

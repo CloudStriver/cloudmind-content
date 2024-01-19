@@ -29,4 +29,6 @@ const (
 	HardDel            = 3
 	PrivateSpace       = 1
 	PublicSpace        = 2
+	Intersection       = 1
+	UnionSet           = 2
 )

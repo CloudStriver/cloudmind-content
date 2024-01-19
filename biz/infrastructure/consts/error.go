@@ -1,7 +1,6 @@
 package consts
 
 import (
-	"errors"
 	"google.golang.org/grpc/status"
 )
 
@@ -12,10 +11,7 @@ var (
 	ErrFileIsNotDir          = status.Error(10104, "目标文件不是文件夹")
 	ErrNotFound              = status.Error(10105, "数据不存在")
 	ErrInvalidDeleteType     = status.Error(10106, "删除类型无效")
-	ErrDataBase              = status.Error(10001, "数据库异常")
-	ErrEsMapper              = status.Error(10002, "Es异常")
-)
-
-var (
-	ErrInvalidObjectId = errors.New("invalid objectId")
+	ErrDataBase              = status.Error(10007, "数据库异常")
+	ErrEsMapper              = status.Error(10008, "Es异常")
+	ErrIllegalOperation      = status.Error(10009, "非法操作")
 )

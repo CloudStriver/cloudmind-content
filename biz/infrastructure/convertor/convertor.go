@@ -242,17 +242,18 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 	} else {
 		filter = &file.FilterOptions{
 			OnlyUserId:       opts.OnlyUserId,
+			OnlyFileId:       opts.OnlyFileId,
 			OnlyFatherId:     opts.OnlyFatherId,
 			OnlyFileType:     opts.OnlyFileType,
-			OnlyIsDel:        lo.ToPtr(opts.IsDel),
-			OnlyDocumentType: lo.ToPtr(opts.DocumentType),
 			OnlyTags:         opts.OnlyTags,
-		}
-		if opts.OnlyFileId != nil {
-			filter.OnlyFileIds = []string{*opts.OnlyFileId}
+			OnlyIsDel:        opts.IsDel,
+			OnlyDocumentType: lo.ToPtr(opts.DocumentType),
+			OnlyMd5:          opts.OnlyMd5,
+			OnlySetRelation:  opts.OnlySetRelation,
 		}
 	}
-	return
+
+	return filter
 }
 
 func ShareFileFilterOptionsToShareCodeOptions(opts *gencontent.ShareFileFilterOptions) (filter *sharefile.ShareCodeOptions) {
