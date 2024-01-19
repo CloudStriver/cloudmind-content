@@ -19,8 +19,6 @@ require (
 	google.golang.org/grpc v1.60.1
 )
 
-replace github.com/CloudStriver/service-idl-gen-go => ../service-idl-gen-go
-
 require (
 	github.com/apache/thrift v0.16.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
