@@ -35,7 +35,6 @@ type (
 		FindOne(ctx context.Context, fopts *FilterOptions) (*File, error)
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, error)
 		FindManyNotPagination(ctx context.Context, fopts *FilterOptions) ([]*File, error)
-		FindManyByIds(ctx context.Context, ids []string) ([]*File, error)
 		FindFolderSize(ctx context.Context, path string) (int64, error)
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, int64, error)
 		Upsert(ctx context.Context, data *File) (*mongo.UpdateResult, error)
@@ -80,26 +79,6 @@ func (m *MongoMapper) FindManyNotPagination(ctx context.Context, fopts *FilterOp
 	filter := makeMongoFilter(fopts)
 	var data []*File
 	if err := m.conn.Find(ctx, &data, filter, &options.FindOptions{}); err != nil {
-		if errorx.Is(err, monc.ErrNotFound) {
-			return nil, consts.ErrNotFound
-		}
-		return nil, err
-	}
-	return data, nil
-}
-
-func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*File, error) {
-	var (
-		err  error
-		data []*File
-	)
-	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
-	_, span := tracer.Start(ctx, "mongo.FindMany", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
-	defer span.End()
-
-	if err = m.conn.Find(ctx, &data, bson.M{
-		"_id": bson.M{"$in": ids},
-	}, &options.FindOptions{}); err != nil {
 		if errorx.Is(err, monc.ErrNotFound) {
 			return nil, consts.ErrNotFound
 		}

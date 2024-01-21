@@ -10,9 +10,12 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/adaptor"
 	"github.com/CloudStriver/cloudmind-content/biz/application/service"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/coupon"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/label"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/order"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/product"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/redis"
@@ -33,12 +36,12 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		FileEsMapper:         iFileEsMapper,
 		ShareFileMongoMapper: sharefileIMongoMapper,
 	}
-	postIMongoMapper := post.NewMongoMapper(configConfig)
+	iPostMongoMapper := post.NewMongoMapper(configConfig)
 	iEsMapper := post.NewEsMapper(configConfig)
 	redisRedis := redis.NewRedis(configConfig)
 	postService := &service.PostService{
 		Config:          configConfig,
-		PostMongoMapper: postIMongoMapper,
+		PostMongoMapper: iPostMongoMapper,
 		PostEsMapper:    iEsMapper,
 		Redis:           redisRedis,
 	}
@@ -46,20 +49,47 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 	labelService := &service.LabelService{
 		LabelMongoMapper: labelIMongoMapper,
 	}
-	userMongoMapper := user.NewMongoMapper(configConfig)
-	userEsMapper := user.NewEsMapper(configConfig)
-	userServiceImpl := &service.UserServiceImpl{
+	iUserMongoMapper := user.NewMongoMapper(configConfig)
+	iUserEsMapper := user.NewEsMapper(configConfig)
+	userService := &service.UserService{
 		Config:          configConfig,
-		UserMongoMapper: userMongoMapper,
-		UserEsMapper:    userEsMapper,
+		UserMongoMapper: iUserMongoMapper,
+		UserEsMapper:    iUserEsMapper,
 		Redis:           redisRedis,
 	}
+	iProductMongoMapper := product.NewMongoMapper(configConfig)
+	productIEsMapper := product.NewEsMapper(configConfig)
+	productService := &service.ProductService{
+		Config:             configConfig,
+		ProductMongoMapper: iProductMongoMapper,
+		ProductEsMapper:    productIEsMapper,
+		Redis:              redisRedis,
+	}
+	iCouponMongoMapper := coupon.NewMongoMapper(configConfig)
+	couponIEsMapper := coupon.NewEsMapper(configConfig)
+	couponService := &service.CouponService{
+		Config:            configConfig,
+		CouponMongoMapper: iCouponMongoMapper,
+		CouponEsMapper:    couponIEsMapper,
+		Redis:             redisRedis,
+	}
+	iOrderMongoMapper := order.NewMongoMapper(configConfig)
+	orderIEsMapper := order.NewEsMapper(configConfig)
+	orderService := &service.OrderService{
+		Config:           configConfig,
+		OrderMongoMapper: iOrderMongoMapper,
+		OrderEsMapper:    orderIEsMapper,
+		Redis:            redisRedis,
+	}
 	contentServerImpl := &adaptor.ContentServerImpl{
-		Config:       configConfig,
-		FileService:  fileService,
-		PostService:  postService,
-		LabelService: labelService,
-		UserService:  userServiceImpl,
+		Config:         configConfig,
+		FileService:    fileService,
+		PostService:    postService,
+		LabelService:   labelService,
+		UserService:    userService,
+		ProductService: productService,
+		CouponService:  couponService,
+		OrderService:   orderService,
 	}
 	return contentServerImpl, nil
 }

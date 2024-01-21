@@ -1,4 +1,4 @@
-package post
+package coupon
 
 import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
@@ -9,14 +9,11 @@ import (
 )
 
 type FilterOptions struct {
-	OnlyUserId      *string
-	OnlyPostId      *string
-	OnlyPostIds     []string
-	OnlyTitle       *string
-	OnlyText        *string
-	OnlyTags        []string
-	OnlySetRelation *int64
-	OnlyStatus      *int64
+	OnlyUserId    *string
+	OnlyCouponId  *string
+	OnlyCouponIds []string
+	OnlyStatus    *int64
+	OnlyType      *int64
 }
 
 type MongoFilter struct {
@@ -33,25 +30,28 @@ func MakeBsonFilter(options *FilterOptions) bson.M {
 
 func (f *MongoFilter) toBson() bson.M {
 	f.CheckOnlyUserId()
-	f.CheckOnlyPostIds()
-	f.CheckOnlyPostId()
-	f.CheckOnlyTitle()
-	f.CheckOnlyText()
-	f.CheckOnlyTags()
+	f.CheckOnlyCouponIds()
+	f.CheckOnlyCouponId()
 	f.CheckOnlyStatus()
+	f.CheckOnlyTyee()
 	return f.m
 }
 
+func (f *MongoFilter) CheckOnlyTyee() {
+	if f.OnlyType != nil {
+		f.m[consts.Type] = *f.OnlyType
+	}
+}
 func (f *MongoFilter) CheckOnlyUserId() {
 	if f.OnlyUserId != nil {
 		f.m[consts.UserId] = *f.OnlyUserId
 	}
 }
 
-func (f *MongoFilter) CheckOnlyPostIds() {
-	if f.OnlyPostIds != nil {
+func (f *MongoFilter) CheckOnlyCouponIds() {
+	if f.OnlyCouponIds != nil {
 		f.m[consts.ID] = bson.M{
-			"$in": lo.Map[string, primitive.ObjectID](f.OnlyPostIds, func(s string, _ int) primitive.ObjectID {
+			"$in": lo.Map[string, primitive.ObjectID](f.OnlyCouponIds, func(s string, _ int) primitive.ObjectID {
 				oid, _ := primitive.ObjectIDFromHex(s)
 				return oid
 			}),
@@ -59,34 +59,10 @@ func (f *MongoFilter) CheckOnlyPostIds() {
 	}
 }
 
-func (f *MongoFilter) CheckOnlyPostId() {
-	if f.OnlyPostId != nil {
-		oid, _ := primitive.ObjectIDFromHex(*f.OnlyPostId)
+func (f *MongoFilter) CheckOnlyCouponId() {
+	if f.OnlyCouponId != nil {
+		oid, _ := primitive.ObjectIDFromHex(*f.OnlyCouponId)
 		f.m[consts.ID] = oid
-	}
-}
-
-func (f *MongoFilter) CheckOnlyTitle() {
-	if f.OnlyTitle != nil {
-		f.m[consts.Title] = *f.OnlyTitle
-	}
-}
-
-func (f *MongoFilter) CheckOnlyText() {
-	if f.OnlyText != nil {
-		f.m[consts.Text] = *f.OnlyText
-	}
-}
-
-func (f *MongoFilter) CheckOnlyTags() {
-	if f.OnlyTags != nil {
-		if f.OnlySetRelation != nil {
-			if int(*f.OnlySetRelation) == consts.Intersection {
-				f.m[consts.Tags] = bson.M{"$all": f.OnlyTags}
-			} else if *f.OnlySetRelation == consts.UnionSet {
-				f.m[consts.Tags] = bson.M{"$in": f.OnlyTags}
-			}
-		}
 	}
 }
 
@@ -101,7 +77,7 @@ type postFilter struct {
 	*FilterOptions
 }
 
-func newPostFilter(options *FilterOptions) []types.Query {
+func newCouponFilter(options *FilterOptions) []types.Query {
 	return (&postFilter{
 		q:             make([]types.Query, 0),
 		FilterOptions: options,

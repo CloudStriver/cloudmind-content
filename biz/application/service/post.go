@@ -36,7 +36,7 @@ var PostSet = wire.NewSet(
 
 func (s *PostService) CreatePost(ctx context.Context, req *gencontent.CreatePostReq) (resp *gencontent.CreatePostResp, err error) {
 	resp = new(gencontent.CreatePostResp)
-	if err = s.PostMongoMapper.Insert(ctx, convertor.PostInfoToPostMapper(req.PostInfo)); err != nil {
+	if err = s.PostMongoMapper.Insert(ctx, convertor.PostToPostMapper(req.Post)); err != nil {
 		return resp, err
 	}
 	return resp, nil
@@ -44,11 +44,11 @@ func (s *PostService) CreatePost(ctx context.Context, req *gencontent.CreatePost
 
 func (s *PostService) GetPost(ctx context.Context, req *gencontent.GetPostReq) (resp *gencontent.GetPostResp, err error) {
 	resp = new(gencontent.GetPostResp)
-	post, err := s.PostMongoMapper.FindOne(ctx, req.PostId)
+	post, err := s.PostMongoMapper.FindOne(ctx, convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions))
 	if err != nil {
 		return resp, err
 	}
-	resp.Post = convertor.PostMapperToPostInfo(post)
+	resp.Post = convertor.PostMapperToPost(post)
 	return resp, nil
 }
 
@@ -59,14 +59,15 @@ func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq)
 		posts []*postmapper.Post
 	)
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
+	filter := convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions)
 	if req.SearchOptions != nil {
 		switch o := req.SearchOptions.Type.(type) {
 		case *gencontent.SearchOptions_AllFieldsKey:
 			posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(o),
-				convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions), p, esp.ScoreCursorType)
+				filter, p, esp.ScoreCursorType)
 		case *gencontent.SearchOptions_MultiFieldsKey:
 			posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostMultiFieldsSearchQuery(o),
-				convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions), p, esp.ScoreCursorType)
+				filter, p, esp.ScoreCursorType)
 		}
 	} else {
 		posts, total, err = s.PostMongoMapper.FindManyAndCount(ctx, convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions),
@@ -88,7 +89,7 @@ func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq)
 
 func (s *PostService) UpdatePost(ctx context.Context, req *gencontent.UpdatePostReq) (resp *gencontent.UpdatePostResp, err error) {
 	resp = new(gencontent.UpdatePostResp)
-	if err = s.PostMongoMapper.Update(ctx, convertor.PostInfoToPostMapper(req.PostInfo)); err != nil {
+	if err = s.PostMongoMapper.Update(ctx, convertor.PostToPostMapper(req.Post)); err != nil {
 		return resp, err
 	}
 	return resp, nil

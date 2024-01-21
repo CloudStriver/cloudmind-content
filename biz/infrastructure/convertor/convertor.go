@@ -1,11 +1,13 @@
 package convertor
 
 import (
-	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
+	couponmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/coupon"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/label"
+	labelmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/label"
+	ordermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/order"
 	postmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
+	productmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/product"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	usermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
@@ -13,127 +15,35 @@ import (
 	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/basic"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
-	"github.com/samber/lo"
-
-	//"github.com/xh-polaris/meowchat-content/biz/infrastructure/consts"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
 
-func UserMapperToUserDetail(in *usermapper.User) *gencontent.UserDetail {
-	return &gencontent.UserDetail{
+func UserMapperToUser(in *usermapper.User) *gencontent.User {
+	return &gencontent.User{
+		UserId:      in.ID.Hex(),
 		Name:        in.Name,
 		Sex:         in.Sex,
 		FullName:    in.FullName,
 		IdCard:      in.IdCard,
-		CreatedAt:   in.CreateAt.UnixMilli(),
-		UpdatedAt:   in.UpdateAt.UnixMilli(),
+		CreateTime:  in.CreateAt.UnixMilli(),
+		UpdateTime:  in.UpdateAt.UnixMilli(),
 		Description: in.Description,
 		Url:         in.Url,
-		UserId:      in.ID.Hex(),
 	}
 }
 
-func UserDetailToUserMapper(in *gencontent.UserDetailInfo) *usermapper.User {
-	fmt.Println(in)
-	ID, _ := primitive.ObjectIDFromHex(in.UserId)
+func UserToUserMapper(in *gencontent.User) *usermapper.User {
+	oid, _ := primitive.ObjectIDFromHex(in.UserId)
 	return &usermapper.User{
-		ID:          ID,
+		ID:          oid,
 		Name:        in.Name,
-		Sex:         in.GetSex(),
+		Sex:         in.Sex,
 		FullName:    in.FullName,
 		IdCard:      in.IdCard,
 		Description: in.Description,
 		Url:         in.Url,
 	}
-}
-
-func UserMapperToUser(in *usermapper.User) *gencontent.User {
-	return &gencontent.User{
-		UserId: in.ID.Hex(),
-		Name:   in.Name,
-		Url:    in.Url,
-	}
-}
-
-func PostInfoToPostMapper(in *gencontent.PostInfo) *postmapper.Post {
-	post := &postmapper.Post{
-		Title:  in.Title,
-		Text:   in.Text,
-		Url:    in.Url,
-		Tags:   in.Tags,
-		UserId: in.UserId,
-		Status: in.Status,
-	}
-	if in.PostId != "" {
-		ID, _ := primitive.ObjectIDFromHex(in.PostId)
-		post.ID = ID
-	}
-	return post
-}
-
-func PostMapperToPostInfo(in *postmapper.Post) *gencontent.Post {
-	return &gencontent.Post{
-		PostId:     in.ID.Hex(),
-		UserId:     in.UserId,
-		Title:      in.Title,
-		Text:       in.Text,
-		Tags:       in.Tags,
-		Status:     in.Status,
-		Url:        in.Url,
-		CreateTime: in.CreateAt.UnixMilli(),
-		UpdateTime: in.UpdateAt.UnixMilli(),
-	}
-}
-
-func PostFilterOptionsToFilterOptions(in *gencontent.PostFilterOptions) *postmapper.FilterOptions {
-	if in == nil {
-		return &postmapper.FilterOptions{}
-	}
-	return &postmapper.FilterOptions{
-		OnlyUserId: in.OnlyUserId,
-		OnlyPostId: in.OnlyPostId,
-		OnlyTitle:  in.OnlyTitle,
-		OnlyText:   in.OnlyText,
-		OnlyTag:    in.OnlyTag,
-		OnlyStatus: in.OnlyStatus,
-	}
-}
-
-func PostMapperToPost(in *postmapper.Post) *gencontent.Post {
-	if in == nil {
-		return &gencontent.Post{}
-	}
-	return &gencontent.Post{
-		PostId:     in.ID.Hex(),
-		UserId:     in.UserId,
-		Title:      in.Title,
-		Text:       in.Text,
-		Tags:       in.Tags,
-		Status:     in.Status,
-		Url:        in.Url,
-		CreateTime: in.CreateAt.UnixMilli(),
-		UpdateTime: in.UpdateAt.UnixMilli(),
-	}
-}
-
-func ConvertFileSlice(data []*file.File) []*gencontent.FileInfo {
-	res := make([]*gencontent.FileInfo, len(data))
-	for i, d := range data {
-		m := &gencontent.FileInfo{
-			FileId:    d.ID.Hex(),
-			Name:      d.Name,
-			Type:      gencontent.Type(d.Type),
-			Path:      d.Path,
-			UserId:    d.UserId,
-			FatherId:  d.FatherId,
-			SpaceSize: *d.Size,
-			Md5:       d.Md5,
-			UpdateAt:  d.UpdateAt.Unix(),
-		}
-		res[i] = m
-	}
-	return res
 }
 
 func FileMapperToFile(data *file.File) *gencontent.FileInfo {
@@ -246,8 +156,8 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 			OnlyFatherId:     opts.OnlyFatherId,
 			OnlyFileType:     opts.OnlyFileType,
 			OnlyTags:         opts.OnlyTags,
-			OnlyIsDel:        opts.IsDel,
-			OnlyDocumentType: lo.ToPtr(opts.DocumentType),
+			OnlyIsDel:        opts.OnlyIsDel,
+			OnlyDocumentType: opts.OnlyDocumentType,
 			OnlyMd5:          opts.OnlyMd5,
 			OnlySetRelation:  opts.OnlySetRelation,
 		}
@@ -282,10 +192,64 @@ func ParsePagination(opts *basic.PaginationOptions) (p *pagination.PaginationOpt
 	return
 }
 
-func LabelMapperToLabel(data *label.Label) *gencontent.Label {
+func LabelMapperToLabel(data *labelmapper.Label) *gencontent.Label {
 	return &gencontent.Label{
 		Id:    data.ID.Hex(),
 		Value: data.Value,
+	}
+}
+
+func LabelToLabelMapper(data *gencontent.Label) *labelmapper.Label {
+	oid, _ := primitive.ObjectIDFromHex(data.Id)
+	return &labelmapper.Label{
+		ID:    oid,
+		Value: data.Value,
+	}
+}
+
+func PostFilterOptionsToFilterOptions(in *gencontent.PostFilterOptions) *postmapper.FilterOptions {
+	if in == nil {
+		return &postmapper.FilterOptions{}
+	}
+	return &postmapper.FilterOptions{
+		OnlyUserId:      in.OnlyUserId,
+		OnlyPostId:      in.OnlyPostId,
+		OnlyPostIds:     in.OnlyPostIds,
+		OnlyTitle:       in.OnlyTitle,
+		OnlyText:        in.OnlyText,
+		OnlyTags:        in.OnlyTags,
+		OnlySetRelation: in.OnlySetRelation,
+		OnlyStatus:      in.OnlyStatus,
+	}
+}
+
+func PostToPostMapper(in *gencontent.Post) *postmapper.Post {
+	oid, _ := primitive.ObjectIDFromHex(in.PostId)
+	return &postmapper.Post{
+		ID:     oid,
+		Title:  in.Title,
+		Text:   in.Text,
+		Url:    in.Url,
+		Tags:   in.Tags,
+		UserId: in.UserId,
+		Status: in.Status,
+	}
+}
+
+func PostMapperToPost(in *postmapper.Post) *gencontent.Post {
+	if in == nil {
+		return &gencontent.Post{}
+	}
+	return &gencontent.Post{
+		PostId:     in.ID.Hex(),
+		UserId:     in.UserId,
+		Title:      in.Title,
+		Text:       in.Text,
+		Tags:       in.Tags,
+		Status:     in.Status,
+		Url:        in.Url,
+		CreateTime: in.CreateAt.UnixMilli(),
+		UpdateTime: in.UpdateAt.UnixMilli(),
 	}
 }
 
@@ -341,6 +305,269 @@ func ConvertPostMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsK
 			Match: map[string]types.MatchQuery{
 				consts.Tags: {
 					Query: *in.MultiFieldsKey.Tag,
+				},
+			},
+		})
+	}
+	return q
+}
+
+func ProductFilterOptionsToFilterOptions(in *gencontent.ProductFilterOptions) *productmapper.FilterOptions {
+	if in == nil {
+		return &productmapper.FilterOptions{}
+	}
+	return &productmapper.FilterOptions{
+		OnlyUserId:      in.OnlyUserId,
+		OnlyProductId:   in.OnlyProductId,
+		OnlyProductIds:  in.OnlyProductIds,
+		OnlyTags:        in.OnlyTags,
+		OnlySetRelation: in.OnlySetRelation,
+		OnlyStatus:      in.OnlyStatus,
+		OnlyType:        in.OnlyType,
+	}
+}
+
+func ProductToProductMapper(in *gencontent.Product) *productmapper.Product {
+	oid, _ := primitive.ObjectIDFromHex(in.ProductId)
+	return &productmapper.Product{
+		ID:          oid,
+		UserId:      in.UserId,
+		Name:        in.Name,
+		Status:      in.Status,
+		Description: in.Description,
+		Urls:        in.Urls,
+		Tags:        in.Tags,
+		Type:        in.Type,
+		Price:       in.Price,
+		ProductSize: in.ProductSize,
+	}
+}
+
+func ProductMapperToProduct(in *productmapper.Product) *gencontent.Product {
+	if in == nil {
+		return &gencontent.Product{}
+	}
+	return &gencontent.Product{
+		ProductId:   in.ID.Hex(),
+		UserId:      in.UserId,
+		Name:        in.Name,
+		Description: in.Description,
+		Status:      in.Status,
+		Urls:        in.Urls,
+		Tags:        in.Tags,
+		Type:        in.Type,
+		Price:       in.Price,
+		ProductSize: in.ProductSize,
+		CreateTime:  in.CreateAt.UnixMilli(),
+		UpdateTime:  in.UpdateAt.UnixMilli(),
+	}
+}
+
+func ConvertProductAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey) []types.Query {
+	return []types.Query{{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:  in.AllFieldsKey,
+			Fields: []string{consts.Name + "^3", consts.ID, consts.Tags, consts.Description},
+		}},
+	}
+}
+
+func ConvertProductMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsKey) []types.Query {
+	var q []types.Query
+	if in.MultiFieldsKey.Name != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.Name: {
+					Query: *in.MultiFieldsKey.Name + "^3",
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Id != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.ID: {
+					Query: *in.MultiFieldsKey.Id,
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Tag != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.Tags: {
+					Query: *in.MultiFieldsKey.Tag,
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Description != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.Description: {
+					Query: *in.MultiFieldsKey.Description,
+				},
+			},
+		})
+	}
+	return q
+}
+
+func OrderFilterOptionsToFilterOptions(in *gencontent.OrderFilterOptions) *ordermapper.FilterOptions {
+	if in == nil {
+		return &ordermapper.FilterOptions{}
+	}
+	return &ordermapper.FilterOptions{
+		OnlyUserId:    in.OnlyUserId,
+		OnlyOrderId:   in.OnlyOrderId,
+		OnlyOrderIds:  in.OnlyOrderIds,
+		OnlyStatus:    in.OnlyStatus,
+		OnlyProductId: in.OnlyProductId,
+	}
+}
+
+func OrderToOrderMapper(in *gencontent.Order) *ordermapper.Order {
+	oid, _ := primitive.ObjectIDFromHex(in.OrderId)
+	return &ordermapper.Order{
+		ID:          oid,
+		UserId:      in.UserId,
+		ProductId:   in.ProductId,
+		Status:      in.Status,
+		SumPrice:    in.SumPrice,
+		ProductName: in.ProductName,
+	}
+}
+
+func OrderMapperToOrder(in *ordermapper.Order) *gencontent.Order {
+	if in == nil {
+		return &gencontent.Order{}
+	}
+	return &gencontent.Order{
+		OrderId:     in.ID.Hex(),
+		UserId:      in.UserId,
+		ProductId:   in.ProductId,
+		Status:      in.Status,
+		SumPrice:    in.SumPrice,
+		CreateTime:  in.CreateAt.UnixMilli(),
+		UpdateTime:  in.UpdateAt.UnixMilli(),
+		ProductName: in.ProductName,
+	}
+}
+
+func ConvertOrderAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey) []types.Query {
+	return []types.Query{{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:  in.AllFieldsKey,
+			Fields: []string{consts.ProductName + "^3", consts.ID},
+		}},
+	}
+}
+
+func ConvertOrderMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsKey) []types.Query {
+	var q []types.Query
+	if in.MultiFieldsKey.ProductName != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.ProductName: {
+					Query: *in.MultiFieldsKey.ProductName + "^3",
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Id != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.ID: {
+					Query: *in.MultiFieldsKey.Id,
+				},
+			},
+		})
+	}
+	return q
+}
+
+func CouponFilterOptionsToFilterOptions(in *gencontent.CouponFilterOptions) *couponmapper.FilterOptions {
+	if in == nil {
+		return &couponmapper.FilterOptions{}
+	}
+	return &couponmapper.FilterOptions{
+		OnlyUserId:    in.OnlyUserId,
+		OnlyCouponId:  in.OnlyCouponId,
+		OnlyCouponIds: in.OnlyCouponIds,
+		OnlyStatus:    in.OnlyStatus,
+		OnlyType:      in.OnlyProductType,
+	}
+}
+
+func CouponToCouponMapper(in *gencontent.Coupon) *couponmapper.Coupon {
+	oid, _ := primitive.ObjectIDFromHex(in.CouponId)
+	return &couponmapper.Coupon{
+		ID:            oid,
+		UserId:        in.UserId,
+		Name:          in.Name,
+		Status:        in.Status,
+		Description:   in.Desciption,
+		Type:          in.ProductType,
+		LowSumPrice:   in.LowSumPrice,
+		ProductType:   in.ProductType,
+		Discount:      in.Discount,
+		DiscountPrice: in.DiscountPrice,
+	}
+}
+
+func CouponMapperToCoupon(in *couponmapper.Coupon) *gencontent.Coupon {
+	if in == nil {
+		return &gencontent.Coupon{}
+	}
+	return &gencontent.Coupon{
+		CouponId:      in.ID.Hex(),
+		UserId:        in.UserId,
+		Status:        in.Status,
+		CreateTime:    in.CreateAt.UnixMilli(),
+		ExpireTime:    in.ExpireTime,
+		Name:          in.Name,
+		Desciption:    in.Description,
+		LowSumPrice:   in.LowSumPrice,
+		ProductType:   in.ProductType,
+		Discount:      in.Discount,
+		DiscountPrice: in.DiscountPrice,
+	}
+}
+
+func ConvertCouponAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey) []types.Query {
+	return []types.Query{{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:  in.AllFieldsKey,
+			Fields: []string{consts.Name + "^3", consts.ID, consts.Description},
+		}},
+	}
+}
+
+func ConvertCouponMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsKey) []types.Query {
+	var q []types.Query
+	if in.MultiFieldsKey.Name != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.Name: {
+					Query: *in.MultiFieldsKey.Name + "^3",
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Id != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.ID: {
+					Query: *in.MultiFieldsKey.Id,
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Description != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.Description: {
+					Query: *in.MultiFieldsKey.Description,
 				},
 			},
 		})

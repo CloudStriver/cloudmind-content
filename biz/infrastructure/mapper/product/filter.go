@@ -1,4 +1,4 @@
-package post
+package product
 
 import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
@@ -10,13 +10,12 @@ import (
 
 type FilterOptions struct {
 	OnlyUserId      *string
-	OnlyPostId      *string
-	OnlyPostIds     []string
-	OnlyTitle       *string
-	OnlyText        *string
+	OnlyProductId   *string
+	OnlyProductIds  []string
 	OnlyTags        []string
 	OnlySetRelation *int64
 	OnlyStatus      *int64
+	OnlyType        *int64
 }
 
 type MongoFilter struct {
@@ -33,25 +32,29 @@ func MakeBsonFilter(options *FilterOptions) bson.M {
 
 func (f *MongoFilter) toBson() bson.M {
 	f.CheckOnlyUserId()
-	f.CheckOnlyPostIds()
-	f.CheckOnlyPostId()
-	f.CheckOnlyTitle()
-	f.CheckOnlyText()
+	f.CheckOnlyProductIds()
+	f.CheckOnlyProductId()
 	f.CheckOnlyTags()
 	f.CheckOnlyStatus()
+	f.CheckOnlyTyee()
 	return f.m
 }
 
+func (f *MongoFilter) CheckOnlyTyee() {
+	if f.OnlyType != nil {
+		f.m[consts.Type] = *f.OnlyType
+	}
+}
 func (f *MongoFilter) CheckOnlyUserId() {
 	if f.OnlyUserId != nil {
 		f.m[consts.UserId] = *f.OnlyUserId
 	}
 }
 
-func (f *MongoFilter) CheckOnlyPostIds() {
-	if f.OnlyPostIds != nil {
+func (f *MongoFilter) CheckOnlyProductIds() {
+	if f.OnlyProductIds != nil {
 		f.m[consts.ID] = bson.M{
-			"$in": lo.Map[string, primitive.ObjectID](f.OnlyPostIds, func(s string, _ int) primitive.ObjectID {
+			"$in": lo.Map[string, primitive.ObjectID](f.OnlyProductIds, func(s string, _ int) primitive.ObjectID {
 				oid, _ := primitive.ObjectIDFromHex(s)
 				return oid
 			}),
@@ -59,22 +62,10 @@ func (f *MongoFilter) CheckOnlyPostIds() {
 	}
 }
 
-func (f *MongoFilter) CheckOnlyPostId() {
-	if f.OnlyPostId != nil {
-		oid, _ := primitive.ObjectIDFromHex(*f.OnlyPostId)
+func (f *MongoFilter) CheckOnlyProductId() {
+	if f.OnlyProductId != nil {
+		oid, _ := primitive.ObjectIDFromHex(*f.OnlyProductId)
 		f.m[consts.ID] = oid
-	}
-}
-
-func (f *MongoFilter) CheckOnlyTitle() {
-	if f.OnlyTitle != nil {
-		f.m[consts.Title] = *f.OnlyTitle
-	}
-}
-
-func (f *MongoFilter) CheckOnlyText() {
-	if f.OnlyText != nil {
-		f.m[consts.Text] = *f.OnlyText
 	}
 }
 
@@ -101,7 +92,7 @@ type postFilter struct {
 	*FilterOptions
 }
 
-func newPostFilter(options *FilterOptions) []types.Query {
+func newProductFilter(options *FilterOptions) []types.Query {
 	return (&postFilter{
 		q:             make([]types.Query, 0),
 		FilterOptions: options,
