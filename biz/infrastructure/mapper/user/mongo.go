@@ -16,10 +16,10 @@ const CollectionName = "user"
 
 var PrefixUserCacheKey = "cache:user:"
 
-var _ UserMongoMapper = (*MongoMapper)(nil)
+var _ IUserMongoMapper = (*MongoMapper)(nil)
 
 type (
-	UserMongoMapper interface {
+	IUserMongoMapper interface {
 		Insert(ctx context.Context, data *User) (string, error)
 		FindOne(ctx context.Context, id string) (*User, error)
 		Update(ctx context.Context, data *User) (*mongo.UpdateResult, error)
@@ -43,7 +43,7 @@ type (
 	}
 )
 
-func NewMongoMapper(config *config.Config) UserMongoMapper {
+func NewMongoMapper(config *config.Config) IUserMongoMapper {
 	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
 	return &MongoMapper{
 		conn: conn,

@@ -9,10 +9,73 @@ import (
 
 type ContentServerImpl struct {
 	*config.Config
-	FileService  service.IFileService
-	PostService  service.IPostService
-	LabelService service.ILabelService
-	UserService  service.UserService
+	FileService    service.IFileService
+	PostService    service.IPostService
+	LabelService   service.ILabelService
+	UserService    service.IUserService
+	ProductService service.IProductService
+	CouponService  service.ICouponService
+	OrderService   service.IOrderService
+}
+
+func (s *ContentServerImpl) CreateProduct(ctx context.Context, req *content.CreateProductReq) (res *content.CreateProductResp, err error) {
+	return s.ProductService.CreateProduct(ctx, req)
+}
+
+func (s *ContentServerImpl) DeleteProduct(ctx context.Context, req *content.DeleteProductReq) (res *content.DeleteProductResp, err error) {
+	return s.ProductService.DeleteProduct(ctx, req)
+}
+
+func (s *ContentServerImpl) UpdateProduct(ctx context.Context, req *content.UpdateProductReq) (res *content.UpdateProductResp, err error) {
+	return s.ProductService.UpdateProduct(ctx, req)
+}
+
+func (s *ContentServerImpl) GetProduct(ctx context.Context, req *content.GetProductReq) (res *content.GetProductResp, err error) {
+	return s.ProductService.GetProduct(ctx, req)
+}
+
+func (s *ContentServerImpl) GetProducts(ctx context.Context, req *content.GetProductsReq) (res *content.GetProductsResp, err error) {
+	return s.ProductService.GetProducts(ctx, req)
+}
+
+func (s *ContentServerImpl) CreateCoupon(ctx context.Context, req *content.CreateCouponReq) (res *content.CreateCouponResp, err error) {
+	return s.CouponService.CreateCoupon(ctx, req)
+}
+
+func (s *ContentServerImpl) DeleteCoupon(ctx context.Context, req *content.DeleteCouponReq) (res *content.DeleteCouponResp, err error) {
+	return s.CouponService.DeleteCoupon(ctx, req)
+}
+
+func (s *ContentServerImpl) UpdateCoupon(ctx context.Context, req *content.UpdateCouponReq) (res *content.UpdateCouponResp, err error) {
+	return s.CouponService.UpdateCoupon(ctx, req)
+}
+
+func (s *ContentServerImpl) GetCoupon(ctx context.Context, req *content.GetCouponReq) (res *content.GetCouponResp, err error) {
+	return s.CouponService.GetCoupon(ctx, req)
+}
+
+func (s *ContentServerImpl) GetCoupons(ctx context.Context, req *content.GetCouponsReq) (res *content.GetCouponsResp, err error) {
+	return s.CouponService.GetCoupons(ctx, req)
+}
+
+func (s *ContentServerImpl) CreateOrder(ctx context.Context, req *content.CreateOrderReq) (res *content.CreateOrderResp, err error) {
+	return s.OrderService.CreateOrder(ctx, req)
+}
+
+func (s *ContentServerImpl) DeleteOrder(ctx context.Context, req *content.DeleteOrderReq) (res *content.DeleteOrderResp, err error) {
+	return s.OrderService.DeleteOrder(ctx, req)
+}
+
+func (s *ContentServerImpl) UpdateOrder(ctx context.Context, req *content.UpdateOrderReq) (res *content.UpdateOrderResp, err error) {
+	return s.OrderService.UpdateOrder(ctx, req)
+}
+
+func (s *ContentServerImpl) GetOrder(ctx context.Context, req *content.GetOrderReq) (res *content.GetOrderResp, err error) {
+	return s.OrderService.GetOrder(ctx, req)
+}
+
+func (s *ContentServerImpl) GetOrders(ctx context.Context, req *content.GetOrdersReq) (res *content.GetOrdersResp, err error) {
+	return s.OrderService.GetOrders(ctx, req)
 }
 
 func (s *ContentServerImpl) CreatePost(ctx context.Context, req *content.CreatePostReq) (res *content.CreatePostResp, err error) {
@@ -53,10 +116,6 @@ func (s *ContentServerImpl) SearchUser(ctx context.Context, req *content.SearchU
 
 func (s *ContentServerImpl) CreateUser(ctx context.Context, req *content.CreateUserReq) (resp *content.CreateUserResp, err error) {
 	return s.UserService.CreateUser(ctx, req)
-}
-
-func (s *ContentServerImpl) GetUserDetail(ctx context.Context, req *content.GetUserDetailReq) (resp *content.GetUserDetailResp, err error) {
-	return s.UserService.GetUserDetail(ctx, req)
 }
 
 func (s *ContentServerImpl) GetFolderSize(ctx context.Context, req *content.GetFolderSizeReq) (*content.GetFolderSizeResp, error) {

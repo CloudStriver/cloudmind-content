@@ -1,64 +1,62 @@
-package post
+package order
 
 import (
 	"context"
 	"errors"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/mr"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
-
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
-
 	"github.com/zeromicro/go-zero/core/stores/monc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
 )
 
-const CollectionName = "post"
-const prefixPostCacheKey = "cache:post:"
+const CollectionName = "order"
+
+var prefixOrderCacheKey = "cache:order:"
+
+var _ IOrderMongoMapper = (*MongoMapper)(nil)
 
 type (
-	IPostMongoMapper interface {
-		Insert(ctx context.Context, data *Post) error
-		FindOne(ctx context.Context, fopts *FilterOptions) (*Post, error)
-		Update(ctx context.Context, data *Post) error
+	IOrderMongoMapper interface {
+		Insert(ctx context.Context, data *Order) error
+		FindOne(ctx context.Context, fopts *FilterOptions) (*Order, error)
+		Update(ctx context.Context, data *Order) error
 		Delete(ctx context.Context, id string) error
-		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error)
+		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Order, error)
 		Count(ctx context.Context, fopts *FilterOptions) (int64, error)
-		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, int64, error)
+		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Order, int64, error)
+	}
+	Order struct {
+		ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+		UserId      string             `json:"userId,omitempty" bson:"userId,omitempty"`
+		ProductId   string             `bson:"productId,omitempty" json:"productId,omitempty"`
+		Status      int64              `json:"status,omitempty" bson:"status,omitempty"`
+		SumPrice    int64              `json:"sumPrice,omitempty" bson:"sumPrice,omitempty"`
+		ProductName string             `json:"productName,omitempty" bson:"productName,omitempty"`
+		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
+		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
+		Score_      float64            `bson:"_score,omitempty" json:"_score,omitempty"`
 	}
 
 	MongoMapper struct {
 		conn *monc.Model
 	}
-
-	Post struct {
-		ID       primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
-		Title    string             `bson:"title,omitempty" `
-		Text     string             `bson:"text,omitempty"`
-		Url      string             `bson:"url,omitempty"`
-		Tags     []string           `bson:"tags,omitempty"`
-		UserId   string             `bson:"userId,omitempty"`
-		UpdateAt time.Time          `bson:"updateAt,omitempty"`
-		CreateAt time.Time          `bson:"createAt,omitempty"`
-		Status   int64              `bson:"status,omitempty"`
-		// 仅ES查询时使用
-		Score_ float64 `bson:"_score,omitempty" json:"_score,omitempty"`
-	}
 )
 
-func NewMongoMapper(config *config.Config) IPostMongoMapper {
+func NewMongoMapper(config *config.Config) IOrderMongoMapper {
 	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
 	return &MongoMapper{
 		conn: conn,
 	}
 }
 
-func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error) {
+func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Order, error) {
 	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
 
 	filter := MakeBsonFilter(fopts)
@@ -67,7 +65,7 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 		return nil, err
 	}
 
-	var data []*Post
+	var data []*Order
 	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
 		Sort:  sort,
 		Limit: popts.Limit,
@@ -94,9 +92,9 @@ func (m *MongoMapper) Count(ctx context.Context, filter *FilterOptions) (int64, 
 	return m.conn.CountDocuments(ctx, f)
 }
 
-func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, int64, error) {
+func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Order, int64, error) {
 	var (
-		posts           []*Post
+		orders          []*Order
 		total           int64
 		err, err1, err2 error
 	)
@@ -107,7 +105,7 @@ func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions
 		}
 		return nil
 	}, func() error {
-		posts, err2 = m.FindMany(ctx, fopts, popts, sorter)
+		orders, err2 = m.FindMany(ctx, fopts, popts, sorter)
 		if err2 != nil {
 			return err2
 		}
@@ -115,28 +113,28 @@ func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions
 	}); err != nil {
 		return nil, 0, err
 	}
-	return posts, total, nil
+	return orders, total, nil
 }
 
-func (m *MongoMapper) Insert(ctx context.Context, data *Post) error {
+func (m *MongoMapper) Insert(ctx context.Context, data *Order) error {
 	if data.ID.IsZero() {
 		data.ID = primitive.NewObjectID()
 		data.CreateAt = time.Now()
 		data.UpdateAt = time.Now()
 	}
 
-	key := prefixPostCacheKey + data.ID.Hex()
+	key := prefixOrderCacheKey + data.ID.Hex()
 	_, err := m.conn.InsertOne(ctx, key, data)
 	return err
 }
 
-func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*Post, error) {
+func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*Order, error) {
 	filter := MakeBsonFilter(fopts)
-	var data Post
-	if fopts.OnlyPostId == nil {
+	var data Order
+	if fopts.OnlyOrderId == nil {
 		return nil, consts.ErrInvalidId
 	}
-	key := prefixPostCacheKey + *fopts.OnlyPostId
+	key := prefixOrderCacheKey + *fopts.OnlyOrderId
 	err := m.conn.FindOne(ctx, key, &data, filter)
 	switch {
 	case err == nil:
@@ -148,9 +146,9 @@ func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*Post,
 	}
 }
 
-func (m *MongoMapper) Update(ctx context.Context, data *Post) error {
+func (m *MongoMapper) Update(ctx context.Context, data *Order) error {
 	data.UpdateAt = time.Now()
-	key := prefixPostCacheKey + data.ID.Hex()
+	key := prefixOrderCacheKey + data.ID.Hex()
 	_, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data})
 	return err
 }
@@ -160,7 +158,7 @@ func (m *MongoMapper) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return consts.ErrInvalidId
 	}
-	key := prefixPostCacheKey + id
+	key := prefixOrderCacheKey + id
 	_, err = m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid})
 	return err
 }

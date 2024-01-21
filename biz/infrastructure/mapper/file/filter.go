@@ -62,13 +62,9 @@ func (f *MongoFileFilter) CheckOnlyFileId() {
 func (f *MongoFileFilter) CheckOnlyFileIds() {
 	if f.OnlyFileIds != nil {
 		f.m[consts.ID] = bson.M{
-			"$in": lo.FilterMap[string, primitive.ObjectID](f.OnlyFileIds, func(s string, _ int) (primitive.ObjectID, bool) {
-				oid, err := primitive.ObjectIDFromHex(s)
-				if err != nil {
-					return primitive.ObjectID{}, false
-				} else {
-					return oid, true
-				}
+			"$in": lo.Map[string, primitive.ObjectID](f.OnlyFileIds, func(s string, _ int) primitive.ObjectID {
+				oid, _ := primitive.ObjectIDFromHex(s)
+				return oid
 			}),
 		}
 	}
@@ -93,15 +89,15 @@ func (f *MongoFileFilter) CheckIsDel() {
 }
 
 func (f *MongoFileFilter) CheckDocumentType() {
-	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == 2 {
+	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == consts.PublicSpace {
 		if f.OnlyTags != nil {
 			if *f.OnlySetRelation == consts.Intersection {
-				f.m[consts.Tag] = bson.M{"$all": f.OnlyTags}
+				f.m[consts.Tags] = bson.M{"$all": f.OnlyTags}
 			} else if *f.OnlySetRelation == consts.UnionSet {
-				f.m[consts.Tag] = bson.M{"$in": f.OnlyTags}
+				f.m[consts.Tags] = bson.M{"$in": f.OnlyTags}
 			}
 		} else {
-			f.m[consts.Tag] = bson.M{"$ne": nil}
+			f.m[consts.Tags] = bson.M{"$ne": nil}
 		}
 	}
 }
