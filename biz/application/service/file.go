@@ -617,6 +617,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 			return err
 		}
 		oid := primitive.NewObjectID()
+		resp.FileId = oid.Hex()
 		path = objectfile.Path + "/" + oid.Hex()
 		rootFile := &filemapper.File{
 			ID:       oid,
