@@ -112,12 +112,8 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 	_, span := tracer.Start(ctx, "mongo.Insert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
-	if data.ID.IsZero() {
-		data.ID = primitive.NewObjectID()
-		data.CreateAt = time.Now()
-		data.UpdateAt = time.Now()
-	}
-
+	data.CreateAt = time.Now()
+	data.UpdateAt = time.Now()
 	key := prefixFileCacheKey + data.ID.Hex()
 	ID, err := m.conn.InsertOne(ctx, key, data)
 	if err != nil {

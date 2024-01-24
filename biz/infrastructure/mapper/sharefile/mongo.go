@@ -17,6 +17,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel"
 	oteltrace "go.opentelemetry.io/otel/trace"
+	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -29,7 +31,7 @@ var _ IMongoMapper = (*MongoMapper)(nil)
 type (
 	IMongoMapper interface {
 		Count(ctx context.Context, filter *ShareCodeOptions) (int64, error)
-		Insert(ctx context.Context, data *ShareFile) (string, error)
+		Insert(ctx context.Context, data *ShareFile) (string, string, error)
 		FindOne(ctx context.Context, id string) (*ShareFile, error)
 		FindMany(ctx context.Context, fopts *ShareCodeOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*ShareFile, error)
 		FindManyAndCount(ctx context.Context, fopts *ShareCodeOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*ShareFile, int64, error)
@@ -42,6 +44,7 @@ type (
 		ID            primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 		UserId        string             `bson:"userId,omitempty" json:"userId,omitempty"`
 		Name          string             `bson:"name,omitempty" json:"name,omitempty"`
+		Key           string             `bson:"key,omitempty" json:"key,omitempty"`
 		FileList      []string           `bson:"fileList,omitempty" json:"fileList,omitempty"`
 		EffectiveTime int64              `bson:"effectiveTime,omitempty" json:"effectiveTime,omitempty"` // 有效期
 		BrowseNumber  *int64             `bson:"browseNumber,omitempty" json:"browseNumber,omitempty"`   // 浏览次数
@@ -83,22 +86,28 @@ func (m *MongoMapper) Count(ctx context.Context, fopts *ShareCodeOptions) (int64
 	return m.conn.CountDocuments(ctx, filter)
 }
 
-func (m *MongoMapper) Insert(ctx context.Context, data *ShareFile) (string, error) {
+func RandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	var sb strings.Builder
+	sb.Grow(length) // 预分配足够的空间
+	for i := 0; i < length; i++ {
+		sb.WriteByte(charset[rand.Intn(len(charset))])
+	}
+	return sb.String()
+}
+
+func (m *MongoMapper) Insert(ctx context.Context, data *ShareFile) (string, string, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.Insert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
-	if data.ID.IsZero() {
-		data.ID = primitive.NewObjectID()
-		data.CreateAt = time.Now()
-	}
-
+	data.Key = RandomString(4)
 	key := prefixPublicFileCacheKey + data.ID.Hex()
 	ID, err := m.conn.InsertOne(ctx, key, data)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return ID.InsertedID.(primitive.ObjectID).Hex(), err
+	return ID.InsertedID.(primitive.ObjectID).Hex(), data.Key, err
 }
 
 func (m *MongoMapper) FindOne(ctx context.Context, id string) (*ShareFile, error) {

@@ -159,6 +159,7 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 
 	shareFiles, err = s.FileMongoMapper.FindManyNotPagination(ctx, &filemapper.FilterOptions{
 		OnlyFileIds: shareFile.ShareFile.FileList,
+		OnlyIsDel:   lo.ToPtr(int64(gencontent.IsDel_Is_no)),
 	})
 	if err != nil {
 		return resp, err
@@ -254,6 +255,7 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 	files, err := s.FileMongoMapper.FindManyNotPagination(ctx, &filemapper.FilterOptions{
 		OnlyUserId:  &req.UserId,
 		OnlyFileIds: []string{req.FileId, req.FatherId},
+		OnlyIsDel:   lo.ToPtr(int64(gencontent.IsDel_Is_no)),
 	})
 	if err != nil {
 		return resp, err
@@ -352,7 +354,7 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 					}
 					if _, err = s.FileMongoMapper.Update(sessionContext, data[i]); err != nil {
 						if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-							log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
+							log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 							return err
 						}
 					}
@@ -366,12 +368,12 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 			}
 			if _, err = s.FileMongoMapper.Update(sessionContext, file); err != nil {
 				if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-					log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
+					log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 					return err
 				}
 			}
 			if err = sessionContext.CommitTransaction(sessionContext); err != nil {
-				log.CtxError(ctx, "移动文件: 提交事务异常[%v]\n", err)
+				log.CtxError(ctx, "删除文件: 提交事务异常[%v]\n", err)
 				return err
 			}
 			return nil
@@ -403,7 +405,7 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 					data[i].Tags = nil
 					if _, err = s.FileMongoMapper.Update(sessionContext, data[i]); err != nil {
 						if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-							log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
+							log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 							return err
 						}
 					}
@@ -414,12 +416,12 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 			file.Tags = nil
 			if _, err = s.FileMongoMapper.Update(sessionContext, file); err != nil {
 				if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-					log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
+					log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 					return err
 				}
 			}
 			if err = sessionContext.CommitTransaction(sessionContext); err != nil {
-				log.CtxError(ctx, "移动文件: 提交事务异常[%v]\n", err)
+				log.CtxError(ctx, "删除文件: 提交事务异常[%v]\n", err)
 				return err
 			}
 			return nil
@@ -465,10 +467,27 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 				data[i].DeletedAt = time.Time{}
 				if _, err = s.FileMongoMapper.Update(sessionContext, data[i]); err != nil {
 					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-						log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
+						log.CtxError(ctx, "恢复文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 						return err
 					}
 				}
+			}
+		}
+
+		path := strings.Split(file.Path, "/")
+		if err = mr.Finish(lo.Map(path, func(id string, _ int) func() error {
+			return func() error {
+				if id == req.UserId {
+					return nil
+				}
+				oid, _ := primitive.ObjectIDFromHex(id)
+				_, err = s.FileMongoMapper.Update(ctx, &filemapper.File{ID: oid, UserId: req.UserId, IsDel: consts.NotDel})
+				return err
+			}
+		})...); err != nil {
+			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
+				log.CtxError(ctx, "恢复文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
+				return err
 			}
 		}
 
@@ -476,12 +495,12 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 		file.DeletedAt = time.Time{}
 		if _, err = s.FileMongoMapper.Update(sessionContext, file); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-				log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
+				log.CtxError(ctx, "恢复文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 				return err
 			}
 		}
 		if err = sessionContext.CommitTransaction(sessionContext); err != nil {
-			log.CtxError(ctx, "移动文件: 提交事务异常[%v]\n", err)
+			log.CtxError(ctx, "恢复文件: 提交事务异常[%v]\n", err)
 			return err
 		}
 		return nil
@@ -518,19 +537,20 @@ func (s *FileService) GetShareList(ctx context.Context, req *gencontent.GetShare
 
 func (s *FileService) CreateShareCode(ctx context.Context, req *gencontent.CreateShareCodeReq) (resp *gencontent.CreateShareCodeResp, err error) {
 	resp = new(gencontent.CreateShareCodeResp)
-	var id string
+	var id, key string
 	data, err := convertor.ShareFileToShareFileMapper(req.ShareFile)
 	if err != nil {
 		return resp, err
 	}
 	data.CreateAt = time.Now()
 	data.DeletedAt = data.CreateAt.Add(time.Duration(req.ShareFile.EffectiveTime)*time.Second + 720*time.Hour)
-	if id, err = s.ShareFileMongoMapper.Insert(ctx, data); err != nil {
+	if id, key, err = s.ShareFileMongoMapper.Insert(ctx, data); err != nil {
 		log.CtxError(ctx, "创建文件分享链接: 发生异常[%v]\n", err)
 		return resp, err
 	}
 
 	resp.Code = id
+	resp.Key = key
 	return resp, nil
 }
 
