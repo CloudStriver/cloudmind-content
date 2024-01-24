@@ -143,6 +143,7 @@ func ShareFileToShareCode(data *sharefile.ShareFile) *gencontent.ShareCode {
 		Status:       IsExpired(data.CreateAt, data.EffectiveTime),
 		BrowseNumber: *data.BrowseNumber,
 		CreateAt:     data.CreateAt.Unix(),
+		Key:          data.Key,
 	}
 }
 
