@@ -160,8 +160,8 @@ func (s *ContentServerImpl) GetFileBySharingCode(ctx context.Context, req *conte
 	return s.FileService.GetFileBySharingCode(ctx, req)
 }
 
-func (s *ContentServerImpl) CreateFolder(ctx context.Context, req *content.CreateFolderReq) (*content.CreateFolderResp, error) {
-	return s.FileService.CreateFolder(ctx, req)
+func (s *ContentServerImpl) CreateFile(ctx context.Context, req *content.CreateFileReq) (*content.CreateFileResp, error) {
+	return s.FileService.CreateFile(ctx, req)
 }
 
 func (s *ContentServerImpl) GetLabel(ctx context.Context, req *content.GetLabelReq) (res *content.GetLabelResp, err error) {
