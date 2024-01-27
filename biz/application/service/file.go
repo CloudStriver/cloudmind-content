@@ -28,7 +28,7 @@ type IFileService interface {
 	GetFileCount(ctx context.Context, req *gencontent.GetFileCountReq) (resp *gencontent.GetFileCountResp, err error)
 	GetFileBySharingCode(ctx context.Context, req *gencontent.GetFileBySharingCodeReq) (resp *gencontent.GetFileBySharingCodeResp, err error)
 	GetFolderSize(ctx context.Context, path string) (resp *gencontent.GetFolderSizeResp, err error)
-	CreateFolder(ctx context.Context, req *gencontent.CreateFolderReq) (resp *gencontent.CreateFolderResp, err error)
+	CreateFile(ctx context.Context, req *gencontent.CreateFileReq) (resp *gencontent.CreateFileResp, err error)
 	UpdateFile(ctx context.Context, req *gencontent.UpdateFileReq) (resp *gencontent.UpdateFileResp, err error)
 	MoveFile(ctx context.Context, req *gencontent.MoveFileReq) (resp *gencontent.MoveFileResp, err error)
 	DeleteFile(ctx context.Context, req *gencontent.DeleteFileReq) (resp *gencontent.DeleteFileResp, err error)
@@ -196,8 +196,8 @@ func (s *FileService) GetFolderSize(ctx context.Context, path string) (resp *gen
 	return resp, nil
 }
 
-func (s *FileService) CreateFolder(ctx context.Context, req *gencontent.CreateFolderReq) (resp *gencontent.CreateFolderResp, err error) {
-	resp = new(gencontent.CreateFolderResp)
+func (s *FileService) CreateFile(ctx context.Context, req *gencontent.CreateFileReq) (resp *gencontent.CreateFileResp, err error) {
+	resp = new(gencontent.CreateFileResp)
 	var path string
 	if req.File.UserId == req.File.FatherId {
 		path = req.File.UserId
@@ -225,7 +225,7 @@ func (s *FileService) CreateFolder(ctx context.Context, req *gencontent.CreateFo
 
 	resp.FileId, err = s.FileMongoMapper.Insert(ctx, data)
 	if err != nil {
-		log.CtxError(ctx, "创建文件夹: 发生异常[%v]\n", err)
+		log.CtxError(ctx, "创建文件: 发生异常[%v]\n", err)
 		return resp, err
 	}
 
