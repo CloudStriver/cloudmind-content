@@ -55,13 +55,14 @@ var FileSet = wire.NewSet(
 
 func (s *FileService) GetFileIsExist(ctx context.Context, req *gencontent.GetFileIsExistReq) (resp *gencontent.GetFileIsExistResp, err error) {
 	resp = new(gencontent.GetFileIsExistResp)
-	_, err = s.FileMongoMapper.FindFileIsExist(ctx, req.Md5)
+	var ok bool
+	ok, err = s.FileMongoMapper.FindFileIsExist(ctx, req.Md5)
 	if err != nil {
 		log.CtxError(ctx, "查询文件md5值是否存在: 发生异常[%v]\n", err)
 		return resp, err
 	}
 
-	resp.Ok = true
+	resp.Ok = ok
 	return resp, nil
 }
 
