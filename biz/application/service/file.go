@@ -82,6 +82,7 @@ func (s *FileService) GetFile(ctx context.Context, req *gencontent.GetFileReq) (
 		}
 		resp.File.SpaceSize = res.SpaceSize
 	}
+
 	return resp, nil
 }
 

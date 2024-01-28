@@ -48,15 +48,17 @@ func UserToUserMapper(in *gencontent.User) *usermapper.User {
 
 func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 	return &gencontent.FileInfo{
-		FileId:    data.ID.Hex(),
-		Name:      data.Name,
-		Type:      gencontent.Type(data.Type),
-		Path:      data.Path,
-		UserId:    data.UserId,
-		FatherId:  data.FatherId,
-		SpaceSize: *data.Size,
-		Md5:       data.FileMd5,
-		UpdateAt:  data.UpdateAt.Unix(),
+		FileId:      data.ID.Hex(),
+		UserId:      data.UserId,
+		Name:        data.Name,
+		Type:        gencontent.Type(data.Type),
+		Path:        data.Path,
+		FatherId:    data.FatherId,
+		SpaceSize:   *data.Size,
+		Md5:         data.FileMd5,
+		UpdateAt:    data.UpdateAt.Unix(),
+		Tag:         data.Tags,
+		Description: data.Description,
 	}
 }
 

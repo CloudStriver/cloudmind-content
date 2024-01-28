@@ -234,7 +234,7 @@ func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, e
 		},
 	}
 
-	result, err := m.conn.Database().Collection("cloudmind_contentcenter").Aggregate(ctx, pipeline)
+	result, err := m.conn.Database().Collection(CollectionName).Aggregate(ctx, pipeline)
 	switch {
 	case err == nil:
 		if result.Next(ctx) {
