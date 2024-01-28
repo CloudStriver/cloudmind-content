@@ -116,10 +116,10 @@ func (m *MongoMapper) FindFileIsExist(ctx context.Context, md5 string) (bool, er
 
 	var data []*File
 	if err := m.conn.Find(ctx, &data, bson.M{consts.FileMd5: md5}, &options.FindOptions{Limit: lo.ToPtr(int64(1))}); err != nil {
-		if errorx.Is(err, monc.ErrNotFound) {
-			return false, consts.ErrNotFound
-		}
 		return false, err
+	}
+	if len(data) == 0 {
+		return false, consts.ErrNotFound
 	}
 	return true, nil
 }
