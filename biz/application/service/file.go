@@ -55,9 +55,7 @@ var FileSet = wire.NewSet(
 
 func (s *FileService) GetFileIsExist(ctx context.Context, req *gencontent.GetFileIsExistReq) (resp *gencontent.GetFileIsExistResp, err error) {
 	resp = new(gencontent.GetFileIsExistResp)
-	_, err = s.FileMongoMapper.FindOne(ctx, &filemapper.FilterOptions{
-		OnlyMd5: lo.ToPtr(req.Md5),
-	})
+	_, err = s.FileMongoMapper.FindFileIsExist(ctx, req.Md5)
 	if err != nil {
 		log.CtxError(ctx, "查询文件md5值是否存在: 发生异常[%v]\n", err)
 		return resp, err
@@ -647,7 +645,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 			Path:     path,
 			FatherId: req.FatherId,
 			Size:     file.Size,
-			Md5:      file.Md5,
+			FileMd5:  file.FileMd5,
 			IsDel:    int64(gencontent.IsDel_Is_no),
 			CreateAt: time.Now(),
 			UpdateAt: time.Now(),
@@ -689,7 +687,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 							Path:     path,
 							FatherId: front.id,
 							Size:     v.Size,
-							Md5:      v.Md5,
+							FileMd5:  v.FileMd5,
 							IsDel:    int64(gencontent.IsDel_Is_no),
 							CreateAt: time.Now(),
 							UpdateAt: time.Now(),

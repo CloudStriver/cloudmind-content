@@ -6,6 +6,7 @@ import (
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
+	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/trace"
 	"go.opentelemetry.io/otel"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -30,6 +31,7 @@ var _ IMongoMapper = (*MongoMapper)(nil)
 
 type (
 	IMongoMapper interface {
+		FindFileIsExist(ctx context.Context, md5 string) (bool, error)
 		Count(ctx context.Context, filter *FilterOptions) (int64, error)
 		Insert(ctx context.Context, data *File) (string, error)
 		FindOne(ctx context.Context, fopts *FilterOptions) (*File, error)
@@ -52,7 +54,7 @@ type (
 		Path        string             `bson:"path,omitempty" json:"path,omitempty"`
 		FatherId    string             `bson:"fatherId,omitempty" json:"fatherId,omitempty"`
 		Size        *int64             `bson:"size,omitempty" json:"size,omitempty"`
-		Md5         string             `bson:"md5,omitempty" json:"md5,omitempty"`
+		FileMd5     string             `bson:"fileMd5,omitempty" json:"fileMd5,omitempty"`
 		IsDel       int64              `bson:"isDel,omitempty" json:"isDel,omitempty"`
 		Tags        []string           `bson:"tags,omitempty" json:"tags,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
@@ -70,22 +72,6 @@ type (
 		Size int64 `bson:"size,omitempty"`
 	}
 )
-
-func (m *MongoMapper) FindManyNotPagination(ctx context.Context, fopts *FilterOptions) ([]*File, error) {
-	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
-	_, span := tracer.Start(ctx, "mongo.FindManyNotPagination", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
-	defer span.End()
-
-	filter := makeMongoFilter(fopts)
-	var data []*File
-	if err := m.conn.Find(ctx, &data, filter, &options.FindOptions{}); err != nil {
-		if errorx.Is(err, monc.ErrNotFound) {
-			return nil, consts.ErrNotFound
-		}
-		return nil, err
-	}
-	return data, nil
-}
 
 func NewMongoMapper(config *config.Config) IMongoMapper {
 	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
@@ -105,6 +91,37 @@ func NewMongoMapper(config *config.Config) IMongoMapper {
 	return &MongoMapper{
 		conn: conn,
 	}
+}
+
+func (m *MongoMapper) FindManyNotPagination(ctx context.Context, fopts *FilterOptions) ([]*File, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindManyNotPagination", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	filter := makeMongoFilter(fopts)
+	var data []*File
+	if err := m.conn.Find(ctx, &data, filter, &options.FindOptions{}); err != nil {
+		if errorx.Is(err, monc.ErrNotFound) {
+			return nil, consts.ErrNotFound
+		}
+		return nil, err
+	}
+	return data, nil
+}
+
+func (m *MongoMapper) FindFileIsExist(ctx context.Context, md5 string) (bool, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindFileIsExist", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	var data []*File
+	if err := m.conn.Find(ctx, &data, bson.M{consts.FileMd5: md5}, &options.FindOptions{Limit: lo.ToPtr(int64(1))}); err != nil {
+		if errorx.Is(err, monc.ErrNotFound) {
+			return false, consts.ErrNotFound
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {

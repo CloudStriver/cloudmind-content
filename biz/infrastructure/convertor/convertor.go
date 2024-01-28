@@ -55,7 +55,7 @@ func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 		UserId:    data.UserId,
 		FatherId:  data.FatherId,
 		SpaceSize: *data.Size,
-		Md5:       data.Md5,
+		Md5:       data.FileMd5,
 		UpdateAt:  data.UpdateAt.Unix(),
 	}
 }
@@ -79,7 +79,7 @@ func FileToFileMapper(data *gencontent.File) (*file.File, error) {
 		Path:        data.Path,
 		FatherId:    data.FatherId,
 		Size:        data.SpaceSize,
-		Md5:         data.Md5,
+		FileMd5:     data.Md5,
 		IsDel:       data.IsDel,
 		Tags:        data.Tag,
 		Description: data.Description,
