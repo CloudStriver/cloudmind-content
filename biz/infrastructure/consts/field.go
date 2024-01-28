@@ -32,4 +32,7 @@ const (
 	PublicSpace        = 2
 	Intersection       = 1
 	UnionSet           = 2
+	Perpetuity         = 0 // 永久有效
+	Effective          = 1 // 有效
+	Invalid            = 2 // 无效
 )

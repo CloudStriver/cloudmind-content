@@ -119,7 +119,7 @@ func (m *MongoMapper) FindFileIsExist(ctx context.Context, md5 string) (bool, er
 		return false, err
 	}
 	if len(data) == 0 {
-		return false, consts.ErrNotFound
+		return false, nil
 	}
 	return true, nil
 }

@@ -55,13 +55,14 @@ var FileSet = wire.NewSet(
 
 func (s *FileService) GetFileIsExist(ctx context.Context, req *gencontent.GetFileIsExistReq) (resp *gencontent.GetFileIsExistResp, err error) {
 	resp = new(gencontent.GetFileIsExistResp)
-	_, err = s.FileMongoMapper.FindFileIsExist(ctx, req.Md5)
+	var ok bool
+	ok, err = s.FileMongoMapper.FindFileIsExist(ctx, req.Md5)
 	if err != nil {
 		log.CtxError(ctx, "查询文件md5值是否存在: 发生异常[%v]\n", err)
 		return resp, err
 	}
 
-	resp.Ok = true
+	resp.Ok = ok
 	return resp, nil
 }
 
@@ -541,7 +542,9 @@ func (s *FileService) CreateShareCode(ctx context.Context, req *gencontent.Creat
 		return resp, err
 	}
 	data.CreateAt = time.Now()
-	data.DeletedAt = data.CreateAt.Add(time.Duration(req.ShareFile.EffectiveTime)*time.Second + 720*time.Hour)
+	if req.ShareFile.EffectiveTime >= 0 {
+		data.DeletedAt = data.CreateAt.Add(time.Duration(req.ShareFile.EffectiveTime)*time.Second + 720*time.Hour)
+	}
 	if id, key, err = s.ShareFileMongoMapper.Insert(ctx, data); err != nil {
 		log.CtxError(ctx, "创建文件分享链接: 发生异常[%v]\n", err)
 		return resp, err
@@ -583,7 +586,7 @@ func (s *FileService) ParsingShareCode(ctx context.Context, req *gencontent.Pars
 		return resp, err
 	}
 	res := convertor.ShareFileMapperToShareFile(shareFile)
-	if res.Status == int64(2) {
+	if res.Status == int64(consts.Invalid) {
 		return resp, nil
 	}
 	resp.ShareFile = res
