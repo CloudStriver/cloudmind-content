@@ -103,12 +103,12 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 	} else {
 		switch o := req.SearchOptions.Type.(type) {
 		case *gencontent.SearchOptions_AllFieldsKey:
-			files, total, err = s.FileEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(o), filter, p, esp.ScoreCursorType)
+			files, total, err = s.FileEsMapper.Search(ctx, convertor.ConvertFileAllFieldsSearchQuery(o), filter, p, esp.ScoreCursorType)
 		case *gencontent.SearchOptions_MultiFieldsKey:
-			files, total, err = s.FileEsMapper.Search(ctx, convertor.ConvertPostMultiFieldsSearchQuery(o), filter, p, esp.ScoreCursorType)
+			files, total, err = s.FileEsMapper.Search(ctx, convertor.ConvertFileMultiFieldsSearchQuery(o), filter, p, esp.ScoreCursorType)
 		}
 		if err != nil {
-			log.CtxError(ctx, "搜索用户信息异常[%v]\n", err)
+			log.CtxError(ctx, "搜索文件列表异常[%v]\n", err)
 			return resp, err
 		}
 	}
@@ -217,12 +217,8 @@ func (s *FileService) CreateFile(ctx context.Context, req *gencontent.CreateFile
 		path = fatherFile.Path
 	}
 
-	data, err := convertor.FileToFileMapper(req.File)
-	if err != nil {
-		return resp, err
-	}
-	data.Path = path + "/" + data.ID.Hex()
-
+	req.File.Path = path
+	data := convertor.FileToFileMapper(req.File)
 	resp.FileId, err = s.FileMongoMapper.Insert(ctx, data)
 	if err != nil {
 		log.CtxError(ctx, "创建文件: 发生异常[%v]\n", err)
@@ -234,10 +230,7 @@ func (s *FileService) CreateFile(ctx context.Context, req *gencontent.CreateFile
 
 func (s *FileService) UpdateFile(ctx context.Context, req *gencontent.UpdateFileReq) (resp *gencontent.UpdateFileResp, err error) {
 	resp = new(gencontent.UpdateFileResp)
-	data, err := convertor.FileToFileMapper(req.File)
-	if err != nil {
-		return resp, err
-	}
+	data := convertor.FileToFileMapper(req.File)
 	if _, err = s.FileMongoMapper.Update(ctx, data); err != nil {
 		log.CtxError(ctx, "更新文件信息: 发生异常[%v]\n", err)
 		return resp, err
@@ -350,7 +343,8 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 					data[i].IsDel = int64(gencontent.IsDel_Is_soft)
 					data[i].DeletedAt = time.Now()
 					if req.ClearCommunity {
-						data[i].Tags = nil
+						data[i].Zone = ""
+						data[i].SubZone = ""
 					}
 					if _, err = s.FileMongoMapper.Update(sessionContext, data[i]); err != nil {
 						if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
@@ -364,7 +358,8 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 			file.IsDel = int64(gencontent.IsDel_Is_soft)
 			file.DeletedAt = time.Now()
 			if req.ClearCommunity {
-				file.Tags = nil
+				file.Zone = ""
+				file.SubZone = ""
 			}
 			if _, err = s.FileMongoMapper.Update(sessionContext, file); err != nil {
 				if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
@@ -402,7 +397,8 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 
 				for i := 0; i < len(data); i++ {
 					data[i].IsDel = int64(gencontent.IsDel_Is_hard)
-					data[i].Tags = nil
+					data[i].Zone = ""
+					data[i].SubZone = ""
 					if _, err = s.FileMongoMapper.Update(sessionContext, data[i]); err != nil {
 						if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 							log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
@@ -413,7 +409,8 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 			}
 
 			file.IsDel = int64(gencontent.IsDel_Is_hard)
-			file.Tags = nil
+			file.Zone = ""
+			file.SubZone = ""
 			if _, err = s.FileMongoMapper.Update(sessionContext, file); err != nil {
 				if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 					log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
@@ -538,10 +535,7 @@ func (s *FileService) GetShareList(ctx context.Context, req *gencontent.GetShare
 func (s *FileService) CreateShareCode(ctx context.Context, req *gencontent.CreateShareCodeReq) (resp *gencontent.CreateShareCodeResp, err error) {
 	resp = new(gencontent.CreateShareCodeResp)
 	var id, key string
-	data, err := convertor.ShareFileToShareFileMapper(req.ShareFile)
-	if err != nil {
-		return resp, err
-	}
+	data := convertor.ShareFileToShareFileMapper(req.ShareFile)
 	data.CreateAt = time.Now()
 	if req.ShareFile.EffectiveTime >= 0 {
 		data.DeletedAt = data.CreateAt.Add(time.Duration(req.ShareFile.EffectiveTime)*time.Second + 720*time.Hour)
@@ -558,10 +552,7 @@ func (s *FileService) CreateShareCode(ctx context.Context, req *gencontent.Creat
 
 func (s *FileService) UpdateShareCode(ctx context.Context, req *gencontent.UpdateShareCodeReq) (resp *gencontent.UpdateShareCodeResp, err error) {
 	resp = new(gencontent.UpdateShareCodeResp)
-	data, err := convertor.ShareFileToShareFileMapper(req.ShareFile)
-	if err != nil {
-		return resp, err
-	}
+	data := convertor.ShareFileToShareFileMapper(req.ShareFile)
 	if _, err = s.ShareFileMongoMapper.Update(ctx, data); err != nil {
 		log.CtxError(ctx, "修改文件分享链接: 发生异常[%v]\n", err)
 		return resp, err
@@ -745,9 +736,6 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 
 	tx := s.FileMongoMapper.StartClient()
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
-		if req.File.Tag == nil {
-			req.File.Tag = []string{}
-		}
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
@@ -760,9 +748,10 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 			}
 			for _, v := range data {
 				if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{
-					ID:     v.ID,
-					UserId: v.UserId,
-					Tags:   req.File.Tag,
+					ID:      v.ID,
+					UserId:  v.UserId,
+					Zone:    req.File.Zone,
+					SubZone: req.File.SubZone,
 				}); err != nil {
 					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 						log.CtxError(ctx, "上传文件到社区过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
@@ -772,9 +761,10 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 			}
 		}
 		if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{
-			ID:     oid,
-			UserId: req.File.UserId,
-			Tags:   req.File.Tag,
+			ID:      oid,
+			UserId:  req.File.UserId,
+			Zone:    req.File.Zone,
+			SubZone: req.File.SubZone,
 		}); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "上传文件到社区过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)

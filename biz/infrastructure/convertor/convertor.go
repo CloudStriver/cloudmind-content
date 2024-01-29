@@ -4,14 +4,13 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	couponmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/coupon"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
-	labelmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/label"
 	ordermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/order"
 	postmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
 	productmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/product"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	usermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
+	labelmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/zone"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
-	"github.com/CloudStriver/go-pkg/utils/util/log"
 	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/basic"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
@@ -57,22 +56,14 @@ func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 		SpaceSize:   *data.Size,
 		Md5:         data.FileMd5,
 		UpdateAt:    data.UpdateAt.Unix(),
-		Tag:         data.Tags,
+		Zone:        data.Zone,
+		SubZone:     data.SubZone,
 		Description: data.Description,
 	}
 }
 
-func FileToFileMapper(data *gencontent.File) (*file.File, error) {
-	var err error
-	var oid primitive.ObjectID
-	if data.FileId == "" {
-		oid = primitive.NewObjectID()
-	} else {
-		if oid, err = primitive.ObjectIDFromHex(data.FileId); err != nil {
-			log.Error("更新文件信息: 发生异常[%v]\n", err)
-			return nil, consts.ErrInvalidId
-		}
-	}
+func FileToFileMapper(data *gencontent.File) *file.File {
+	oid, _ := primitive.ObjectIDFromHex(data.FileId)
 	return &file.File{
 		ID:          oid,
 		UserId:      data.UserId,
@@ -83,9 +74,10 @@ func FileToFileMapper(data *gencontent.File) (*file.File, error) {
 		Size:        data.SpaceSize,
 		FileMd5:     data.Md5,
 		IsDel:       data.IsDel,
-		Tags:        data.Tag,
+		Zone:        data.Zone,
+		SubZone:     data.SubZone,
 		Description: data.Description,
-	}, nil
+	}
 }
 
 // 0:永久有效 1:有效 2:已失效 ...
@@ -116,18 +108,8 @@ func ShareFileMapperToShareFile(data *sharefile.ShareFile) *gencontent.ShareFile
 	}
 }
 
-func ShareFileToShareFileMapper(data *gencontent.ShareFile) (*sharefile.ShareFile, error) {
-	var err error
-	var oid primitive.ObjectID
-	if data.Code == "" {
-		oid = primitive.NewObjectID()
-	} else {
-		if oid, err = primitive.ObjectIDFromHex(data.Code); err != nil {
-			log.Error("更新文件信息: 发生异常[%v]\n", err)
-			return nil, consts.ErrInvalidId
-		}
-	}
-
+func ShareFileToShareFileMapper(data *gencontent.ShareFile) *sharefile.ShareFile {
+	oid, _ := primitive.ObjectIDFromHex(data.Code)
 	return &sharefile.ShareFile{
 		ID:            oid,
 		UserId:        data.UserId,
@@ -135,7 +117,7 @@ func ShareFileToShareFileMapper(data *gencontent.ShareFile) (*sharefile.ShareFil
 		FileList:      data.FileList,
 		EffectiveTime: data.EffectiveTime,
 		BrowseNumber:  &data.BrowseNumber,
-	}, nil
+	}
 }
 
 func ShareFileToShareCode(data *sharefile.ShareFile) *gencontent.ShareCode {
@@ -158,11 +140,10 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 			OnlyFileId:       opts.OnlyFileId,
 			OnlyFatherId:     opts.OnlyFatherId,
 			OnlyFileType:     opts.OnlyFileType,
-			OnlyTags:         opts.OnlyTags,
+			OnlyZone:         opts.OnlyZone,
+			OnlySubZone:      opts.OnlySubZone,
 			OnlyIsDel:        opts.OnlyIsDel,
 			OnlyDocumentType: opts.OnlyDocumentType,
-			OnlyMd5:          opts.OnlyMd5,
-			OnlySetRelation:  opts.OnlySetRelation,
 		}
 	}
 
@@ -195,18 +176,20 @@ func ParsePagination(opts *basic.PaginationOptions) (p *pagination.PaginationOpt
 	return
 }
 
-func LabelMapperToLabel(data *labelmapper.Label) *gencontent.Label {
-	return &gencontent.Label{
-		Id:    data.ID.Hex(),
-		Value: data.Value,
+func ZoneMapperToZone(data *labelmapper.Zone) *gencontent.Zone {
+	return &gencontent.Zone{
+		Id:       data.ID.Hex(),
+		FatherId: data.FatherId,
+		Value:    data.Value,
 	}
 }
 
-func LabelToLabelMapper(data *gencontent.Label) *labelmapper.Label {
+func ZoneToZoneMapper(data *gencontent.Zone) *labelmapper.Zone {
 	oid, _ := primitive.ObjectIDFromHex(data.Id)
-	return &labelmapper.Label{
-		ID:    oid,
-		Value: data.Value,
+	return &labelmapper.Zone{
+		ID:       oid,
+		FatherId: data.FatherId,
+		Value:    data.Value,
 	}
 }
 
@@ -254,6 +237,47 @@ func PostMapperToPost(in *postmapper.Post) *gencontent.Post {
 		CreateTime: in.CreateAt.UnixMilli(),
 		UpdateTime: in.UpdateAt.UnixMilli(),
 	}
+}
+
+func ConvertFileAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey) []types.Query {
+	return []types.Query{{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:  in.AllFieldsKey,
+			Fields: []string{consts.Name + "^3", consts.ID, consts.Description + "^3"},
+		}},
+	}
+}
+
+func ConvertFileMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsKey) []types.Query {
+	var q []types.Query
+	if in.MultiFieldsKey.Name != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.Name: {
+					Query: *in.MultiFieldsKey.Name + "^3",
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Description != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.Description: {
+					Query: *in.MultiFieldsKey.Description + "^3",
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Id != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.ID: {
+					Query: *in.MultiFieldsKey.Id,
+				},
+			},
+		})
+	}
+	return q
 }
 
 func ConvertPostAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey) []types.Query {
