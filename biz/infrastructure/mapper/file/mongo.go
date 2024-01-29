@@ -56,7 +56,8 @@ type (
 		Size        *int64             `bson:"size,omitempty" json:"size,omitempty"`
 		FileMd5     string             `bson:"fileMd5,omitempty" json:"fileMd5,omitempty"`
 		IsDel       int64              `bson:"isDel,omitempty" json:"isDel,omitempty"`
-		Tags        []string           `bson:"tags,omitempty" json:"tags,omitempty"`
+		Zone        string             `bson:"zone,omitempty" json:"zone,omitempty"`
+		SubZone     string             `bson:"subZone,omitempty" json:"subZone,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
 		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
 		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
@@ -129,8 +130,13 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 	_, span := tracer.Start(ctx, "mongo.Insert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
-	data.CreateAt = time.Now()
-	data.UpdateAt = time.Now()
+	if data.ID.IsZero() {
+		data.ID = primitive.NewObjectID()
+		data.CreateAt = time.Now()
+		data.UpdateAt = time.Now()
+	}
+
+	data.Path = data.Path + "/" + data.ID.Hex()
 	key := prefixFileCacheKey + data.ID.Hex()
 	ID, err := m.conn.InsertOne(ctx, key, data)
 	if err != nil {
@@ -145,16 +151,8 @@ func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*File,
 	defer span.End()
 
 	var data File
-	if fopts.OnlyFileId != nil {
-		_, err := primitive.ObjectIDFromHex(*fopts.OnlyFileId)
-		if err != nil {
-			return nil, consts.ErrInvalidId
-		}
-	}
-
 	filter := makeMongoFilter(fopts)
-	key := prefixFileCacheKey + *fopts.OnlyFileId
-	if err := m.conn.FindOne(ctx, key, &data, filter); err != nil {
+	if err := m.conn.FindOneNoCache(ctx, &data, filter); err != nil {
 		if errorx.Is(err, monc.ErrNotFound) {
 			return nil, consts.ErrNotFound
 		} else {

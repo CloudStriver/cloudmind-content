@@ -1,29 +1,36 @@
-package label
+package zone
 
 import (
 	"context"
 	errorx "errors"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
+	"github.com/CloudStriver/go-pkg/utils/pagination"
+	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
+	"github.com/zeromicro/go-zero/core/mr"
 	"github.com/zeromicro/go-zero/core/stores/monc"
 	"github.com/zeromicro/go-zero/core/trace"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"time"
 )
 
-const CollectionName = "label"
+const CollectionName = "zone"
 
-var prefixLabelCacheKey = "cache:label:"
+var prefixLabelCacheKey = "cache:zone:"
 
 var _ IMongoMapper = (*MongoMapper)(nil)
 
 type (
 	IMongoMapper interface {
+		Count(ctx context.Context, filter string) (int64, error)
 		Insert(ctx context.Context, data *Zone) (string, error)
 		FindOne(ctx context.Context, id string) (*Zone, error)
+		FindMany(ctx context.Context, fopts string, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Zone, error)
+		FindManyAndCount(ctx context.Context, fopts string, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Zone, int64, error)
 		Update(ctx context.Context, data *Zone) error
 		Delete(ctx context.Context, id string) (int64, error)
 		GetConn() *monc.Model
@@ -31,6 +38,7 @@ type (
 
 	Zone struct {
 		ID       primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+		FatherId string             `bson:"fatherId,omitempty" json:"fatherId,omitempty"`
 		Value    string             `bson:"value,omitempty" json:"value,omitempty"`
 		CreateAt time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
 		UpdateAt time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
@@ -46,6 +54,14 @@ func NewMongoMapper(config *config.Config) IMongoMapper {
 	return &MongoMapper{
 		conn: conn,
 	}
+}
+
+func (m *MongoMapper) Count(ctx context.Context, fopts string) (int64, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.Count", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	return m.conn.CountDocuments(ctx, bson.M{})
 }
 
 func (m *MongoMapper) Insert(ctx context.Context, data *Zone) (string, error) {
@@ -87,6 +103,63 @@ func (m *MongoMapper) FindOne(ctx context.Context, id string) (*Zone, error) {
 	default:
 		return nil, err
 	}
+}
+
+func (m *MongoMapper) FindMany(ctx context.Context, fopts string, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Zone, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindMany", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
+	filter := bson.M{}
+	sort, err := p.MakeSortOptions(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var data []*Zone
+	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
+		Sort:  sort,
+		Limit: popts.Limit,
+		Skip:  popts.Offset,
+	}); err != nil {
+		if errorx.Is(err, monc.ErrNotFound) {
+			return nil, consts.ErrNotFound
+		}
+		return nil, err
+	}
+
+	// 如果是反向查询，反转数据
+	if *popts.Backward {
+		for i := 0; i < len(data)/2; i++ {
+			data[i], data[len(data)-i-1] = data[len(data)-i-1], data[i]
+		}
+	}
+	if len(data) > 0 {
+		if err = p.StoreCursor(ctx, data[0], data[len(data)-1]); err != nil {
+			return nil, err
+		}
+	}
+
+	return data, nil
+}
+
+func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts string, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Zone, int64, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindManyAndCount", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	var data []*Zone
+	var total int64
+	var err, err1, err2 error
+	err = mr.Finish(func() error {
+		data, err1 = m.FindMany(ctx, fopts, popts, sorter)
+		return err1
+	}, func() error {
+		total, err2 = m.Count(ctx, fopts)
+		return err2
+	})
+	return data, total, err
 }
 
 func (m *MongoMapper) Update(ctx context.Context, data *Zone) error {

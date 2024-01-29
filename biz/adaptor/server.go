@@ -11,7 +11,7 @@ type ContentServerImpl struct {
 	*config.Config
 	FileService    service.IFileService
 	PostService    service.IPostService
-	LabelService   service.ILabelService
+	ZoneService    service.IZoneService
 	UserService    service.IUserService
 	ProductService service.IProductService
 	CouponService  service.ICouponService
@@ -164,20 +164,24 @@ func (s *ContentServerImpl) CreateFile(ctx context.Context, req *content.CreateF
 	return s.FileService.CreateFile(ctx, req)
 }
 
-func (s *ContentServerImpl) GetLabel(ctx context.Context, req *content.GetLabelReq) (res *content.GetLabelResp, err error) {
-	return s.LabelService.GetLabel(ctx, req)
+func (s *ContentServerImpl) GetZone(ctx context.Context, req *content.GetZoneReq) (res *content.GetZoneResp, err error) {
+	return s.ZoneService.GetZone(ctx, req)
 }
 
-func (s *ContentServerImpl) CreateLabel(ctx context.Context, req *content.CreateLabelReq) (*content.CreateLabelResp, error) {
-	return s.LabelService.CreateLabel(ctx, req)
+func (s *ContentServerImpl) GetZones(ctx context.Context, req *content.GetZonesReq) (res *content.GetZonesResp, err error) {
+	return s.ZoneService.GetZones(ctx, req)
 }
 
-func (s *ContentServerImpl) UpdateLabel(ctx context.Context, req *content.UpdateLabelReq) (*content.UpdateLabelResp, error) {
-	return s.LabelService.UpdateLabel(ctx, req)
+func (s *ContentServerImpl) CreateZone(ctx context.Context, req *content.CreateZoneReq) (*content.CreateZoneResp, error) {
+	return s.ZoneService.CreateZone(ctx, req)
 }
 
-func (s *ContentServerImpl) DeleteLabel(ctx context.Context, req *content.DeleteLabelReq) (*content.DeleteLabelResp, error) {
-	return s.LabelService.DeleteLabel(ctx, req)
+func (s *ContentServerImpl) UpdateZone(ctx context.Context, req *content.UpdateZoneReq) (*content.UpdateZoneResp, error) {
+	return s.ZoneService.UpdateZone(ctx, req)
+}
+
+func (s *ContentServerImpl) DeleteZone(ctx context.Context, req *content.DeleteZoneReq) (*content.DeleteZoneResp, error) {
+	return s.ZoneService.DeleteZone(ctx, req)
 }
 
 func (s *ContentServerImpl) GetShareList(ctx context.Context, req *content.GetShareListReq) (*content.GetShareListResp, error) {

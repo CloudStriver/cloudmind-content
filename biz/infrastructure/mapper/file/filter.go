@@ -15,11 +15,10 @@ type FilterOptions struct {
 	OnlyFileIds      []string
 	OnlyFatherId     *string
 	OnlyFileType     *int64
-	OnlyTags         []string
+	OnlyZone         *string
+	OnlySubZone      *string
 	OnlyIsDel        *int64
 	OnlyDocumentType *int64
-	OnlyMd5          *string
-	OnlySetRelation  *int64
 }
 
 type MongoFileFilter struct {
@@ -42,7 +41,6 @@ func (f *MongoFileFilter) toBson() bson.M {
 	f.CheckOnlyFileType()
 	f.CheckIsDel()
 	f.CheckDocumentType()
-	f.CheckOnlyMd5()
 	return f.m
 }
 
@@ -90,21 +88,16 @@ func (f *MongoFileFilter) CheckIsDel() {
 
 func (f *MongoFileFilter) CheckDocumentType() {
 	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == consts.PublicSpace {
-		if f.OnlyTags != nil {
-			if *f.OnlySetRelation == consts.Intersection {
-				f.m[consts.Tags] = bson.M{"$all": f.OnlyTags}
-			} else if *f.OnlySetRelation == consts.UnionSet {
-				f.m[consts.Tags] = bson.M{"$in": f.OnlyTags}
-			}
+		if f.OnlyZone != nil {
+			f.m[consts.Zone] = *f.OnlyZone
 		} else {
-			f.m[consts.Tags] = bson.M{"$ne": nil}
+			f.m[consts.Zone] = bson.M{"$exists": true, "$ne": ""}
 		}
-	}
-}
-
-func (f *MongoFileFilter) CheckOnlyMd5() {
-	if f.OnlyMd5 != nil {
-		f.m[consts.FileMd5] = *f.OnlyMd5
+		if f.OnlySubZone != nil {
+			f.m[consts.SubZone] = *f.OnlySubZone
+		} else {
+			f.m[consts.SubZone] = bson.M{"$exists": true, "$ne": ""}
+		}
 	}
 }
 
@@ -122,6 +115,8 @@ func makeEsFilter(opts *FilterOptions) []types.Query {
 
 func (f *EsFilter) toEsQuery() []types.Query {
 	f.checkOnlyUserId()
+	f.checkOnlyIsDel()
+	f.checkOnlyDocumentType()
 	return f.q
 }
 
@@ -132,6 +127,59 @@ func (f *EsFilter) checkOnlyUserId() {
 				consts.UserId: {Value: *f.OnlyUserId},
 			},
 		})
+	}
+}
+
+func (f *EsFilter) checkOnlyIsDel() {
+	if f.OnlyIsDel != nil {
+		f.q = append(f.q, types.Query{
+			Term: map[string]types.TermQuery{
+				consts.IsDel: {Value: *f.OnlyIsDel},
+			},
+		})
+	}
+}
+
+func (f *EsFilter) checkOnlyDocumentType() {
+	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == consts.PublicSpace {
+		if f.OnlyZone != nil {
+			f.q = append(f.q, types.Query{
+				Term: map[string]types.TermQuery{
+					consts.Zone: {Value: *f.OnlyZone},
+				},
+			})
+		} else {
+			f.q = append(f.q, types.Query{
+				Bool: &types.BoolQuery{
+					MustNot: []types.Query{
+						{
+							Term: map[string]types.TermQuery{
+								consts.Zone: {Value: ""},
+							},
+						},
+					},
+				},
+			})
+		}
+		if f.OnlySubZone != nil {
+			f.q = append(f.q, types.Query{
+				Term: map[string]types.TermQuery{
+					consts.SubZone: {Value: *f.OnlySubZone},
+				},
+			})
+		} else {
+			f.q = append(f.q, types.Query{
+				Bool: &types.BoolQuery{
+					MustNot: []types.Query{
+						{
+							Term: map[string]types.TermQuery{
+								consts.SubZone: {Value: ""},
+							},
+						},
+					},
+				},
+			})
+		}
 	}
 }
 

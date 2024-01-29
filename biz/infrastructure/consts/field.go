@@ -13,6 +13,8 @@ const (
 	FileMd5            = "fileMd5"
 	IsDel              = "isDel"
 	Tags               = "tags"
+	Zone               = "zone"
+	SubZone            = "subZone"
 	Status             = "status"
 	Title              = "title"
 	Text               = "text"
