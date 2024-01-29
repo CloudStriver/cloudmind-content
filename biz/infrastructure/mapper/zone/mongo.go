@@ -22,14 +22,14 @@ var _ IMongoMapper = (*MongoMapper)(nil)
 
 type (
 	IMongoMapper interface {
-		Insert(ctx context.Context, data *Label) (string, error)
-		FindOne(ctx context.Context, id string) (*Label, error)
-		Update(ctx context.Context, data *Label) error
+		Insert(ctx context.Context, data *Zone) (string, error)
+		FindOne(ctx context.Context, id string) (*Zone, error)
+		Update(ctx context.Context, data *Zone) error
 		Delete(ctx context.Context, id string) (int64, error)
 		GetConn() *monc.Model
 	}
 
-	Label struct {
+	Zone struct {
 		ID       primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 		Value    string             `bson:"value,omitempty" json:"value,omitempty"`
 		CreateAt time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
@@ -48,7 +48,7 @@ func NewMongoMapper(config *config.Config) IMongoMapper {
 	}
 }
 
-func (m *MongoMapper) Insert(ctx context.Context, data *Label) (string, error) {
+func (m *MongoMapper) Insert(ctx context.Context, data *Zone) (string, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.Insert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
@@ -67,7 +67,7 @@ func (m *MongoMapper) Insert(ctx context.Context, data *Label) (string, error) {
 	return ID.InsertedID.(primitive.ObjectID).Hex(), err
 }
 
-func (m *MongoMapper) FindOne(ctx context.Context, id string) (*Label, error) {
+func (m *MongoMapper) FindOne(ctx context.Context, id string) (*Zone, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.FindOne", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
@@ -76,7 +76,7 @@ func (m *MongoMapper) FindOne(ctx context.Context, id string) (*Label, error) {
 	if err != nil {
 		return nil, consts.ErrInvalidId
 	}
-	var data Label
+	var data Zone
 	key := prefixLabelCacheKey + id
 	err = m.conn.FindOne(ctx, key, &data, bson.M{"_id": oid})
 	switch {
@@ -89,7 +89,7 @@ func (m *MongoMapper) FindOne(ctx context.Context, id string) (*Label, error) {
 	}
 }
 
-func (m *MongoMapper) Update(ctx context.Context, data *Label) error {
+func (m *MongoMapper) Update(ctx context.Context, data *Zone) error {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.Update", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
