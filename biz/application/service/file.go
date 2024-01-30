@@ -89,14 +89,26 @@ func (s *FileService) GetFile(ctx context.Context, req *gencontent.GetFileReq) (
 func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileListReq) (resp *gencontent.GetFileListResp, err error) {
 	resp = new(gencontent.GetFileListResp)
 	var (
-		files []*filemapper.File
-		total int64
+		files  []*filemapper.File
+		total  int64
+		cursor mongop.MongoCursor
 	)
+
+	switch req.GetSortOptions() {
+	case gencontent.SortOptions_SortOptions_createAtAsc:
+		cursor = filemapper.CreateAtAscCursorType
+	case gencontent.SortOptions_SortOptions_createAtDesc:
+		cursor = filemapper.CreateAtDescCursorType
+	case gencontent.SortOptions_SortOptions_updateAtAsc:
+		cursor = filemapper.UpdateAtAscCursorType
+	case gencontent.SortOptions_SortOptions_updateAtDesc:
+		cursor = filemapper.UpdateAtDescCursorType
+	}
 
 	filter := convertor.FileFilterOptionsToFilterOptions(req.FilterOptions)
 	p := convertor.ParsePagination(req.PaginationOptions)
 	if req.SearchOptions == nil {
-		if files, total, err = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, mongop.IdCursorType); err != nil {
+		if files, total, err = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, cursor); err != nil {
 			log.CtxError(ctx, "查询文件列表: 发生异常[%v]\n", err)
 			return resp, err
 		}

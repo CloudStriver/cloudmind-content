@@ -1,14 +1,16 @@
 package consts
 
 const (
-	ID                 = "_id"
-	UserId             = "userId"
-	Name               = "name"
-	ProductId          = "productId"
-	ProductName        = "productName"
-	Type               = "type"
-	Path               = "path"
-	FatherId           = "fatherId"
+	ID          = "_id"
+	UserId      = "userId"
+	TypeString  = "typeString"
+	Name        = "name"
+	ProductId   = "productId"
+	ProductName = "productName"
+	Type        = "type"
+	Path        = "path"
+	FatherId    = "fatherId"
+
 	Size               = "size"
 	FileMd5            = "fileMd5"
 	IsDel              = "isDel"

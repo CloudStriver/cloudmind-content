@@ -19,6 +19,7 @@ type FilterOptions struct {
 	OnlySubZone      *string
 	OnlyIsDel        *int64
 	OnlyDocumentType *int64
+	OnlyTypeString   []string
 }
 
 type MongoFileFilter struct {
@@ -39,9 +40,18 @@ func (f *MongoFileFilter) toBson() bson.M {
 	f.CheckOnlyFileIds()
 	f.CheckOnlyFatherId()
 	f.CheckOnlyFileType()
-	f.CheckIsDel()
-	f.CheckDocumentType()
+	f.CheckOnlyIsDel()
+	f.CheckOnlyDocumentType()
+	f.CheckOnlyTypeString()
 	return f.m
+}
+
+func (f *MongoFileFilter) CheckOnlyTypeString() {
+	if f.OnlyTypeString != nil {
+		f.m[consts.TypeString] = bson.M{
+			"$in": f.OnlyTypeString,
+		}
+	}
 }
 
 func (f *MongoFileFilter) CheckOnlyUserId() {
@@ -80,13 +90,13 @@ func (f *MongoFileFilter) CheckOnlyFileType() {
 	}
 }
 
-func (f *MongoFileFilter) CheckIsDel() {
+func (f *MongoFileFilter) CheckOnlyIsDel() {
 	if f.OnlyIsDel != nil {
 		f.m[consts.IsDel] = *f.OnlyIsDel
 	}
 }
 
-func (f *MongoFileFilter) CheckDocumentType() {
+func (f *MongoFileFilter) CheckOnlyDocumentType() {
 	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == consts.PublicSpace {
 		if f.OnlyZone != nil {
 			f.m[consts.Zone] = *f.OnlyZone

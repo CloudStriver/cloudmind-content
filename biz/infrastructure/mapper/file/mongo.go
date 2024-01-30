@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	errorx "errors"
+	"fmt"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
@@ -51,6 +52,7 @@ type (
 		UserId      string             `bson:"userId,omitempty" json:"userId,omitempty"`
 		Name        string             `bson:"name,omitempty" json:"name,omitempty"`
 		Type        int64              `bson:"type,omitempty" json:"type,omitempty"`
+		TypeString  string             `bson:"typeString,omitempty" json:"typeString,omitempty"`
 		Path        string             `bson:"path,omitempty" json:"path,omitempty"`
 		FatherId    string             `bson:"fatherId,omitempty" json:"fatherId,omitempty"`
 		Size        *int64             `bson:"size,omitempty" json:"size,omitempty"`
@@ -59,6 +61,7 @@ type (
 		Zone        string             `bson:"zone,omitempty" json:"zone,omitempty"`
 		SubZone     string             `bson:"subZone,omitempty" json:"subZone,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
+		Url         string             `bson:"url,omitempty" json:"url,omitempty"`
 		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
 		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
 		DeletedAt   time.Time          `bson:"deletedAt,omitempty" json:"deletedAt,omitempty"`
@@ -179,6 +182,7 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
 	filter := makeMongoFilter(fopts)
 	sort, err := p.MakeSortOptions(ctx, filter)
+	fmt.Println(sort, filter)
 	if err != nil {
 		return nil, err
 	}
