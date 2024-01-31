@@ -75,7 +75,7 @@ func (s *FileService) GetFile(ctx context.Context, req *gencontent.GetFileReq) (
 	}
 
 	resp.File = convertor.FileMapperToFile(file)
-	if req.IsGetSize && resp.File.Type == gencontent.Type_Type_folder {
+	if req.IsGetSize && resp.File.SpaceSize == consts.FolderSize {
 		res, err := s.GetFolderSize(ctx, resp.File.Path)
 		if err != nil {
 			return resp, consts.ErrCalFileSize
@@ -222,7 +222,7 @@ func (s *FileService) CreateFile(ctx context.Context, req *gencontent.CreateFile
 			log.CtxError(ctx, "查询目标文件夹: 发生异常[%v]\n", err)
 			return resp, err
 		}
-		if fatherFile.Type != int64(gencontent.Type_Type_folder) {
+		if *fatherFile.Size != consts.FolderSize {
 			log.CtxError(ctx, "目标文件[%v]不是文件夹\n", req.File.FatherId)
 			return resp, consts.ErrFileIsNotDir
 		}
@@ -258,12 +258,23 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 	)
 
 	files, err := s.FileMongoMapper.FindManyNotPagination(ctx, &filemapper.FilterOptions{
-		OnlyUserId:  &req.UserId,
+		OnlyUserId:  lo.ToPtr(req.UserId),
 		OnlyFileIds: []string{req.FileId, req.FatherId},
 		OnlyIsDel:   lo.ToPtr(int64(gencontent.IsDel_Is_no)),
 	})
 	if err != nil {
 		return resp, err
+	}
+
+	if req.FatherId == req.UserId {
+		files = append(files, &filemapper.File{
+			Path: req.FatherId,
+			Size: lo.ToPtr(int64(-1)),
+		})
+	}
+
+	if len(files) != 2 {
+		return resp, consts.ErrIllegalOperation
 	}
 
 	if files[0].ID.Hex() != req.FileId {
@@ -274,7 +285,7 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 		fatherFile = files[1]
 	}
 
-	if fatherFile.Type != int64(gencontent.Type_Type_folder) {
+	if *fatherFile.Size != consts.FolderSize {
 		return resp, consts.ErrFileIsNotDir
 	}
 
@@ -283,7 +294,7 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
-		if file.Type == int64(gencontent.Type_Type_folder) {
+		if *file.Size == consts.FolderSize {
 			var data []*filemapper.File
 			filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
 			if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
@@ -344,7 +355,7 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 			if err = sessionContext.StartTransaction(); err != nil {
 				return err
 			}
-			if file.Type == int64(gencontent.Type_Type_folder) {
+			if *file.Size == consts.FolderSize {
 				var data []*filemapper.File
 				filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
 				if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
@@ -400,7 +411,7 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 			if err = sessionContext.StartTransaction(); err != nil {
 				return err
 			}
-			if file.Type == int64(gencontent.Type_Type_folder) {
+			if *file.Size == consts.FolderSize {
 				var data []*filemapper.File
 				filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
 				if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
@@ -464,7 +475,7 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
-		if file.Type == int64(gencontent.Type_Type_folder) {
+		if *file.Size == consts.FolderSize {
 			var data []*filemapper.File
 			filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
 			if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
@@ -525,7 +536,6 @@ func (s *FileService) GetShareList(ctx context.Context, req *gencontent.GetShare
 		total      int64
 	)
 	p := convertor.ParsePagination(req.PaginationOptions)
-
 	if shareCodes, total, err = s.ShareFileMongoMapper.FindManyAndCount(ctx, convertor.ShareFileFilterOptionsToShareCodeOptions(req.ShareFileFilterOptions),
 		p, mongop.IdCursorType); err != nil {
 		log.CtxError(ctx, "查询文件分享链接列表: 发生异常[%v]\n", err)
@@ -536,11 +546,9 @@ func (s *FileService) GetShareList(ctx context.Context, req *gencontent.GetShare
 	if p.LastToken != nil {
 		resp.Token = *p.LastToken
 	}
-	resp.ShareCodes = make([]*gencontent.ShareCode, 0, len(shareCodes))
-	for _, v := range shareCodes {
-		resp.ShareCodes = append(resp.ShareCodes, convertor.ShareFileToShareCode(v))
-	}
-
+	resp.ShareCodes = lo.Map[*sharefilemapper.ShareFile, *gencontent.ShareCode](shareCodes, func(item *sharefilemapper.ShareFile, _ int) *gencontent.ShareCode {
+		return convertor.ShareFileToShareCode(item)
+	})
 	return resp, nil
 }
 
@@ -604,6 +612,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 		files      []*filemapper.File
 		file       *filemapper.File
 		objectfile *filemapper.File
+		err1, err2 error
 	)
 	type kv struct {
 		id   string
@@ -629,7 +638,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 		objectfile = files[1]
 	}
 
-	if objectfile.Type != int64(gencontent.Type_Type_folder) {
+	if *objectfile.Size != consts.FolderSize {
 		return resp, consts.ErrFileIsNotDir
 	}
 	if file.UserId == objectfile.UserId {
@@ -658,10 +667,10 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 			UpdateAt: time.Now(),
 		}
 
-		if file.Type == int64(gencontent.Type_Type_folder) {
+		if *file.Size == consts.FolderSize {
 			err = mr.Finish(func() error {
-				_, err = s.FileMongoMapper.Insert(sessionContext, rootFile)
-				return err
+				_, err1 = s.FileMongoMapper.Insert(sessionContext, rootFile)
+				return err1
 			}, func() error {
 				var front kv
 				var sonFile *filemapper.File
@@ -680,8 +689,8 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 						return consts.ErrIllegalOperation
 					}
 
-					if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter, &options.FindOptions{BatchSize: lo.ToPtr(int32(100))}); err != nil {
-						return err
+					if err2 = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter, &options.FindOptions{BatchSize: lo.ToPtr(int32(100))}); err2 != nil {
+						return err2
 					}
 					for _, v := range data {
 						oid = primitive.NewObjectID()
@@ -699,10 +708,10 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 							CreateAt: time.Now(),
 							UpdateAt: time.Now(),
 						}
-						if _, err = s.FileMongoMapper.Insert(sessionContext, sonFile); err != nil {
-							return err
+						if _, err2 = s.FileMongoMapper.Insert(sessionContext, sonFile); err != nil {
+							return err2
 						}
-						if v.Type == int64(gencontent.Type_Type_folder) {
+						if *v.Size == consts.FolderSize {
 							queue = append(queue, kv{id: v.ID.Hex(), path: sonFile.Path})
 						}
 					}
@@ -751,11 +760,10 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
-		if req.File.Type == gencontent.Type_Type_folder {
+		if req.File.SpaceSize == consts.FolderSize {
 			var data []*filemapper.File
 			filter := bson.M{consts.Path: bson.M{"$regex": "^" + file.Path + "/"}}
-			err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter)
-			if err != nil {
+			if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
 				return err
 			}
 			for _, v := range data {

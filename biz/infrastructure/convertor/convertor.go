@@ -14,6 +14,7 @@ import (
 	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/basic"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
@@ -50,8 +51,7 @@ func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 		FileId:      data.ID.Hex(),
 		UserId:      data.UserId,
 		Name:        data.Name,
-		TypeString:  data.TypeString,
-		Type:        gencontent.Type(data.Type),
+		Type:        data.Type,
 		Path:        data.Path,
 		FatherId:    data.FatherId,
 		SpaceSize:   *data.Size,
@@ -71,11 +71,10 @@ func FileToFileMapper(data *gencontent.File) *file.File {
 		ID:          oid,
 		UserId:      data.UserId,
 		Name:        data.Name,
-		Type:        int64(data.Type),
-		TypeString:  data.TypeString,
+		Type:        data.Type,
 		Path:        data.Path,
 		FatherId:    data.FatherId,
-		Size:        data.SpaceSize,
+		Size:        lo.ToPtr(data.SpaceSize),
 		FileMd5:     data.Md5,
 		IsDel:       data.IsDel,
 		Zone:        data.Zone,
@@ -148,12 +147,11 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 			OnlyUserId:       opts.OnlyUserId,
 			OnlyFileId:       opts.OnlyFileId,
 			OnlyFatherId:     opts.OnlyFatherId,
-			OnlyFileType:     opts.OnlyFileType,
 			OnlyZone:         opts.OnlyZone,
 			OnlySubZone:      opts.OnlySubZone,
 			OnlyIsDel:        opts.OnlyIsDel,
 			OnlyDocumentType: opts.OnlyDocumentType,
-			OnlyTypeString:   opts.OnlyTypeString,
+			OnlyType:         opts.OnlyType,
 		}
 	}
 
