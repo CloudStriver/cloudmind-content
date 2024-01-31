@@ -1,17 +1,20 @@
 package consts
 
 const (
-	ID                 = "_id"
-	UserId             = "userId"
-	Name               = "name"
-	ProductId          = "productId"
-	ProductName        = "productName"
-	Type               = "type"
-	Path               = "path"
-	FatherId           = "fatherId"
+	ID          = "_id"
+	UserId      = "userId"
+	TypeString  = "typeString"
+	Name        = "name"
+	ProductId   = "productId"
+	ProductName = "productName"
+	Type        = "type"
+	Path        = "path"
+	FatherId    = "fatherId"
+
 	Size               = "size"
 	FileMd5            = "fileMd5"
 	IsDel              = "isDel"
+	SpaceSize          = "spaceSize"
 	Tags               = "tags"
 	Zone               = "zone"
 	SubZone            = "subZone"
@@ -37,4 +40,5 @@ const (
 	Perpetuity         = 0 // 永久有效
 	Effective          = 1 // 有效
 	Invalid            = 2 // 无效
+	FolderSize         = -1
 )

@@ -14,11 +14,11 @@ type FilterOptions struct {
 	OnlyFileId       *string
 	OnlyFileIds      []string
 	OnlyFatherId     *string
-	OnlyFileType     *int64
 	OnlyZone         *string
 	OnlySubZone      *string
 	OnlyIsDel        *int64
 	OnlyDocumentType *int64
+	OnlyType         []string
 }
 
 type MongoFileFilter struct {
@@ -38,10 +38,18 @@ func (f *MongoFileFilter) toBson() bson.M {
 	f.CheckOnlyFileId()
 	f.CheckOnlyFileIds()
 	f.CheckOnlyFatherId()
-	f.CheckOnlyFileType()
-	f.CheckIsDel()
-	f.CheckDocumentType()
+	f.CheckOnlyIsDel()
+	f.CheckOnlyDocumentType()
+	f.CheckOnlyType()
 	return f.m
+}
+
+func (f *MongoFileFilter) CheckOnlyType() {
+	if f.OnlyType != nil {
+		f.m[consts.Type] = bson.M{
+			"$in": f.OnlyType,
+		}
+	}
 }
 
 func (f *MongoFileFilter) CheckOnlyUserId() {
@@ -74,19 +82,13 @@ func (f *MongoFileFilter) CheckOnlyFatherId() {
 	}
 }
 
-func (f *MongoFileFilter) CheckOnlyFileType() {
-	if f.OnlyFileType != nil {
-		f.m[consts.Type] = *f.OnlyFileType
-	}
-}
-
-func (f *MongoFileFilter) CheckIsDel() {
+func (f *MongoFileFilter) CheckOnlyIsDel() {
 	if f.OnlyIsDel != nil {
 		f.m[consts.IsDel] = *f.OnlyIsDel
 	}
 }
 
-func (f *MongoFileFilter) CheckDocumentType() {
+func (f *MongoFileFilter) CheckOnlyDocumentType() {
 	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == consts.PublicSpace {
 		if f.OnlyZone != nil {
 			f.m[consts.Zone] = *f.OnlyZone
@@ -182,67 +184,3 @@ func (f *EsFilter) checkOnlyDocumentType() {
 		}
 	}
 }
-
-// 对应查看某个群组的文件列表
-//func (f *EsFilter) checkOnlyCommunityId() {
-//	if f.IncludeGlobal == nil {
-//		if f.OnlyCommunityId != nil {
-//			f.q = append(f.q, types.Query{
-//				Term: map[string]types.TermQuery{
-//					consts.CommunityId: {Value: *f.OnlyCommunityId},
-//				},
-//			})
-//		}
-//	} else if *f.IncludeGlobal == false {
-//		if f.OnlyCommunityId != nil {
-//			f.q = append(f.q, types.Query{
-//				Term: map[string]types.TermQuery{
-//					consts.CommunityId: {Value: *f.OnlyCommunityId},
-//				},
-//			})
-//		}
-//	} else {
-//		if f.OnlyCommunityId != nil {
-//			BoolQuery := make([]types.Query, 0)
-//			BoolQuery = append(BoolQuery, types.Query{
-//				Bool: &types.BoolQuery{
-//					MustNot: []types.Query{
-//						types.Query{
-//							Exists: &types.ExistsQuery{
-//								Field: consts.CommunityId,
-//							},
-//						},
-//					},
-//				},
-//			})
-//			BoolQuery = append(BoolQuery, types.Query{
-//				Term: map[string]types.TermQuery{
-//					consts.CommunityId: {Value: *f.OnlyCommunityId},
-//				},
-//			})
-//			f.q = append(f.q, types.Query{
-//				Bool: &types.BoolQuery{
-//					Should: BoolQuery,
-//				},
-//			})
-//		} else {
-//			BoolQuery := make([]types.Query, 0)
-//			BoolQuery = append(BoolQuery, types.Query{
-//				Bool: &types.BoolQuery{
-//					MustNot: []types.Query{
-//						types.Query{
-//							Exists: &types.ExistsQuery{
-//								Field: consts.CommunityId,
-//							},
-//						},
-//					},
-//				},
-//			})
-//			f.q = append(f.q, types.Query{
-//				Bool: &types.BoolQuery{
-//					Should: BoolQuery,
-//				},
-//			})
-//		}
-//	}
-//}

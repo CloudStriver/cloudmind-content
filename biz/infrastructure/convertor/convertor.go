@@ -50,15 +50,17 @@ func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 		FileId:      data.ID.Hex(),
 		UserId:      data.UserId,
 		Name:        data.Name,
-		Type:        gencontent.Type(data.Type),
+		Type:        data.Type,
 		Path:        data.Path,
 		FatherId:    data.FatherId,
 		SpaceSize:   *data.Size,
 		Md5:         data.FileMd5,
-		UpdateAt:    data.UpdateAt.Unix(),
 		Zone:        data.Zone,
 		SubZone:     data.SubZone,
 		Description: data.Description,
+		Url:         data.Url,
+		CreateAt:    data.CreateAt.UnixMilli(),
+		UpdateAt:    data.UpdateAt.UnixMilli(),
 	}
 }
 
@@ -68,7 +70,7 @@ func FileToFileMapper(data *gencontent.File) *file.File {
 		ID:          oid,
 		UserId:      data.UserId,
 		Name:        data.Name,
-		Type:        int64(data.Type),
+		Type:        data.Type,
 		Path:        data.Path,
 		FatherId:    data.FatherId,
 		Size:        data.SpaceSize,
@@ -77,6 +79,11 @@ func FileToFileMapper(data *gencontent.File) *file.File {
 		Zone:        data.Zone,
 		SubZone:     data.SubZone,
 		Description: data.Description,
+		Url:         data.Url,
+		CreateAt:    time.Time{},
+		UpdateAt:    time.Time{},
+		DeletedAt:   time.Time{},
+		Score_:      0,
 	}
 }
 
@@ -139,11 +146,11 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 			OnlyUserId:       opts.OnlyUserId,
 			OnlyFileId:       opts.OnlyFileId,
 			OnlyFatherId:     opts.OnlyFatherId,
-			OnlyFileType:     opts.OnlyFileType,
 			OnlyZone:         opts.OnlyZone,
 			OnlySubZone:      opts.OnlySubZone,
 			OnlyIsDel:        opts.OnlyIsDel,
 			OnlyDocumentType: opts.OnlyDocumentType,
+			OnlyType:         opts.OnlyType,
 		}
 	}
 

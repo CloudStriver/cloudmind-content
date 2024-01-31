@@ -3,23 +3,23 @@ package file
 import (
 	"context"
 	errorx "errors"
+	"fmt"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
-	"github.com/samber/lo"
-	"github.com/zeromicro/go-zero/core/trace"
-	"go.opentelemetry.io/otel"
-	oteltrace "go.opentelemetry.io/otel/trace"
-	"sync"
-
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
+	"github.com/samber/lo"
+	"github.com/zeromicro/go-zero/core/mr"
 	"github.com/zeromicro/go-zero/core/stores/monc"
+	"github.com/zeromicro/go-zero/core/trace"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"time"
 )
 
@@ -50,7 +50,7 @@ type (
 		ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 		UserId      string             `bson:"userId,omitempty" json:"userId,omitempty"`
 		Name        string             `bson:"name,omitempty" json:"name,omitempty"`
-		Type        int64              `bson:"type,omitempty" json:"type,omitempty"`
+		Type        string             `bson:"type,omitempty" json:"type,omitempty"`
 		Path        string             `bson:"path,omitempty" json:"path,omitempty"`
 		FatherId    string             `bson:"fatherId,omitempty" json:"fatherId,omitempty"`
 		Size        *int64             `bson:"size,omitempty" json:"size,omitempty"`
@@ -59,6 +59,7 @@ type (
 		Zone        string             `bson:"zone,omitempty" json:"zone,omitempty"`
 		SubZone     string             `bson:"subZone,omitempty" json:"subZone,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
+		Url         string             `bson:"url,omitempty" json:"url,omitempty"`
 		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
 		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
 		DeletedAt   time.Time          `bson:"deletedAt,omitempty" json:"deletedAt,omitempty"`
@@ -78,7 +79,7 @@ func NewMongoMapper(config *config.Config) IMongoMapper {
 	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
 	indexModel := mongo.IndexModel{
 		Keys: bson.M{
-			"deletedAt": 1, // 索引字段
+			consts.DeletedAt: 1, // 索引字段
 		},
 		Options: options.Index().SetExpireAfterSeconds(604800), // 一周后过期
 	}
@@ -183,12 +184,14 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 		return nil, err
 	}
 
+	fmt.Println(filter)
 	var data []*File
 	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
 		Sort:  sort,
 		Limit: popts.Limit,
 		Skip:  popts.Offset,
 	}); err != nil {
+		fmt.Println(err)
 		if errorx.Is(err, monc.ErrNotFound) {
 			return nil, consts.ErrNotFound
 		}
@@ -197,9 +200,7 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 
 	// 如果是反向查询，反转数据
 	if *popts.Backward {
-		for i := 0; i < len(data)/2; i++ {
-			data[i], data[len(data)-i-1] = data[len(data)-i-1], data[i]
-		}
+		lo.Reverse(data)
 	}
 	if len(data) > 0 {
 		if err = p.StoreCursor(ctx, data[0], data[len(data)-1]); err != nil {
@@ -219,15 +220,15 @@ func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, e
 	pipeline := mongo.Pipeline{
 		{
 			{"$match", bson.M{
-				"path":  bson.M{"$regex": "^" + path},
-				"type":  bson.M{"$ne": gencontent.Type_Type_folder},
-				"isDel": gencontent.IsDel_Is_no,
+				consts.Path:      bson.M{"$regex": "^" + path},
+				consts.SpaceSize: bson.M{"$ne": consts.FolderSize},
+				consts.IsDel:     gencontent.IsDel_Is_no,
 			}},
 		},
 		{
 			{"$group", bson.M{
-				"_id":  nil,
-				"size": bson.M{"$sum": "$size"},
+				consts.ID:   nil,
+				consts.Size: bson.M{"$sum": "$size"},
 			}},
 		},
 	}
@@ -260,38 +261,21 @@ func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions
 	_, span := tracer.Start(ctx, "mongo.FindManyAndCount", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
-	var data []*File
-	var total int64
-	wait := sync.WaitGroup{}
-	wait.Add(2)
-	c := make(chan error)
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		defer wait.Done()
-		var err error
-		data, err = m.FindMany(ctx, fopts, popts, sorter)
-		if err != nil {
-			c <- err
-			return
-		}
-	}()
-	go func() {
-		defer wait.Done()
-		var err error
-		total, err = m.Count(ctx, fopts)
-		if err != nil {
-			c <- err
-			return
-		}
-	}()
-	go func() {
-		wait.Wait()
-		defer close(c)
-	}()
-	if err := <-c; err != nil {
+	var (
+		err, err1, err2 error
+		data            []*File
+		total           int64
+	)
+	if err = mr.Finish(func() error {
+		data, err1 = m.FindMany(ctx, fopts, popts, sorter)
+		return err1
+	}, func() error {
+		total, err2 = m.Count(ctx, fopts)
+		return err2
+	}); err != nil {
 		return nil, 0, err
 	}
+
 	return data, total, nil
 }
 
