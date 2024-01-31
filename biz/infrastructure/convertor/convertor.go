@@ -50,8 +50,7 @@ func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 		FileId:      data.ID.Hex(),
 		UserId:      data.UserId,
 		Name:        data.Name,
-		TypeString:  data.TypeString,
-		Type:        gencontent.Type(data.Type),
+		Type:        data.Type,
 		Path:        data.Path,
 		FatherId:    data.FatherId,
 		SpaceSize:   *data.Size,
@@ -71,8 +70,7 @@ func FileToFileMapper(data *gencontent.File) *file.File {
 		ID:          oid,
 		UserId:      data.UserId,
 		Name:        data.Name,
-		Type:        int64(data.Type),
-		TypeString:  data.TypeString,
+		Type:        data.Type,
 		Path:        data.Path,
 		FatherId:    data.FatherId,
 		Size:        data.SpaceSize,
@@ -148,12 +146,11 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 			OnlyUserId:       opts.OnlyUserId,
 			OnlyFileId:       opts.OnlyFileId,
 			OnlyFatherId:     opts.OnlyFatherId,
-			OnlyFileType:     opts.OnlyFileType,
 			OnlyZone:         opts.OnlyZone,
 			OnlySubZone:      opts.OnlySubZone,
 			OnlyIsDel:        opts.OnlyIsDel,
 			OnlyDocumentType: opts.OnlyDocumentType,
-			OnlyTypeString:   opts.OnlyTypeString,
+			OnlyType:         opts.OnlyType,
 		}
 	}
 

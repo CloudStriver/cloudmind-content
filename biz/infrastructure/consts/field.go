@@ -14,6 +14,7 @@ const (
 	Size               = "size"
 	FileMd5            = "fileMd5"
 	IsDel              = "isDel"
+	SpaceSize          = "spaceSize"
 	Tags               = "tags"
 	Zone               = "zone"
 	SubZone            = "subZone"
@@ -39,4 +40,5 @@ const (
 	Perpetuity         = 0 // 永久有效
 	Effective          = 1 // 有效
 	Invalid            = 2 // 无效
+	FolderSize         = -1
 )
