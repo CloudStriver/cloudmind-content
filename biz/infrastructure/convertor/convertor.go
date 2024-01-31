@@ -14,7 +14,6 @@ import (
 	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/basic"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
-	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
@@ -74,7 +73,7 @@ func FileToFileMapper(data *gencontent.File) *file.File {
 		Type:        data.Type,
 		Path:        data.Path,
 		FatherId:    data.FatherId,
-		Size:        lo.ToPtr(data.SpaceSize),
+		Size:        data.SpaceSize,
 		FileMd5:     data.Md5,
 		IsDel:       data.IsDel,
 		Zone:        data.Zone,
