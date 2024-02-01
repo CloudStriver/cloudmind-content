@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	filemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
@@ -88,50 +90,82 @@ func (s *FileService) GetFile(ctx context.Context, req *gencontent.GetFileReq) (
 
 func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileListReq) (resp *gencontent.GetFileListResp, err error) {
 	resp = new(gencontent.GetFileListResp)
+	resp.FatherPath = "CloudMind"
 	var (
 		files  []*filemapper.File
 		total  int64
 		cursor mongop.MongoCursor
+		err2   error
 	)
 
-	switch req.GetSortOptions() {
-	case gencontent.SortOptions_SortOptions_createAtAsc:
-		cursor = filemapper.CreateAtAscCursorType
-	case gencontent.SortOptions_SortOptions_createAtDesc:
-		cursor = filemapper.CreateAtDescCursorType
-	case gencontent.SortOptions_SortOptions_updateAtAsc:
-		cursor = filemapper.UpdateAtAscCursorType
-	case gencontent.SortOptions_SortOptions_updateAtDesc:
-		cursor = filemapper.UpdateAtDescCursorType
-	}
+	if err = mr.Finish(func() error {
+		getFileResp, err1 := s.GetFile(ctx, &gencontent.GetFileReq{
+			FilterOptions: &gencontent.FileFilterOptions{
+				OnlyFileId: lo.ToPtr(req.GetFilterOptions().GetOnlyFatherId()),
+			},
+		})
+		fmt.Println(getFileResp)
+		if errors.Is(err1, consts.ErrNotFound) {
+			return nil
+		}
+		if err1 != nil {
+			return err1
+		}
+		paths := strings.Split(getFileResp.File.Path, "/")
+		if len(paths) > 1 {
+			filelist, err1 := s.FileMongoMapper.FindManyNotPagination(ctx, &filemapper.FilterOptions{
+				OnlyFileIds: paths[1:],
+			})
+			if err1 != nil {
+				return err1
+			}
+			lo.ForEach(filelist, func(item *filemapper.File, _ int) {
+				resp.FatherPath += "/" + item.Name
+			})
+		}
+		return nil
+	}, func() error {
+		switch req.GetSortOptions() {
+		case gencontent.SortOptions_SortOptions_createAtAsc:
+			cursor = filemapper.CreateAtAscCursorType
+		case gencontent.SortOptions_SortOptions_createAtDesc:
+			cursor = filemapper.CreateAtDescCursorType
+		case gencontent.SortOptions_SortOptions_updateAtAsc:
+			cursor = filemapper.UpdateAtAscCursorType
+		case gencontent.SortOptions_SortOptions_updateAtDesc:
+			cursor = filemapper.UpdateAtDescCursorType
+		}
 
-	filter := convertor.FileFilterOptionsToFilterOptions(req.FilterOptions)
-	p := convertor.ParsePagination(req.PaginationOptions)
-	if req.SearchOptions == nil {
-		if files, total, err = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, cursor); err != nil {
-			log.CtxError(ctx, "查询文件列表: 发生异常[%v]\n", err)
-			return resp, err
+		filter := convertor.FileFilterOptionsToFilterOptions(req.FilterOptions)
+		p := convertor.ParsePagination(req.PaginationOptions)
+		if req.SearchOptions == nil {
+			if files, total, err2 = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, cursor); err != nil {
+				log.CtxError(ctx, "查询文件列表: 发生异常[%v]\n", err2)
+				return err2
+			}
+		} else {
+			switch o := req.SearchOptions.Type.(type) {
+			case *gencontent.SearchOptions_AllFieldsKey:
+				files, total, err2 = s.FileEsMapper.Search(ctx, convertor.ConvertFileAllFieldsSearchQuery(o), filter, p, esp.ScoreCursorType)
+			case *gencontent.SearchOptions_MultiFieldsKey:
+				files, total, err2 = s.FileEsMapper.Search(ctx, convertor.ConvertFileMultiFieldsSearchQuery(o), filter, p, esp.ScoreCursorType)
+			}
+			if err2 != nil {
+				log.CtxError(ctx, "搜索文件列表异常[%v]\n", err2)
+				return err2
+			}
 		}
-	} else {
-		switch o := req.SearchOptions.Type.(type) {
-		case *gencontent.SearchOptions_AllFieldsKey:
-			files, total, err = s.FileEsMapper.Search(ctx, convertor.ConvertFileAllFieldsSearchQuery(o), filter, p, esp.ScoreCursorType)
-		case *gencontent.SearchOptions_MultiFieldsKey:
-			files, total, err = s.FileEsMapper.Search(ctx, convertor.ConvertFileMultiFieldsSearchQuery(o), filter, p, esp.ScoreCursorType)
+		if p.LastToken != nil {
+			resp.Token = *p.LastToken
 		}
-		if err != nil {
-			log.CtxError(ctx, "搜索文件列表异常[%v]\n", err)
-			return resp, err
-		}
+		resp.Total = total
+		resp.Files = lo.Map[*filemapper.File, *gencontent.FileInfo](files, func(item *filemapper.File, _ int) *gencontent.FileInfo {
+			return convertor.FileMapperToFile(item)
+		})
+		return nil
+	}); err != nil {
+		return resp, err
 	}
-
-	if p.LastToken != nil {
-		resp.Token = *p.LastToken
-	}
-	resp.Total = total
-	resp.Files = lo.Map[*filemapper.File, *gencontent.FileInfo](files, func(item *filemapper.File, _ int) *gencontent.FileInfo {
-		return convertor.FileMapperToFile(item)
-	})
 
 	return resp, nil
 }

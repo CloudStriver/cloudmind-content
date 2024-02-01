@@ -18,6 +18,11 @@ type ContentServerImpl struct {
 	OrderService   service.IOrderService
 }
 
+func (s *ContentServerImpl) CompletelyRemoveFile(ctx context.Context, req *content.CompletelyRemoveFileReq) (res *content.CompletelyRemoveFileResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *ContentServerImpl) CreateProduct(ctx context.Context, req *content.CreateProductReq) (res *content.CreateProductResp, err error) {
 	return s.ProductService.CreateProduct(ctx, req)
 }
