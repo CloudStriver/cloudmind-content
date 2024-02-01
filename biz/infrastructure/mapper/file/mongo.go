@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	errorx "errors"
+	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
@@ -40,7 +41,7 @@ type (
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, int64, error)
 		Upsert(ctx context.Context, data *File) (*mongo.UpdateResult, error)
 		Update(ctx context.Context, data *File) (*mongo.UpdateResult, error)
-		Delete(ctx context.Context, id, userId string) (int64, error)
+		Delete(ctx context.Context, id string) (int64, error)
 		GetConn() *monc.Model
 		StartClient() *mongo.Client
 	}
@@ -58,7 +59,6 @@ type (
 		Zone        string             `bson:"zone,omitempty" json:"zone,omitempty"`
 		SubZone     string             `bson:"subZone,omitempty" json:"subZone,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
-		Labels      []string           `bson:"labels,omitempty" json:"labels,omitempty"`
 		Url         string             `bson:"url,omitempty" json:"url,omitempty"`
 		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
 		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
@@ -184,12 +184,14 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 		return nil, err
 	}
 
+	fmt.Println(filter)
 	var data []*File
 	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
 		Sort:  sort,
 		Limit: popts.Limit,
 		Skip:  popts.Offset,
 	}); err != nil {
+		fmt.Println(err)
 		if errorx.Is(err, monc.ErrNotFound) {
 			return nil, consts.ErrNotFound
 		}
@@ -310,7 +312,7 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 	return res, err
 }
 
-func (m *MongoMapper) Delete(ctx context.Context, id, userId string) (int64, error) {
+func (m *MongoMapper) Delete(ctx context.Context, id string) (int64, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.Delete", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
@@ -320,7 +322,7 @@ func (m *MongoMapper) Delete(ctx context.Context, id, userId string) (int64, err
 		return 0, consts.ErrInvalidId
 	}
 	key := prefixFileCacheKey + id
-	resp, err := m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid, consts.UserId: userId})
+	resp, err := m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid})
 	return resp, err
 }
 

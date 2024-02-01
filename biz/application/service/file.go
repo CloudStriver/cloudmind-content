@@ -34,7 +34,6 @@ type IFileService interface {
 	UpdateFile(ctx context.Context, req *gencontent.UpdateFileReq) (resp *gencontent.UpdateFileResp, err error)
 	MoveFile(ctx context.Context, req *gencontent.MoveFileReq) (resp *gencontent.MoveFileResp, err error)
 	DeleteFile(ctx context.Context, req *gencontent.DeleteFileReq) (resp *gencontent.DeleteFileResp, err error)
-	CompletelyRemoveFile(ctx context.Context, req *gencontent.CompletelyRemoveFileReq) (resp *gencontent.CompletelyRemoveFileResp, err error)
 	RecoverRecycleBinFile(ctx context.Context, req *gencontent.RecoverRecycleBinFileReq) (resp *gencontent.RecoverRecycleBinFileResp, err error)
 	GetShareList(ctx context.Context, req *gencontent.GetShareListReq) (resp *gencontent.GetShareListResp, err error)
 	CreateShareCode(ctx context.Context, req *gencontent.CreateShareCodeReq) (resp *gencontent.CreateShareCodeResp, err error)
@@ -367,15 +366,6 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 	return resp, err
 }
 
-func (s *FileService) CompletelyRemoveFile(ctx context.Context, req *gencontent.CompletelyRemoveFileReq) (resp *gencontent.CompletelyRemoveFileResp, err error) {
-	resp = new(gencontent.CompletelyRemoveFileResp)
-	if _, err = s.FileMongoMapper.Delete(ctx, req.FileId, req.UserId); err != nil {
-		log.CtxError(ctx, "删除文件: 发生异常[%v]\n", err)
-		return resp, err
-	}
-	return resp, nil
-}
-
 func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFileReq) (resp *gencontent.DeleteFileResp, err error) {
 	resp = new(gencontent.DeleteFileResp)
 	var file *filemapper.File
@@ -667,17 +657,11 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 		return resp, consts.ErrIllegalOperation
 	}
 
-	// 查看目标文件夹和要保存的文件
 	if files, err = s.FileMongoMapper.FindManyNotPagination(ctx, &filemapper.FilterOptions{
 		OnlyFileIds: []string{req.FileId, req.FatherId},
 		OnlyIsDel:   lo.ToPtr(int64(gencontent.IsDel_Is_no)),
 	}); err != nil {
 		return resp, err
-	}
-
-	// 判断目标文件夹和要保存的文件是否存在
-	if len(files) != 2 {
-		return resp, consts.ErrIllegalOperation
 	}
 
 	if files[0].ID.Hex() != req.FileId {
@@ -690,11 +674,8 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 
 	if *objectfile.Size != consts.FolderSize {
 		return resp, consts.ErrFileIsNotDir
-	} // 如果目标文件不是文件夹，则返回错误
+	}
 	if file.UserId == objectfile.UserId {
-		return resp, consts.ErrIllegalOperation
-	} // 如果目标文件和要保存的文件是同一个用户的，则返回错误
-	if req.DocumentType == gencontent.DocumentType_DocumentType_public && (objectfile.Zone == "" || objectfile.SubZone == "") { // 如果要保存的文件不是社区文件，则返回错误
 		return resp, consts.ErrIllegalOperation
 	}
 
