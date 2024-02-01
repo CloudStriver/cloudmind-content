@@ -30,11 +30,11 @@ var ZoneSet = wire.NewSet(
 
 func (s *ZoneService) GetZone(ctx context.Context, req *gencontent.GetZoneReq) (resp *gencontent.GetZoneResp, err error) {
 	resp = new(gencontent.GetZoneResp)
-	label, err := s.ZoneMongoMapper.FindOne(ctx, req.Id)
+	zone, err := s.ZoneMongoMapper.FindOne(ctx, req.Id)
 	if err != nil {
 		return resp, err
 	}
-	resp.Zone = convertor.ZoneMapperToZone(label)
+	resp.Zone = convertor.ZoneMapperToZone(zone)
 	return resp, nil
 }
 

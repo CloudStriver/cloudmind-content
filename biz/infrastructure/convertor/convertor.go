@@ -58,6 +58,7 @@ func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 		Zone:        data.Zone,
 		SubZone:     data.SubZone,
 		Description: data.Description,
+		Labels:      data.Labels,
 		Url:         data.Url,
 		CreateAt:    data.CreateAt.UnixMilli(),
 		UpdateAt:    data.UpdateAt.UnixMilli(),
@@ -79,11 +80,8 @@ func FileToFileMapper(data *gencontent.File) *file.File {
 		Zone:        data.Zone,
 		SubZone:     data.SubZone,
 		Description: data.Description,
+		Labels:      data.Labels,
 		Url:         data.Url,
-		CreateAt:    time.Time{},
-		UpdateAt:    time.Time{},
-		DeletedAt:   time.Time{},
-		Score_:      0,
 	}
 }
 
