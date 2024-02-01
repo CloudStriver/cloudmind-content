@@ -10,6 +10,7 @@ const (
 	Type        = "type"
 	Path        = "path"
 	FatherId    = "fatherId"
+
 	Size               = "size"
 	FileMd5            = "fileMd5"
 	IsDel              = "isDel"
@@ -29,6 +30,9 @@ const (
 	RelationType       = "relationType"
 	DefaultAvatarUrl   = "d2042520dce2223751906a11e547d43e.png"
 	DefaultDescription = "点击添加描述，让大家更好的了解你..."
+	NotDel             = 1
+	SoftDel            = 2
+	HardDel            = 3
 	PrivateSpace       = 1
 	PublicSpace        = 2
 	Intersection       = 1
@@ -37,10 +41,4 @@ const (
 	Effective          = 1 // 有效
 	Invalid            = 2 // 无效
 	FolderSize         = -1
-)
-
-var (
-	NotDel  int64 = 1
-	SoftDel int64 = 2
-	HardDel int64 = 3
 )

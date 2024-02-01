@@ -61,7 +61,7 @@ func (m *MongoMapper) Count(ctx context.Context, fopts string) (int64, error) {
 	_, span := tracer.Start(ctx, "mongo.Count", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
-	return m.conn.CountDocuments(ctx, bson.M{consts.FatherId: fopts})
+	return m.conn.CountDocuments(ctx, bson.M{})
 }
 
 func (m *MongoMapper) Insert(ctx context.Context, data *Zone) (string, error) {
@@ -111,7 +111,7 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts string, popts *paginat
 	defer span.End()
 
 	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
-	filter := bson.M{consts.FatherId: fopts}
+	filter := bson.M{}
 	sort, err := p.MakeSortOptions(ctx, filter)
 	if err != nil {
 		return nil, err

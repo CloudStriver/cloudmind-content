@@ -1,6 +1,7 @@
 package file
 
 import (
+	"fmt"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
@@ -73,6 +74,7 @@ func (f *MongoFileFilter) CheckOnlyFileIds() {
 				return oid
 			}),
 		}
+		fmt.Println(f.m[consts.ID])
 	}
 }
 
