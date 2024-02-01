@@ -19,8 +19,7 @@ type ContentServerImpl struct {
 }
 
 func (s *ContentServerImpl) CompletelyRemoveFile(ctx context.Context, req *content.CompletelyRemoveFileReq) (res *content.CompletelyRemoveFileResp, err error) {
-	//TODO implement me
-	panic("implement me")
+	return s.FileService.CompletelyRemoveFile(ctx, req)
 }
 
 func (s *ContentServerImpl) CreateProduct(ctx context.Context, req *content.CreateProductReq) (res *content.CreateProductResp, err error) {
