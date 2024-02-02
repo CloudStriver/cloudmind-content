@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	errorx "errors"
+	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
@@ -218,9 +219,9 @@ func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, e
 	pipeline := mongo.Pipeline{
 		{
 			{"$match", bson.M{
-				consts.Path:      bson.M{"$regex": "^" + path},
-				consts.SpaceSize: bson.M{"$ne": consts.FolderSize},
-				consts.IsDel:     gencontent.IsDel_Is_no,
+				consts.Path:  bson.M{"$regex": "^" + path},
+				consts.Size:  bson.M{"$ne": consts.FolderSize},
+				consts.IsDel: gencontent.IsDel_Is_no,
 			}},
 		},
 		{
@@ -239,6 +240,7 @@ func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, e
 			if err != nil {
 				return 0, err
 			}
+			fmt.Printf("[%v]\n", size)
 		} else {
 			return 0, nil
 		}

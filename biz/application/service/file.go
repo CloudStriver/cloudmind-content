@@ -652,7 +652,6 @@ func (s *FileService) ParsingShareCode(ctx context.Context, req *gencontent.Pars
 func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *gencontent.SaveFileToPrivateSpaceReq) (resp *gencontent.SaveFileToPrivateSpaceResp, err error) {
 	resp = new(gencontent.SaveFileToPrivateSpaceResp)
 	var (
-		path       string
 		files      []*filemapper.File
 		file       *filemapper.File
 		objectfile *filemapper.File
@@ -665,7 +664,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 
 	if req.FileId == req.FatherId {
 		return resp, consts.ErrIllegalOperation
-	}
+	} // 如果目标文件和要保存的文件是同一个用户的，则返回错误
 
 	// 查看目标文件夹和要保存的文件
 	if files, err = s.FileMongoMapper.FindManyNotPagination(ctx, &filemapper.FilterOptions{
@@ -691,7 +690,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 	if *objectfile.Size != consts.FolderSize {
 		return resp, consts.ErrFileIsNotDir
 	} // 如果目标文件不是文件夹，则返回错误
-	if file.UserId == objectfile.UserId {
+	if file.UserId == objectfile.UserId || req.UserId != objectfile.UserId {
 		return resp, consts.ErrIllegalOperation
 	} // 如果目标文件和要保存的文件是同一个用户的，则返回错误
 	if req.DocumentType == gencontent.DocumentType_DocumentType_public && (objectfile.Zone == "" || objectfile.SubZone == "") { // 如果要保存的文件不是社区文件，则返回错误
@@ -699,19 +698,18 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 	}
 
 	tx := s.FileMongoMapper.StartClient()
-	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error { // 队列+协程
+	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
 		oid := primitive.NewObjectID()
 		resp.FileId = oid.Hex()
-		path = objectfile.Path + "/" + oid.Hex()
-		rootFile := &filemapper.File{
+		rootFile := &filemapper.File{ // 创建根文件
 			ID:       oid,
 			UserId:   req.UserId,
 			Name:     file.Name,
 			Type:     file.Type,
-			Path:     path,
+			Path:     objectfile.Path,
 			FatherId: req.FatherId,
 			Size:     file.Size,
 			FileMd5:  file.FileMd5,
@@ -720,15 +718,15 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 			UpdateAt: time.Now(),
 		}
 
-		if *file.Size == consts.FolderSize {
+		if *file.Size == consts.FolderSize { // 若是文件夹，开始根据原文件夹层层创建
 			err = mr.Finish(func() error {
-				_, err1 = s.FileMongoMapper.Insert(sessionContext, rootFile)
+				_, err1 = s.FileMongoMapper.Insert(sessionContext, rootFile) // 先插入根文件
 				return err1
 			}, func() error {
 				var front kv
 				var sonFile *filemapper.File
 				queue := make([]kv, 0, 100)
-				queue = append(queue, kv{id: file.ID.Hex(), path: rootFile.Path})
+				queue = append(queue, kv{id: file.ID.Hex(), path: objectfile.Path + "/" + oid.Hex()})
 				for len(queue) > 0 {
 					front = queue[0]
 					queue = queue[1:]
@@ -747,13 +745,12 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 					}
 					for _, v := range data {
 						oid = primitive.NewObjectID()
-						path = front.path + "/" + oid.Hex()
 						sonFile = &filemapper.File{
 							ID:       oid,
 							UserId:   req.UserId,
 							Name:     v.Name,
 							Type:     v.Type,
-							Path:     path,
+							Path:     front.path,
 							FatherId: front.id,
 							Size:     v.Size,
 							FileMd5:  v.FileMd5,
@@ -765,7 +762,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 							return err2
 						}
 						if *v.Size == consts.FolderSize {
-							queue = append(queue, kv{id: v.ID.Hex(), path: sonFile.Path})
+							queue = append(queue, kv{id: v.ID.Hex(), path: front.path + "/" + oid.Hex()})
 						}
 					}
 				}
@@ -821,10 +818,12 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 			}
 			for _, v := range data {
 				if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{
-					ID:      v.ID,
-					UserId:  v.UserId,
-					Zone:    req.File.Zone,
-					SubZone: req.File.SubZone,
+					ID:          v.ID,
+					UserId:      v.UserId,
+					Zone:        req.File.Zone,
+					SubZone:     req.File.SubZone,
+					Description: req.File.Description,
+					Labels:      req.File.Labels,
 				}); err != nil {
 					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 						log.CtxError(ctx, "上传文件到社区过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
@@ -834,10 +833,12 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 			}
 		}
 		if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{
-			ID:      oid,
-			UserId:  req.File.UserId,
-			Zone:    req.File.Zone,
-			SubZone: req.File.SubZone,
+			ID:          oid,
+			UserId:      req.File.UserId,
+			Zone:        req.File.Zone,
+			SubZone:     req.File.SubZone,
+			Description: req.File.Description,
+			Labels:      req.File.Labels,
 		}); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "上传文件到社区过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
