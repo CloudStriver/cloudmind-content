@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	filemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
@@ -91,7 +90,7 @@ func (s *FileService) GetFile(ctx context.Context, req *gencontent.GetFileReq) (
 
 func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileListReq) (resp *gencontent.GetFileListResp, err error) {
 	resp = new(gencontent.GetFileListResp)
-	resp.FatherPath = "CloudMind"
+	resp.FatherNamePath = "CloudMind"
 	var (
 		files  []*filemapper.File
 		total  int64
@@ -105,13 +104,14 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 				OnlyFileId: lo.ToPtr(req.GetFilterOptions().GetOnlyFatherId()),
 			},
 		})
-		fmt.Println(getFileResp)
 		if errors.Is(err1, consts.ErrNotFound) {
+			resp.FatherIdPath = req.GetFilterOptions().GetOnlyFatherId()
 			return nil
 		}
 		if err1 != nil {
 			return err1
 		}
+		resp.FatherIdPath = getFileResp.File.Path
 		paths := strings.Split(getFileResp.File.Path, "/")
 		if len(paths) > 1 {
 			filelist, err1 := s.FileMongoMapper.FindManyNotPagination(ctx, &filemapper.FilterOptions{
@@ -121,7 +121,7 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 				return err1
 			}
 			lo.ForEach(filelist, func(item *filemapper.File, _ int) {
-				resp.FatherPath += "/" + item.Name
+				resp.FatherNamePath += "/" + item.Name
 			})
 		}
 		return nil
