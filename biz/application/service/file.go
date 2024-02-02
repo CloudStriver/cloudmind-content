@@ -599,6 +599,14 @@ func (s *FileService) GetShareList(ctx context.Context, req *gencontent.GetShare
 func (s *FileService) CreateShareCode(ctx context.Context, req *gencontent.CreateShareCodeReq) (resp *gencontent.CreateShareCodeResp, err error) {
 	resp = new(gencontent.CreateShareCodeResp)
 	var id, key string
+	var files []*filemapper.File
+	if files, err = s.FileMongoMapper.FindManyNotPagination(ctx, &filemapper.FilterOptions{OnlyFileIds: req.ShareFile.FileList, OnlyUserId: lo.ToPtr(req.ShareFile.UserId)}); err != nil {
+		return resp, err
+	}
+
+	if len(files) != len(req.ShareFile.FileList) { // 如果文件列表长度不一致， 说明文件列表存在问题 则返回错误
+		return resp, consts.ErrIllegalOperation
+	}
 	data := convertor.ShareFileToShareFileMapper(req.ShareFile)
 	data.CreateAt = time.Now()
 	if req.ShareFile.EffectiveTime >= 0 {
@@ -637,7 +645,7 @@ func (s *FileService) DeleteShareCode(ctx context.Context, req *gencontent.Delet
 func (s *FileService) ParsingShareCode(ctx context.Context, req *gencontent.ParsingShareCodeReq) (resp *gencontent.ParsingShareCodeResp, err error) {
 	resp = new(gencontent.ParsingShareCodeResp)
 	var shareFile *sharefilemapper.ShareFile
-	if shareFile, err = s.ShareFileMongoMapper.FindOne(ctx, req.Code); err != nil {
+	if shareFile, err = s.ShareFileMongoMapper.FindOne(ctx, req.Code, req.Key); err != nil {
 		log.CtxError(ctx, "提取文件分享链接: 发生异常[%v]\n", err)
 		return resp, err
 	}

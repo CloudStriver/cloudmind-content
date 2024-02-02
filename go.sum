@@ -6,16 +6,6 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/CloudStriver/go-pkg v0.0.0-20231229114943-910edcb8788d h1:c5M3637HJJN+pD3erToZAw0vutEMLmC+5I63szm5PYU=
 github.com/CloudStriver/go-pkg v0.0.0-20231229114943-910edcb8788d/go.mod h1:Oj6+J8ixQxqNunSpl9v64q6tAQ83wY/rRFI+3rhHVCk=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240201060740-cadd39081dc7 h1:FUhcRGxdhBvxV3uFlbaiRjWJw516KM7wJLv9FhHUwvA=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240201060740-cadd39081dc7/go.mod h1:chtR82RvfrjUujTGWROSCNAwF9Lh/U959k34bXIDvBI=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240201073608-8cd061d59e6d h1:wlZObzrhfV647crFvmvQsfxMftZ6ejCinzd84drnI7k=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240201073608-8cd061d59e6d/go.mod h1:chtR82RvfrjUujTGWROSCNAwF9Lh/U959k34bXIDvBI=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240201082032-be9a2ef30717 h1:GQWaeW0C0gs85P6e6L3YTVzTnUSU7H1HCLZWcaj4F+U=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240201082032-be9a2ef30717/go.mod h1:chtR82RvfrjUujTGWROSCNAwF9Lh/U959k34bXIDvBI=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240201091924-a3cefad75be4 h1:ePM5sgK+a9KIrIz0ceSzcJ+iW3ApSfFMAPM+RW8+x54=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240201091924-a3cefad75be4/go.mod h1:chtR82RvfrjUujTGWROSCNAwF9Lh/U959k34bXIDvBI=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240201094804-9bf4d9eee7a9 h1:VvTEyApI2g6u+YAzbS8f7kcAwxnd0cTQDL3hHtTYo0A=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240201094804-9bf4d9eee7a9/go.mod h1:chtR82RvfrjUujTGWROSCNAwF9Lh/U959k34bXIDvBI=
 github.com/ajstarks/deck v0.0.0-20200831202436-30c9fc6549a9/go.mod h1:JynElWSGnm/4RlzPXRlREEwqTHAN3T56Bv2ITsFT3gY=
 github.com/ajstarks/deck/generate v0.0.0-20210309230005-c3f852c02e19/go.mod h1:T13YZdzov6OU0A1+RfKZiZN9ca6VeKdBdyDV+BY97Tk=
 github.com/ajstarks/svgo v0.0.0-20180226025133-644b8db467af/go.mod h1:K08gAheRH3/J6wwsYMMT4xOr94bZjxIelGM0+d/wbFw=

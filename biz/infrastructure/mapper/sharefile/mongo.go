@@ -32,7 +32,7 @@ type (
 	IMongoMapper interface {
 		Count(ctx context.Context, filter *ShareCodeOptions) (int64, error)
 		Insert(ctx context.Context, data *ShareFile) (string, string, error)
-		FindOne(ctx context.Context, id string) (*ShareFile, error)
+		FindOne(ctx context.Context, id, key string) (*ShareFile, error)
 		FindMany(ctx context.Context, fopts *ShareCodeOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*ShareFile, error)
 		FindManyAndCount(ctx context.Context, fopts *ShareCodeOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*ShareFile, int64, error)
 		Update(ctx context.Context, data *ShareFile) (*mongo.UpdateResult, error)
@@ -110,7 +110,7 @@ func (m *MongoMapper) Insert(ctx context.Context, data *ShareFile) (string, stri
 	return ID.InsertedID.(primitive.ObjectID).Hex(), data.Key, err
 }
 
-func (m *MongoMapper) FindOne(ctx context.Context, id string) (*ShareFile, error) {
+func (m *MongoMapper) FindOne(ctx context.Context, id, key string) (*ShareFile, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.FindOne", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
@@ -120,8 +120,7 @@ func (m *MongoMapper) FindOne(ctx context.Context, id string) (*ShareFile, error
 		return nil, consts.ErrInvalidId
 	}
 	var data ShareFile
-	key := prefixPublicFileCacheKey + id
-	err = m.conn.FindOne(ctx, key, &data, bson.M{"_id": oid})
+	err = m.conn.FindOneNoCache(ctx, &data, bson.M{"_id": oid, consts.Key: key})
 	switch {
 	case err == nil:
 		return &data, nil
