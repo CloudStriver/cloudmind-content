@@ -183,24 +183,42 @@ func (s *FileService) GetFileCount(ctx context.Context, req *gencontent.GetFileC
 	return resp, nil
 }
 
+func (s *FileService) CheckShareFile(ctx context.Context, shareFiles []*filemapper.File, fileId *string) (*gencontent.FileInfo, bool, error) {
+	var (
+		err error
+		ok  bool
+		res *gencontent.GetFileResp
+	)
+
+	if res, err = s.GetFile(ctx, &gencontent.GetFileReq{
+		FilterOptions: &gencontent.FileFilterOptions{
+			OnlyFileId: fileId,
+		},
+		IsGetSize: false,
+	}); err != nil {
+		return nil, ok, err
+	}
+
+	for _, file := range shareFiles {
+		if strings.HasPrefix(file.Path, res.File.Path) {
+			ok = true
+			break
+		}
+	}
+
+	return res.File, ok, nil
+}
+
 func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.GetFileBySharingCodeReq) (resp *gencontent.GetFileBySharingCodeResp, err error) {
 	resp = new(gencontent.GetFileBySharingCodeResp)
 	var (
-		isTrue     bool
-		res        *gencontent.GetFileResp
+		ok         bool
+		res        *gencontent.FileInfo
 		shareFile  *gencontent.ParsingShareCodeResp
 		shareFiles []*filemapper.File
 	)
 
 	if shareFile, err = s.ParsingShareCode(ctx, &gencontent.ParsingShareCodeReq{Code: req.SharingCode}); err != nil {
-		return resp, err
-	}
-	if res, err = s.GetFile(ctx, &gencontent.GetFileReq{
-		FilterOptions: &gencontent.FileFilterOptions{
-			OnlyFileId: req.FilterOptions.OnlyFileId,
-		},
-		IsGetSize: false,
-	}); err != nil {
 		return resp, err
 	}
 
@@ -211,24 +229,37 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 	if err != nil {
 		return resp, err
 	}
-	for _, file := range shareFiles {
-		if strings.HasPrefix(file.Path, res.File.Path) {
-			isTrue = true
-			break
-		}
-	}
 
-	if isTrue {
-		data, err := s.GetFileList(ctx, &gencontent.GetFileListReq{
-			FilterOptions:     req.FilterOptions,
-			PaginationOptions: req.PaginationOptions,
-		})
-		if err != nil {
-			return resp, err
+	if req.FilterOptions != nil {
+		if req.FilterOptions.OnlyFileId != nil {
+			if res, ok, err = s.CheckShareFile(ctx, shareFiles, req.FilterOptions.OnlyFileId); err != nil {
+				return resp, err
+			}
+			if ok {
+				resp.Files = []*gencontent.FileInfo{res}
+			}
+		} else if req.FilterOptions.OnlyFatherId != nil {
+			if _, ok, err = s.CheckShareFile(ctx, shareFiles, req.FilterOptions.OnlyFatherId); err != nil {
+				return resp, err
+			}
+			if ok {
+				data, err := s.GetFileList(ctx, &gencontent.GetFileListReq{
+					FilterOptions:     req.FilterOptions,
+					PaginationOptions: req.PaginationOptions,
+				})
+				if err != nil {
+					return resp, err
+				}
+				resp.Files = data.Files
+				resp.Total = data.Total
+				resp.Token = data.Token
+			}
 		}
-		resp.Files = data.Files
-		resp.Total = data.Total
-		resp.Token = data.Token
+	} else {
+		resp.Files = lo.Map[*filemapper.File, *gencontent.FileInfo](shareFiles, func(item *filemapper.File, _ int) *gencontent.FileInfo {
+			return convertor.FileMapperToFile(item)
+		})
+		resp.Total = int64(len(shareFiles))
 	}
 
 	return resp, nil
@@ -311,7 +342,6 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 	if len(files) != 2 {
 		return resp, consts.ErrIllegalOperation
 	}
-
 	if files[0].ID.Hex() != req.FileId {
 		file = files[1]
 		fatherFile = files[0]
@@ -319,9 +349,11 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 		file = files[0]
 		fatherFile = files[1]
 	}
-
 	if *fatherFile.Size != consts.FolderSize {
 		return resp, consts.ErrFileIsNotDir
+	}
+	if strings.HasPrefix(fatherFile.Path, file.Path) {
+		return resp, consts.ErrIllegalOperation
 	}
 
 	tx := s.FileMongoMapper.StartClient()
