@@ -20,6 +20,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel"
 	oteltrace "go.opentelemetry.io/otel/trace"
+	"strconv"
 	"time"
 )
 
@@ -78,17 +79,26 @@ type (
 
 func NewMongoMapper(config *config.Config) IMongoMapper {
 	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
-	indexModel := mongo.IndexModel{
-		Keys: bson.M{
-			consts.DeletedAt: 1, // 索引字段
+	indexModel := []mongo.IndexModel{
+		{
+			Keys: bson.M{
+				consts.DeletedAt: 1, // 索引字段
+			},
+			Options: options.Index().SetExpireAfterSeconds(604800), // 一周后过期
+		}, {
+			Keys: bson.M{
+				consts.FatherId: 1, // 索引字段
+				consts.Name:     1,
+				consts.IsDel:    1,
+			},
+			Options: options.Index().SetUnique(true), // 唯一索引
 		},
-		Options: options.Index().SetExpireAfterSeconds(604800), // 一周后过期
 	}
-	_, err := conn.Indexes().CreateOne(context.Background(), indexModel)
+	_, err := conn.Indexes().CreateMany(context.Background(), indexModel)
 	if err != nil {
-		log.Error("fileModel TTL index created 失败[%v]\n", err)
+		log.Error("fileModel index created err[%v]\n", err)
 	} else {
-		log.Info("fileModel TTL index created successfully")
+		log.Info("fileModel index created successfully")
 	}
 
 	return &MongoMapper{
@@ -142,9 +152,12 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 	key := prefixFileCacheKey + data.ID.Hex()
 	ID, err := m.conn.InsertOne(ctx, key, data)
 	if err != nil {
-		return "", err
+		data.Name = data.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
+		if ID, err = m.conn.InsertOne(ctx, key, data); err != nil {
+			return "", err
+		}
 	}
-	return ID.InsertedID.(primitive.ObjectID).Hex(), err
+	return ID.InsertedID.(primitive.ObjectID).Hex(), nil
 }
 
 func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*File, error) {
@@ -309,7 +322,13 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 	data.UpdateAt = time.Now()
 	key := prefixFileCacheKey + data.ID.Hex()
 	res, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID, consts.UserId: data.UserId}, bson.M{"$set": data})
-	return res, err
+	if err != nil {
+		data.Name = data.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
+		if res, err = m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID, consts.UserId: data.UserId}, bson.M{"$set": data}); err != nil {
+			return res, err
+		}
+	}
+	return res, nil
 }
 
 func (m *MongoMapper) Delete(ctx context.Context, id, userId string) (int64, error) {
