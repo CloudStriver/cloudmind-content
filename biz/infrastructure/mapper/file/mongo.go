@@ -40,8 +40,8 @@ type (
 		FindManyNotPagination(ctx context.Context, fopts *FilterOptions) ([]*File, error)
 		FindFolderSize(ctx context.Context, path string) (int64, error)
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, int64, error)
-		Upsert(ctx context.Context, data *File) (*mongo.UpdateResult, error)
 		Update(ctx context.Context, data *File) (*mongo.UpdateResult, error)
+		UpdateMany(ctx context.Context, ids []string, userId string, update bson.M) (*mongo.UpdateResult, error)
 		Delete(ctx context.Context, id, userId string) (int64, error)
 		GetConn() *monc.Model
 		StartClient() *mongo.Client
@@ -81,15 +81,13 @@ func NewMongoMapper(config *config.Config) IMongoMapper {
 	conn := monc.MustNewModel(config.Mongo.URL, config.Mongo.DB, CollectionName, config.CacheConf)
 	indexModel := []mongo.IndexModel{
 		{
-			Keys: bson.M{
-				consts.DeletedAt: 1, // 索引字段
-			},
+			Keys:    bson.D{{Key: consts.DeletedAt, Value: 1}},     // 保持原有的单个字段索引不变
 			Options: options.Index().SetExpireAfterSeconds(604800), // 一周后过期
 		}, {
-			Keys: bson.M{
-				consts.FatherId: 1, // 索引字段
-				consts.Name:     1,
-				consts.IsDel:    1,
+			Keys: bson.D{
+				{Key: consts.FatherId, Value: 1}, // 保证字段顺序
+				{Key: consts.Name, Value: 1},
+				{Key: consts.IsDel, Value: 1},
 			},
 			Options: options.Index().SetUnique(true), // 唯一索引
 		},
@@ -292,28 +290,6 @@ func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions
 	return data, total, nil
 }
 
-func (m *MongoMapper) Upsert(ctx context.Context, data *File) (*mongo.UpdateResult, error) {
-	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
-	_, span := tracer.Start(ctx, "mongo.Upsert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
-	defer span.End()
-
-	key := prefixFileCacheKey + data.ID.Hex()
-	update := bson.M{
-		"$set": bson.M{"$set": data},
-		"$setOnInsert": bson.M{
-			consts.ID:       data.ID,
-			consts.CreateAt: time.Now(),
-			consts.UpdateAt: time.Now(),
-		},
-	}
-
-	option := options.UpdateOptions{}
-	option.SetUpsert(true)
-
-	res, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, update, &option)
-	return res, err
-}
-
 func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResult, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.Update", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
@@ -327,6 +303,28 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 		if res, err = m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID, consts.UserId: data.UserId}, bson.M{"$set": data}); err != nil {
 			return res, err
 		}
+	}
+	return res, nil
+}
+
+func (m *MongoMapper) UpdateMany(ctx context.Context, ids []string, userId string, update bson.M) (*mongo.UpdateResult, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.UpdateMany", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	var keys []string
+	keys = lo.Map(ids, func(id string, _ int) string {
+		return prefixFileCacheKey + id
+	})
+	filter := bson.M{consts.ID: bson.M{
+		"$in": lo.Map[string, primitive.ObjectID](ids, func(s string, _ int) primitive.ObjectID {
+			oid, _ := primitive.ObjectIDFromHex(s)
+			return oid
+		}),
+	}, consts.UserId: userId}
+	res, err := m.conn.UpdateMany(ctx, keys, filter, update)
+	if err != nil {
+		return res, err
 	}
 	return res, nil
 }
