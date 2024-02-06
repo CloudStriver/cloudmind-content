@@ -24,7 +24,7 @@ const prefixPostCacheKey = "cache:post:"
 type (
 	IPostMongoMapper interface {
 		Insert(ctx context.Context, data *Post) error
-		FindOne(ctx context.Context, fopts *FilterOptions) (*Post, error)
+		FindOne(ctx context.Context, id string) (*Post, error)
 		Update(ctx context.Context, data *Post) error
 		Delete(ctx context.Context, id string) error
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error)
@@ -130,14 +130,13 @@ func (m *MongoMapper) Insert(ctx context.Context, data *Post) error {
 	return err
 }
 
-func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*Post, error) {
-	filter := MakeBsonFilter(fopts)
+func (m *MongoMapper) FindOne(ctx context.Context, id string) (*Post, error) {
 	var data Post
-	if fopts.OnlyPostId == nil {
-		return nil, consts.ErrInvalidId
-	}
-	key := prefixPostCacheKey + *fopts.OnlyPostId
-	err := m.conn.FindOne(ctx, key, &data, filter)
+	key := prefixPostCacheKey + id
+	oid, _ := primitive.ObjectIDFromHex(id)
+	err := m.conn.FindOne(ctx, key, &data, bson.M{
+		consts.ID: oid,
+	})
 	switch {
 	case err == nil:
 		return &data, nil
