@@ -850,7 +850,7 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 			return err
 		}
 		ids = append(ids, file.ID.Hex())
-		if *req.File.SpaceSize == consts.FolderSize {
+		if *file.Size == consts.FolderSize {
 			var data []*filemapper.File
 			filter := bson.M{consts.Path: bson.M{"$regex": "^" + file.Path + "/"}}
 			if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
