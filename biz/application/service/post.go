@@ -61,6 +61,7 @@ func (s *PostService) GetPost(ctx context.Context, req *gencontent.GetPostReq) (
 		Text:       post.Text,
 		Tags:       post.Tags,
 		Url:        post.Url,
+		Status:     post.Status,
 		CreateTime: post.CreateAt.UnixMilli(),
 		UpdateTime: post.UpdateAt.UnixMilli(),
 	}, nil
