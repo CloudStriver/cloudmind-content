@@ -35,6 +35,8 @@ type (
 		FindFileIsExist(ctx context.Context, md5 string) (bool, error)
 		Count(ctx context.Context, filter *FilterOptions) (int64, error)
 		Insert(ctx context.Context, data *File) (string, error)
+		FindAndInsert(ctx context.Context, data *File) (string, error)
+		FindAndInsertMany(ctx context.Context, data []*File) ([]string, error)
 		FindOne(ctx context.Context, fopts *FilterOptions) (*File, error)
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, error)
 		FindManyNotPagination(ctx context.Context, fopts *FilterOptions) ([]*File, error)
@@ -120,6 +122,67 @@ func (m *MongoMapper) FindManyNotPagination(ctx context.Context, fopts *FilterOp
 	return data, nil
 }
 
+func (m *MongoMapper) FindAndInsert(ctx context.Context, data *File) (string, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindAndInsert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	var res File
+	if err := m.conn.FindOneNoCache(ctx, &res, bson.M{consts.FatherId: data.FatherId, consts.Name: data.Name, consts.IsDel: data.IsDel}); err != nil {
+		if errorx.Is(err, consts.ErrNotFound) {
+			return m.Insert(ctx, data)
+		}
+		return "", err
+	}
+
+	// 如果文件已存在，修改文件名
+	data.Name = data.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
+	return m.Insert(ctx, data)
+}
+
+func (m *MongoMapper) FindAndInsertMany(ctx context.Context, data []*File) ([]string, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindAndInsertMany", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	mp := make(map[string]int)
+	for i := 0; i < len(data); i++ {
+		if data[i].ID.IsZero() {
+			data[i].ID = primitive.NewObjectID()
+			data[i].CreateAt = time.Now()
+			data[i].UpdateAt = time.Now()
+		}
+		mp[data[i].ID.Hex()] = i
+		data[i].Path = data[i].Path + "/" + data[i].ID.Hex()
+	}
+
+	if err := mr.Finish(lo.Map(data, func(item *File, _ int) func() error {
+		return func() error {
+			var file File
+			if err := m.conn.FindOneNoCache(ctx, &file, bson.M{consts.FatherId: item.FatherId, consts.Name: item.Name, consts.IsDel: item.IsDel}); err != nil {
+				if errorx.Is(err, monc.ErrNotFound) {
+					return nil
+				} else {
+					return err
+				}
+			}
+			// 如果文件已存在，修改文件名
+			item.Name = item.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
+			return nil
+		}
+	})...); err != nil {
+		return nil, err
+	}
+
+	dataAny := lo.Map(data, func(item *File, _ int) any { return item })
+	res, err := m.conn.InsertMany(ctx, dataAny)
+	ids := make([]string, len(res.InsertedIDs))
+	for _, v := range res.InsertedIDs {
+		ids[mp[v.(primitive.ObjectID).Hex()]] = v.(primitive.ObjectID).Hex()
+	}
+	return ids, err
+}
+
 func (m *MongoMapper) FindFileIsExist(ctx context.Context, md5 string) (bool, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.FindFileIsExist", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
@@ -154,10 +217,6 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 		if ID, err = m.conn.InsertOne(ctx, key, data); err != nil {
 			return "", err
 		}
-<<<<<<< HEAD
-		fmt.Printf("\n --- Id: ---[%v]\n", ID.InsertedID.(primitive.ObjectID).Hex())
-=======
->>>>>>> origin/main
 	}
 	return ID.InsertedID.(primitive.ObjectID).Hex(), nil
 }

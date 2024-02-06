@@ -148,10 +148,6 @@ func (s *ContentServerImpl) DeleteFile(ctx context.Context, req *content.DeleteF
 	return s.FileService.DeleteFile(ctx, req)
 }
 
-func (s *ContentServerImpl) GetFileCount(ctx context.Context, req *content.GetFileCountReq) (*content.GetFileCountResp, error) {
-	return s.FileService.GetFileCount(ctx, req)
-}
-
 func (s *ContentServerImpl) UpdateFile(ctx context.Context, req *content.UpdateFileReq) (*content.UpdateFileResp, error) {
 	return s.FileService.UpdateFile(ctx, req)
 }

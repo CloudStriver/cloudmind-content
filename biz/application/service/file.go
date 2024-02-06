@@ -26,7 +26,6 @@ type IFileService interface {
 	GetFileIsExist(ctx context.Context, req *gencontent.GetFileIsExistReq) (resp *gencontent.GetFileIsExistResp, err error)
 	GetFile(ctx context.Context, req *gencontent.GetFileReq) (resp *gencontent.GetFileResp, err error)
 	GetFileList(ctx context.Context, req *gencontent.GetFileListReq) (resp *gencontent.GetFileListResp, err error)
-	GetFileCount(ctx context.Context, req *gencontent.GetFileCountReq) (resp *gencontent.GetFileCountResp, err error)
 	GetFileBySharingCode(ctx context.Context, req *gencontent.GetFileBySharingCodeReq) (resp *gencontent.GetFileBySharingCodeResp, err error)
 	GetFolderSize(ctx context.Context, path string) (resp *gencontent.GetFolderSizeResp, err error)
 	CreateFile(ctx context.Context, req *gencontent.CreateFileReq) (resp *gencontent.CreateFileResp, err error)
@@ -168,18 +167,6 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 		return resp, err
 	}
 
-	return resp, nil
-}
-
-func (s *FileService) GetFileCount(ctx context.Context, req *gencontent.GetFileCountReq) (resp *gencontent.GetFileCountResp, err error) {
-	resp = new(gencontent.GetFileCountResp)
-	var total int64
-	filter := convertor.FileFilterOptionsToFilterOptions(req.FilterOptions)
-	if total, err = s.FileMongoMapper.Count(ctx, filter); err != nil {
-		log.CtxError(ctx, "查询文件总数: 发生异常[%v]\n", err)
-		return resp, err
-	}
-	resp.Count = total
 	return resp, nil
 }
 
@@ -685,8 +672,6 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 	resp = new(gencontent.SaveFileToPrivateSpaceResp)
 	var (
 		err1       error
-		id         string
-		session    mongo.Session
 		files      []*filemapper.File
 		file       *filemapper.File
 		objectfile *filemapper.File
@@ -732,7 +717,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 	} // 如果目标文件不是文件夹，则返回错误
 	if file.UserId == objectfile.UserId || req.UserId != objectfile.UserId {
 		return resp, consts.ErrIllegalOperation
-	}                                                                                                                           // 如果目标文件和要保存的文件是同一个用户的，则返回错误
+	} // 如果目标文件和要保存的文件是同一个用户的，则返回错误
 	if req.DocumentType == gencontent.DocumentType_DocumentType_public && (objectfile.Zone == "" || objectfile.SubZone == "") { // 如果要保存的文件不是社区文件，则返回错误
 		return resp, consts.ErrIllegalOperation
 	}
@@ -754,7 +739,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 			CreateAt: time.Now(),
 			UpdateAt: time.Now(),
 		}
-		if resp.FileId, err1 = s.FileMongoMapper.Insert(sessionContext, rootFile); err1 != nil {
+		if resp.FileId, err1 = s.FileMongoMapper.FindAndInsert(sessionContext, rootFile); err1 != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "保存文件中产生错误[%v]: 回滚异常[%v]\n", err1, rbErr)
 			}
@@ -762,12 +747,12 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 		}
 		if *file.Size == consts.FolderSize { // 若是文件夹，开始根据原文件夹层层创建
 			var front kv
-			var sonFile *filemapper.File
 			queue := make([]kv, 0, 20)
 			queue = append(queue, kv{id: file.ID.Hex(), path: objectfile.Path + "/" + resp.FileId})
 			for len(queue) > 0 {
 				front = queue[0]
 				queue = queue[1:]
+				var ids []string
 				var data []*filemapper.File
 				var filter bson.M
 				if req.DocumentType == gencontent.DocumentType_DocumentType_public {
@@ -787,27 +772,36 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 						return rbErr
 					}
 				}
-				for _, v := range data {
-					sonFile = &filemapper.File{
+
+				if len(data) <= 0 {
+					continue
+				}
+
+				sonFiles := lo.Map(data, func(item *filemapper.File, _ int) *filemapper.File {
+					return &filemapper.File{
 						UserId:   req.UserId,
-						Name:     v.Name,
-						Type:     v.Type,
+						Name:     item.Name,
+						Type:     item.Type,
 						Path:     front.path,
 						FatherId: front.path[len(front.path)-len(front.id):],
-						Size:     v.Size,
-						FileMd5:  v.FileMd5,
-						IsDel:    int64(gencontent.IsDel_Is_no),
+						Size:     item.Size,
+						FileMd5:  item.FileMd5,
+						IsDel:    consts.NotDel,
 						CreateAt: time.Now(),
 						UpdateAt: time.Now(),
 					}
-					if id, err1 = s.FileMongoMapper.Insert(sessionContext, sonFile); err1 != nil {
-						if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-							log.CtxError(ctx, "保存文件中产生错误[%v]: 回滚异常[%v]\n", err1, rbErr)
-						}
-						return err1
+				})
+
+				if ids, err1 = s.FileMongoMapper.FindAndInsertMany(sessionContext, sonFiles); err1 != nil {
+					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
+						log.CtxError(ctx, "保存文件中产生错误[%v]: 回滚异常[%v]\n", err1, rbErr)
 					}
+					return err1
+				}
+
+				for i, v := range data {
 					if *v.Size == consts.FolderSize {
-						queue = append(queue, kv{id: v.ID.Hex(), path: front.path + "/" + id})
+						queue = append(queue, kv{id: v.ID.Hex(), path: front.path + "/" + ids[i]})
 					}
 				}
 			}
@@ -819,7 +813,6 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 		}
 		return nil
 	})
-	session.EndSession(ctx)
 
 	return resp, err
 }
