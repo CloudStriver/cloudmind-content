@@ -154,7 +154,10 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 		if ID, err = m.conn.InsertOne(ctx, key, data); err != nil {
 			return "", err
 		}
+<<<<<<< HEAD
 		fmt.Printf("\n --- Id: ---[%v]\n", ID.InsertedID.(primitive.ObjectID).Hex())
+=======
+>>>>>>> origin/main
 	}
 	return ID.InsertedID.(primitive.ObjectID).Hex(), nil
 }

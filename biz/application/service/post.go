@@ -12,6 +12,7 @@ import (
 	"github.com/google/wire"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/stores/redis"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type IPostService interface {
@@ -35,21 +36,35 @@ var PostSet = wire.NewSet(
 )
 
 func (s *PostService) CreatePost(ctx context.Context, req *gencontent.CreatePostReq) (resp *gencontent.CreatePostResp, err error) {
-	resp = new(gencontent.CreatePostResp)
-	if err = s.PostMongoMapper.Insert(ctx, convertor.PostToPostMapper(req.Post)); err != nil {
+	if err = s.PostMongoMapper.Insert(ctx, &postmapper.Post{
+		Title:  req.Title,
+		Text:   req.Text,
+		Url:    req.Url,
+		Tags:   req.Tags,
+		UserId: req.UserId,
+		Status: req.Status,
+		Score_: 0,
+	}); err != nil {
 		return resp, err
 	}
 	return resp, nil
 }
 
 func (s *PostService) GetPost(ctx context.Context, req *gencontent.GetPostReq) (resp *gencontent.GetPostResp, err error) {
-	resp = new(gencontent.GetPostResp)
-	post, err := s.PostMongoMapper.FindOne(ctx, convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions))
+	post, err := s.PostMongoMapper.FindOne(ctx, req.PostId)
 	if err != nil {
 		return resp, err
 	}
-	resp.Post = convertor.PostMapperToPost(post)
-	return resp, nil
+	return &gencontent.GetPostResp{
+		UserId:     post.UserId,
+		Title:      post.Title,
+		Text:       post.Text,
+		Tags:       post.Tags,
+		Url:        post.Url,
+		Status:     post.Status,
+		CreateTime: post.CreateAt.UnixMilli(),
+		UpdateTime: post.UpdateAt.UnixMilli(),
+	}, nil
 }
 
 func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq) (resp *gencontent.GetPostsResp, err error) {
@@ -58,6 +73,7 @@ func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq)
 		total int64
 		posts []*postmapper.Post
 	)
+
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
 	filter := convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions)
 	if req.SearchOptions != nil {
@@ -88,15 +104,22 @@ func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq)
 }
 
 func (s *PostService) UpdatePost(ctx context.Context, req *gencontent.UpdatePostReq) (resp *gencontent.UpdatePostResp, err error) {
-	resp = new(gencontent.UpdatePostResp)
-	if err = s.PostMongoMapper.Update(ctx, convertor.PostToPostMapper(req.Post)); err != nil {
+	oid, _ := primitive.ObjectIDFromHex(req.PostId)
+
+	if err = s.PostMongoMapper.Update(ctx, &postmapper.Post{
+		ID:     oid,
+		Title:  req.Title,
+		Text:   req.Text,
+		Url:    req.Url,
+		Tags:   req.Tags,
+		Status: req.Status,
+	}); err != nil {
 		return resp, err
 	}
 	return resp, nil
 }
 
 func (s *PostService) DeletePost(ctx context.Context, req *gencontent.DeletePostReq) (resp *gencontent.DeletePostResp, err error) {
-	resp = new(gencontent.DeletePostResp)
 	if err = s.PostMongoMapper.Delete(ctx, req.PostId); err != nil {
 		return resp, err
 	}
