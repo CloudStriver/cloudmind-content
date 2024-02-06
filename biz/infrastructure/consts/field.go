@@ -22,6 +22,7 @@ const (
 	Title              = "title"
 	Text               = "text"
 	Description        = "description"
+	Labels             = "labels"
 	CreateAt           = "createAt"
 	UpdateAt           = "updateAt"
 	DeletedAt          = "deletedAt"

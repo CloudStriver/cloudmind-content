@@ -218,7 +218,7 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 		shareFiles []*filemapper.File
 	)
 
-	if shareFile, err = s.ParsingShareCode(ctx, &gencontent.ParsingShareCodeReq{Code: req.SharingCode}); err != nil {
+	if shareFile, err = s.ParsingShareCode(ctx, &gencontent.ParsingShareCodeReq{Code: req.SharingCode, Key: req.Key}); err != nil {
 		return resp, err
 	}
 
@@ -230,30 +230,28 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 		return resp, err
 	}
 
-	if req.FilterOptions != nil {
-		if req.FilterOptions.OnlyFileId != nil {
-			if res, ok, err = s.CheckShareFile(ctx, shareFiles, req.FilterOptions.OnlyFileId); err != nil {
+	if req.FilterOptions.OnlyFileId != nil {
+		if res, ok, err = s.CheckShareFile(ctx, shareFiles, req.FilterOptions.OnlyFileId); err != nil {
+			return resp, err
+		}
+		if ok {
+			resp.Files = []*gencontent.FileInfo{res}
+		}
+	} else if req.FilterOptions.OnlyFatherId != nil {
+		if _, ok, err = s.CheckShareFile(ctx, shareFiles, req.FilterOptions.OnlyFatherId); err != nil {
+			return resp, err
+		}
+		if ok {
+			data, err := s.GetFileList(ctx, &gencontent.GetFileListReq{
+				FilterOptions:     req.FilterOptions,
+				PaginationOptions: req.PaginationOptions,
+			})
+			if err != nil {
 				return resp, err
 			}
-			if ok {
-				resp.Files = []*gencontent.FileInfo{res}
-			}
-		} else if req.FilterOptions.OnlyFatherId != nil {
-			if _, ok, err = s.CheckShareFile(ctx, shareFiles, req.FilterOptions.OnlyFatherId); err != nil {
-				return resp, err
-			}
-			if ok {
-				data, err := s.GetFileList(ctx, &gencontent.GetFileListReq{
-					FilterOptions:     req.FilterOptions,
-					PaginationOptions: req.PaginationOptions,
-				})
-				if err != nil {
-					return resp, err
-				}
-				resp.Files = data.Files
-				resp.Total = data.Total
-				resp.Token = data.Token
-			}
+			resp.Files = data.Files
+			resp.Total = data.Total
+			resp.Token = data.Token
 		}
 	} else {
 		resp.Files = lo.Map[*filemapper.File, *gencontent.FileInfo](shareFiles, func(item *filemapper.File, _ int) *gencontent.FileInfo {
@@ -375,8 +373,8 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 				}); err != nil {
 					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 						log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-						return err
 					}
+					return err
 				}
 			}
 		}
@@ -386,8 +384,8 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 		if _, err = s.FileMongoMapper.Update(sessionContext, file); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-				return err
 			}
+			return err
 		}
 		if err = sessionContext.CommitTransaction(sessionContext); err != nil {
 			log.CtxError(ctx, "移动文件: 提交事务异常[%v]\n", err)
@@ -416,6 +414,7 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 		return resp, consts.ErrInvalidId
 	}
 
+	ids := make([]string, 0, 20)
 	if req.DeleteType == gencontent.IsDel_Is_soft {
 		if file, err = s.FileMongoMapper.FindOne(ctx, &filemapper.FilterOptions{
 			OnlyFileId:       lo.ToPtr(req.FileId),
@@ -426,45 +425,45 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 			return resp, err
 		}
 
+		update := bson.M{
+			"$set": bson.M{
+				consts.IsDel:     consts.SoftDel,
+				consts.DeletedAt: time.Now(),
+			},
+		}
+
+		if req.ClearCommunity {
+			update["$unset"] = bson.M{
+				consts.Zone:        "",
+				consts.SubZone:     "",
+				consts.Description: "",
+				consts.Labels:      "",
+			}
+		}
+
 		tx := s.FileMongoMapper.StartClient()
 		err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 			if err = sessionContext.StartTransaction(); err != nil {
 				return err
 			}
+
+			ids = append(ids, file.ID.Hex())
 			if *file.Size == consts.FolderSize {
 				var data []*filemapper.File
 				filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
 				if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
 					return err
 				}
-
-				for i := 0; i < len(data); i++ {
-					data[i].IsDel = int64(gencontent.IsDel_Is_soft)
-					data[i].DeletedAt = time.Now()
-					if req.ClearCommunity {
-						data[i].Zone = ""
-						data[i].SubZone = ""
-					}
-					if _, err = s.FileMongoMapper.Update(sessionContext, data[i]); err != nil {
-						if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-							log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-							return err
-						}
-					}
+				for _, v := range data {
+					ids = append(ids, v.ID.Hex())
 				}
 			}
 
-			file.IsDel = int64(gencontent.IsDel_Is_soft)
-			file.DeletedAt = time.Now()
-			if req.ClearCommunity {
-				file.Zone = ""
-				file.SubZone = ""
-			}
-			if _, err = s.FileMongoMapper.Update(sessionContext, file); err != nil {
+			if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, req.UserId, update); err != nil {
 				if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 					log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-					return err
 				}
+				return err
 			}
 			if err = sessionContext.CommitTransaction(sessionContext); err != nil {
 				log.CtxError(ctx, "删除文件: 提交事务异常[%v]\n", err)
@@ -482,39 +481,41 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 			return resp, err
 		}
 
+		update := bson.M{
+			"$set": bson.M{
+				consts.IsDel: consts.HardDel,
+			},
+			"$unset": bson.M{
+				consts.Zone:        "",
+				consts.SubZone:     "",
+				consts.Description: "",
+				consts.Labels:      "",
+			},
+		}
+
 		tx := s.FileMongoMapper.StartClient()
 		err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 			if err = sessionContext.StartTransaction(); err != nil {
 				return err
 			}
+
+			ids = append(ids, file.ID.Hex())
 			if *file.Size == consts.FolderSize {
 				var data []*filemapper.File
 				filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
 				if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
 					return err
 				}
-
-				for i := 0; i < len(data); i++ {
-					data[i].IsDel = int64(gencontent.IsDel_Is_hard)
-					data[i].Zone = ""
-					data[i].SubZone = ""
-					if _, err = s.FileMongoMapper.Update(sessionContext, data[i]); err != nil {
-						if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-							log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-							return err
-						}
-					}
+				for _, v := range data {
+					ids = append(ids, v.ID.Hex())
 				}
 			}
 
-			file.IsDel = int64(gencontent.IsDel_Is_hard)
-			file.Zone = ""
-			file.SubZone = ""
-			if _, err = s.FileMongoMapper.Update(sessionContext, file); err != nil {
+			if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, req.UserId, update); err != nil {
 				if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 					log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-					return err
 				}
+				return err
 			}
 			if err = sessionContext.CommitTransaction(sessionContext); err != nil {
 				log.CtxError(ctx, "删除文件: 提交事务异常[%v]\n", err)
@@ -546,6 +547,16 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 		return resp, err
 	}
 
+	ids := make([]string, 0, 20)
+	update := bson.M{
+		"$set": bson.M{
+			consts.IsDel: consts.NotDel,
+		},
+		"$unset": bson.M{
+			consts.DeletedAt: "",
+		},
+	}
+
 	tx := s.FileMongoMapper.StartClient()
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 		if err = sessionContext.StartTransaction(); err != nil {
@@ -557,43 +568,24 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 			if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
 				return err
 			}
-
-			for i := 0; i < len(data); i++ {
-				data[i].IsDel = int64(gencontent.IsDel_Is_no)
-				data[i].DeletedAt = time.Time{}
-				if _, err = s.FileMongoMapper.Update(sessionContext, data[i]); err != nil {
-					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-						log.CtxError(ctx, "恢复文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-						return err
-					}
-				}
+			for _, v := range data {
+				ids = append(ids, v.ID.Hex())
 			}
 		}
 
-		path := strings.Split(file.Path, "/")
-		if err = mr.Finish(lo.Map(path, func(id string, _ int) func() error {
-			return func() error {
-				if id == req.UserId {
-					return nil
-				}
-				oid, _ := primitive.ObjectIDFromHex(id)
-				_, err = s.FileMongoMapper.Update(ctx, &filemapper.File{ID: oid, UserId: req.UserId, IsDel: consts.NotDel})
-				return err
+		paths := strings.Split(file.Path, "/")
+		for _, id := range paths {
+			if id == req.UserId {
+				continue
 			}
-		})...); err != nil {
-			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-				log.CtxError(ctx, "恢复文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-				return err
-			}
+			ids = append(ids, id)
 		}
 
-		file.IsDel = int64(gencontent.IsDel_Is_no)
-		file.DeletedAt = time.Time{}
-		if _, err = s.FileMongoMapper.Update(sessionContext, file); err != nil {
+		if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, req.UserId, update); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "恢复文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-				return err
 			}
+			return err
 		}
 		if err = sessionContext.CommitTransaction(sessionContext); err != nil {
 			log.CtxError(ctx, "恢复文件: 提交事务异常[%v]\n", err)
@@ -692,10 +684,12 @@ func (s *FileService) ParsingShareCode(ctx context.Context, req *gencontent.Pars
 func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *gencontent.SaveFileToPrivateSpaceReq) (resp *gencontent.SaveFileToPrivateSpaceResp, err error) {
 	resp = new(gencontent.SaveFileToPrivateSpaceResp)
 	var (
+		err1       error
+		id         string
+		session    mongo.Session
 		files      []*filemapper.File
 		file       *filemapper.File
 		objectfile *filemapper.File
-		err1, err2 error
 	)
 	type kv struct {
 		id   string
@@ -714,6 +708,12 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 		return resp, err
 	}
 
+	if req.FatherId == req.UserId {
+		files = append(files, &filemapper.File{
+			Path: req.FatherId,
+			Size: lo.ToPtr(int64(-1)),
+		})
+	}
 	// 判断目标文件夹和要保存的文件是否存在
 	if len(files) != 2 {
 		return resp, consts.ErrIllegalOperation
@@ -732,7 +732,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 	} // 如果目标文件不是文件夹，则返回错误
 	if file.UserId == objectfile.UserId || req.UserId != objectfile.UserId {
 		return resp, consts.ErrIllegalOperation
-	} // 如果目标文件和要保存的文件是同一个用户的，则返回错误
+	}                                                                                                                           // 如果目标文件和要保存的文件是同一个用户的，则返回错误
 	if req.DocumentType == gencontent.DocumentType_DocumentType_public && (objectfile.Zone == "" || objectfile.SubZone == "") { // 如果要保存的文件不是社区文件，则返回错误
 		return resp, consts.ErrIllegalOperation
 	}
@@ -742,10 +742,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
-		oid := primitive.NewObjectID()
-		resp.FileId = oid.Hex()
 		rootFile := &filemapper.File{ // 创建根文件
-			ID:       oid,
 			UserId:   req.UserId,
 			Name:     file.Name,
 			Type:     file.Type,
@@ -757,73 +754,72 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 			CreateAt: time.Now(),
 			UpdateAt: time.Now(),
 		}
-
+		if resp.FileId, err1 = s.FileMongoMapper.Insert(sessionContext, rootFile); err1 != nil {
+			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
+				log.CtxError(ctx, "保存文件中产生错误[%v]: 回滚异常[%v]\n", err1, rbErr)
+			}
+			return err1
+		}
 		if *file.Size == consts.FolderSize { // 若是文件夹，开始根据原文件夹层层创建
-			err = mr.Finish(func() error {
-				_, err1 = s.FileMongoMapper.Insert(sessionContext, rootFile) // 先插入根文件
-				return err1
-			}, func() error {
-				var front kv
-				var sonFile *filemapper.File
-				queue := make([]kv, 0, 100)
-				queue = append(queue, kv{id: file.ID.Hex(), path: objectfile.Path + "/" + oid.Hex()})
-				for len(queue) > 0 {
-					front = queue[0]
-					queue = queue[1:]
-					var data []*filemapper.File
-					var filter bson.M
-					if req.DocumentType == gencontent.DocumentType_DocumentType_public {
-						filter = bson.M{"fatherId": front.id, "tag": bson.M{"$ne": nil}}
-					} else if req.DocumentType == gencontent.DocumentType_DocumentType_personal {
-						filter = bson.M{"fatherId": front.id}
-					} else {
-						return consts.ErrIllegalOperation
+			var front kv
+			var sonFile *filemapper.File
+			queue := make([]kv, 0, 20)
+			queue = append(queue, kv{id: file.ID.Hex(), path: objectfile.Path + "/" + resp.FileId})
+			for len(queue) > 0 {
+				front = queue[0]
+				queue = queue[1:]
+				var data []*filemapper.File
+				var filter bson.M
+				if req.DocumentType == gencontent.DocumentType_DocumentType_public {
+					filter = bson.M{consts.FatherId: front.id, consts.Zone: bson.M{"$exists": true, "$ne": ""}, consts.SubZone: bson.M{"$exists": true, "$ne": ""}}
+				} else if req.DocumentType == gencontent.DocumentType_DocumentType_personal {
+					filter = bson.M{consts.FatherId: front.id}
+				} else {
+					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
+						log.CtxError(ctx, "保存文件中产生错误[%v]: 回滚异常[%v]\n", "访问未知空间", rbErr)
 					}
+					return consts.ErrIllegalOperation
+				}
 
-					if err2 = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter, &options.FindOptions{BatchSize: lo.ToPtr(int32(100))}); err2 != nil {
-						return err2
-					}
-					for _, v := range data {
-						oid = primitive.NewObjectID()
-						sonFile = &filemapper.File{
-							ID:       oid,
-							UserId:   req.UserId,
-							Name:     v.Name,
-							Type:     v.Type,
-							Path:     front.path,
-							FatherId: front.id,
-							Size:     v.Size,
-							FileMd5:  v.FileMd5,
-							IsDel:    int64(gencontent.IsDel_Is_no),
-							CreateAt: time.Now(),
-							UpdateAt: time.Now(),
-						}
-						if _, err2 = s.FileMongoMapper.Insert(sessionContext, sonFile); err != nil {
-							return err2
-						}
-						if *v.Size == consts.FolderSize {
-							queue = append(queue, kv{id: v.ID.Hex(), path: front.path + "/" + oid.Hex()})
-						}
+				if err1 = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter, &options.FindOptions{BatchSize: lo.ToPtr(int32(100))}); err1 != nil {
+					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
+						log.CtxError(ctx, "保存文件中产生错误[%v]: 回滚异常[%v]\n", err1, rbErr)
+						return rbErr
 					}
 				}
-				return nil
-			})
-		} else {
-			_, err = s.FileMongoMapper.Insert(sessionContext, rootFile)
-		}
-
-		if err != nil {
-			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-				log.CtxError(ctx, "保存文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-				return rbErr
+				for _, v := range data {
+					sonFile = &filemapper.File{
+						UserId:   req.UserId,
+						Name:     v.Name,
+						Type:     v.Type,
+						Path:     front.path,
+						FatherId: front.path[len(front.path)-len(front.id):],
+						Size:     v.Size,
+						FileMd5:  v.FileMd5,
+						IsDel:    int64(gencontent.IsDel_Is_no),
+						CreateAt: time.Now(),
+						UpdateAt: time.Now(),
+					}
+					if id, err1 = s.FileMongoMapper.Insert(sessionContext, sonFile); err1 != nil {
+						if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
+							log.CtxError(ctx, "保存文件中产生错误[%v]: 回滚异常[%v]\n", err1, rbErr)
+						}
+						return err1
+					}
+					if *v.Size == consts.FolderSize {
+						queue = append(queue, kv{id: v.ID.Hex(), path: front.path + "/" + id})
+					}
+				}
 			}
 		}
-		if err = sessionContext.CommitTransaction(sessionContext); err != nil {
-			log.CtxError(ctx, "保存文件: 提交事务异常[%v]\n", err)
-			return err
+
+		if err1 = sessionContext.CommitTransaction(sessionContext); err1 != nil {
+			log.CtxError(ctx, "保存文件: 提交事务异常[%v]\n", err1)
+			return err1
 		}
 		return nil
 	})
+	session.EndSession(ctx)
 
 	return resp, err
 }
@@ -831,7 +827,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.AddFileToPublicSpaceReq) (resp *gencontent.AddFileToPublicSpaceResp, err error) {
 	resp = new(gencontent.AddFileToPublicSpaceResp)
 	var file *filemapper.File
-	oid, err := primitive.ObjectIDFromHex(req.File.FileId)
+	_, err = primitive.ObjectIDFromHex(req.File.FileId)
 	if err != nil {
 		return resp, err
 	}
@@ -845,11 +841,22 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 		return resp, err
 	}
 
+	ids := make([]string, 0, 20)
+	update := bson.M{
+		"$set": bson.M{
+			consts.Zone:        req.File.Zone,
+			consts.SubZone:     req.File.Zone,
+			consts.Description: req.File.Description,
+			consts.Labels:      req.File.Labels,
+		},
+	}
+
 	tx := s.FileMongoMapper.StartClient()
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
+		ids = append(ids, file.ID.Hex())
 		if *req.File.SpaceSize == consts.FolderSize {
 			var data []*filemapper.File
 			filter := bson.M{consts.Path: bson.M{"$regex": "^" + file.Path + "/"}}
@@ -857,33 +864,14 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 				return err
 			}
 			for _, v := range data {
-				if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{
-					ID:          v.ID,
-					UserId:      v.UserId,
-					Zone:        req.File.Zone,
-					SubZone:     req.File.SubZone,
-					Description: req.File.Description,
-					Labels:      req.File.Labels,
-				}); err != nil {
-					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-						log.CtxError(ctx, "上传文件到社区过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-						return err
-					}
-				}
+				ids = append(ids, v.ID.Hex())
 			}
 		}
-		if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{
-			ID:          oid,
-			UserId:      req.File.UserId,
-			Zone:        req.File.Zone,
-			SubZone:     req.File.SubZone,
-			Description: req.File.Description,
-			Labels:      req.File.Labels,
-		}); err != nil {
+		if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, req.File.UserId, update); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "上传文件到社区过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-				return err
 			}
+			return err
 		}
 		if err = sessionContext.CommitTransaction(sessionContext); err != nil {
 			log.CtxError(ctx, "上传文件到社区: 提交事务异常[%v]\n", err)
