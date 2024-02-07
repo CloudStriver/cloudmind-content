@@ -32,19 +32,6 @@ func UserMapperToUser(in *usermapper.User) *gencontent.User {
 	}
 }
 
-func UserToUserMapper(in *gencontent.User) *usermapper.User {
-	oid, _ := primitive.ObjectIDFromHex(in.UserId)
-	return &usermapper.User{
-		ID:          oid,
-		Name:        in.Name,
-		Sex:         in.Sex,
-		FullName:    in.FullName,
-		IdCard:      in.IdCard,
-		Description: in.Description,
-		Url:         in.Url,
-	}
-}
-
 func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 	return &gencontent.FileInfo{
 		FileId:      data.ID.Hex(),
@@ -210,19 +197,6 @@ func PostFilterOptionsToFilterOptions(in *gencontent.PostFilterOptions) *postmap
 		OnlyTags:        in.OnlyTags,
 		OnlySetRelation: in.OnlySetRelation,
 		OnlyStatus:      in.OnlyStatus,
-	}
-}
-
-func PostToPostMapper(in *gencontent.Post) *postmapper.Post {
-	oid, _ := primitive.ObjectIDFromHex(in.PostId)
-	return &postmapper.Post{
-		ID:     oid,
-		Title:  in.Title,
-		Text:   in.Text,
-		Url:    in.Url,
-		Tags:   in.Tags,
-		UserId: in.UserId,
-		Status: in.Status,
 	}
 }
 
