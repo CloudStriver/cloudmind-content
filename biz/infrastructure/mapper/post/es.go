@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
+	"github.com/samber/lo"
 	"log"
 	"net/http"
 	"time"
@@ -132,9 +133,7 @@ func (m *EsMapper) Search(ctx context.Context, query []types.Query, fopts *Filte
 	}
 	// 如果是反向查询，反转数据
 	if *popts.Backward {
-		for i := 0; i < len(posts)/2; i++ {
-			posts[i], posts[len(posts)-i-1] = posts[len(posts)-i-1], posts[i]
-		}
+		lo.Reverse(posts)
 	}
 	if len(posts) > 0 {
 		err = p.StoreCursor(ctx, posts[0], posts[len(posts)-1])

@@ -43,8 +43,18 @@ func (s *UserService) DeleteUser(ctx context.Context, req *gencontent.DeleteUser
 
 func (s *UserService) SearchUser(ctx context.Context, req *gencontent.SearchUserReq) (resp *gencontent.SearchUserResp, err error) {
 	resp = new(gencontent.SearchUserResp)
+	var (
+		users []*usermapper.User
+		total int64
+	)
+
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
-	users, total, err := s.UserEsMapper.Search(ctx, req.Keyword, p, esp.ScoreCursorType)
+	switch o := req.SearchOptions.Type.(type) {
+	case *gencontent.SearchOptions_AllFieldsKey:
+		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(o), p, esp.ScoreCursorType)
+	case *gencontent.SearchOptions_MultiFieldsKey:
+		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserMultiFieldsSearchQuery(o), p, esp.ScoreCursorType)
+	}
 	if err != nil {
 		return resp, err
 	}
@@ -52,7 +62,6 @@ func (s *UserService) SearchUser(ctx context.Context, req *gencontent.SearchUser
 	if p.LastToken != nil {
 		resp.LastToken = *p.LastToken
 	}
-
 	resp.Users = lo.Map[*usermapper.User, *gencontent.User](users, func(item *usermapper.User, _ int) *gencontent.User {
 		return convertor.UserMapperToUser(item)
 	})

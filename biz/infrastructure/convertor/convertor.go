@@ -579,3 +579,44 @@ func ConvertCouponMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiField
 	}
 	return q
 }
+
+func ConvertUserAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey) []types.Query {
+	return []types.Query{{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:  in.AllFieldsKey,
+			Fields: []string{consts.Name + "^3", consts.ID, consts.Description},
+		}},
+	}
+}
+
+func ConvertUserMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsKey) []types.Query {
+	var q []types.Query
+	if in.MultiFieldsKey.Name != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.Name: {
+					Query: *in.MultiFieldsKey.Name + "^3",
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Id != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.ID: {
+					Query: *in.MultiFieldsKey.Id,
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Description != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.Description: {
+					Query: *in.MultiFieldsKey.Description,
+				},
+			},
+		})
+	}
+	return q
+}
