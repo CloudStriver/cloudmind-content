@@ -14,7 +14,7 @@ import (
 
 const CollectionName = "user"
 
-var PrefixUserCacheKey = "cache:user:"
+var PrefixUserCacheKey = "cache:userinfo:"
 
 var _ IUserMongoMapper = (*MongoMapper)(nil)
 
@@ -72,7 +72,7 @@ func (m *MongoMapper) FindOne(ctx context.Context, id string) (*User, error) {
 	}
 	var data User
 	key := PrefixUserCacheKey + id
-	err = m.conn.FindOne(ctx, key, &data, bson.M{"_id": oid})
+	err = m.conn.FindOne(ctx, key, &data, bson.M{consts.ID: oid})
 	switch {
 	case err == nil:
 		return &data, nil
