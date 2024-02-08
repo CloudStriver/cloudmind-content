@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	usermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
@@ -75,6 +76,7 @@ func (s *UserService) GetUser(ctx context.Context, req *gencontent.GetUserReq) (
 	if user, err = s.UserMongoMapper.FindOne(ctx, req.UserId); err != nil {
 		return resp, err
 	}
+	fmt.Print(user, err)
 	return &gencontent.GetUserResp{
 		Name:        user.Name,
 		Sex:         user.Sex,
