@@ -18,6 +18,46 @@ type ContentServerImpl struct {
 	OrderService   service.IOrderService
 }
 
+func (s *ContentServerImpl) CreateItems(ctx context.Context, req *content.CreateItemsReq) (res *content.CreateItemsResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *ContentServerImpl) UpdateItem(ctx context.Context, req *content.UpdateItemReq) (res *content.UpdateItemResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *ContentServerImpl) DeleteItem(ctx context.Context, req *content.DeleteItemReq) (res *content.DeleteItemResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *ContentServerImpl) GetRecommendByUser(ctx context.Context, req *content.GetRecommendByUserReq) (res *content.GetRecommendByUserResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *ContentServerImpl) GetRecommendByItem(ctx context.Context, req *content.GetRecommendByItemReq) (res *content.GetRecommendByItemResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *ContentServerImpl) GetPopularRecommend(ctx context.Context, req *content.GetPopularRecommendReq) (res *content.GetPopularRecommendResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *ContentServerImpl) GetLatestRecommend(ctx context.Context, req *content.GetLatestRecommendReq) (res *content.GetLatestRecommendResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *ContentServerImpl) CreateFeedBacks(ctx context.Context, req *content.CreateFeedBacksReq) (res *content.CreateFeedBacksResp, err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (s *ContentServerImpl) GetFilesByIds(ctx context.Context, req *content.GetFilesByIdsReq) (res *content.GetFilesByIdsResp, err error) {
 	return s.FileService.GetFilesByIds(ctx, req)
 }
