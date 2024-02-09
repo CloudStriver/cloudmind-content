@@ -52,6 +52,10 @@ func (s *ContentServerImpl) GetPopularRecommend(ctx context.Context, req *conten
 
 }
 
+func (s *ContentServerImpl) GetFilesByIds(ctx context.Context, req *content.GetFilesByIdsReq) (res *content.GetFilesByIdsResp, err error) {
+	return s.FileService.GetFilesByIds(ctx, req)
+}
+
 func (s *ContentServerImpl) CompletelyRemoveFile(ctx context.Context, req *content.CompletelyRemoveFileReq) (res *content.CompletelyRemoveFileResp, err error) {
 	return s.FileService.CompletelyRemoveFile(ctx, req)
 }
@@ -154,16 +158,6 @@ func (s *ContentServerImpl) SearchUser(ctx context.Context, req *content.SearchU
 
 func (s *ContentServerImpl) CreateUser(ctx context.Context, req *content.CreateUserReq) (resp *content.CreateUserResp, err error) {
 	return s.UserService.CreateUser(ctx, req)
-}
-
-func (s *ContentServerImpl) GetFolderSize(ctx context.Context, req *content.GetFolderSizeReq) (*content.GetFolderSizeResp, error) {
-	resp := new(content.GetFolderSizeResp)
-	res, err := s.FileService.GetFile(ctx, &content.GetFileReq{FilterOptions: req.FilterOptions, IsGetSize: true})
-	if err != nil {
-		return resp, err
-	}
-	resp.SpaceSize = res.File.SpaceSize
-	return resp, nil
 }
 
 func (s *ContentServerImpl) GetFileIsExist(ctx context.Context, req *content.GetFileIsExistReq) (*content.GetFileIsExistResp, error) {
