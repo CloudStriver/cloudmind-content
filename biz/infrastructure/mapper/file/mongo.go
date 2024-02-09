@@ -3,13 +3,11 @@ package file
 import (
 	"context"
 	errorx "errors"
-	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
-	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/mr"
 	"github.com/zeromicro/go-zero/core/stores/monc"
@@ -37,8 +35,9 @@ type (
 		Insert(ctx context.Context, data *File) (string, error)
 		FindAndInsert(ctx context.Context, data *File) (string, error)
 		FindAndInsertMany(ctx context.Context, data []*File) ([]string, error)
-		FindOne(ctx context.Context, fopts *FilterOptions) (*File, error)
+		FindOne(ctx context.Context, id string) (*File, error)
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, error)
+		FindManyByIds(ctx context.Context, ids []string) ([]*File, error)
 		FindManyNotPagination(ctx context.Context, fopts *FilterOptions) ([]*File, error)
 		FindFolderSize(ctx context.Context, path string) (int64, error)
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, int64, error)
@@ -63,7 +62,6 @@ type (
 		SubZone     string             `bson:"subZone,omitempty" json:"subZone,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
 		Labels      []string           `bson:"labels,omitempty" json:"labels,omitempty"`
-		Url         string             `bson:"url,omitempty" json:"url,omitempty"`
 		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
 		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
 		DeletedAt   time.Time          `bson:"deletedAt,omitempty" json:"deletedAt,omitempty"`
@@ -106,6 +104,29 @@ func NewMongoMapper(config *config.Config) IMongoMapper {
 	}
 }
 
+func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*File, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindManyByIds", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	var data []*File
+	filter := bson.M{
+		consts.ID: bson.M{
+			"$in": lo.Map[string, primitive.ObjectID](ids, func(s string, _ int) primitive.ObjectID {
+				oid, _ := primitive.ObjectIDFromHex(s)
+				return oid
+			}),
+		},
+	}
+	if err := m.conn.Find(ctx, &data, filter); err != nil {
+		if errorx.Is(err, monc.ErrNotFound) {
+			return nil, consts.ErrNotFound
+		}
+		return nil, err
+	}
+	return data, nil
+}
+
 func (m *MongoMapper) FindManyNotPagination(ctx context.Context, fopts *FilterOptions) ([]*File, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.FindManyNotPagination", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
@@ -113,7 +134,7 @@ func (m *MongoMapper) FindManyNotPagination(ctx context.Context, fopts *FilterOp
 
 	filter := makeMongoFilter(fopts)
 	var data []*File
-	if err := m.conn.Find(ctx, &data, filter, &options.FindOptions{}); err != nil {
+	if err := m.conn.Find(ctx, &data, filter); err != nil {
 		if errorx.Is(err, monc.ErrNotFound) {
 			return nil, consts.ErrNotFound
 		}
@@ -150,8 +171,8 @@ func (m *MongoMapper) FindAndInsertMany(ctx context.Context, data []*File) ([]st
 		if data[i].ID.IsZero() {
 			data[i].ID = primitive.NewObjectID()
 			data[i].CreateAt = time.Now()
-			data[i].UpdateAt = time.Now()
 		}
+		data[i].UpdateAt = time.Now()
 		mp[data[i].ID.Hex()] = i
 		data[i].Path = data[i].Path + "/" + data[i].ID.Hex()
 	}
@@ -176,7 +197,7 @@ func (m *MongoMapper) FindAndInsertMany(ctx context.Context, data []*File) ([]st
 
 	dataAny := lo.Map(data, func(item *File, _ int) any { return item })
 	res, err := m.conn.InsertMany(ctx, dataAny)
-	ids := make([]string, len(res.InsertedIDs))
+	ids := make([]string, len(dataAny))
 	for _, v := range res.InsertedIDs {
 		ids[mp[v.(primitive.ObjectID).Hex()]] = v.(primitive.ObjectID).Hex()
 	}
@@ -206,9 +227,9 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 	if data.ID.IsZero() {
 		data.ID = primitive.NewObjectID()
 		data.CreateAt = time.Now()
-		data.UpdateAt = time.Now()
 	}
 
+	data.UpdateAt = time.Now()
 	data.Path = data.Path + "/" + data.ID.Hex()
 	key := prefixFileCacheKey + data.ID.Hex()
 	ID, err := m.conn.InsertOne(ctx, key, data)
@@ -221,14 +242,18 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 	return ID.InsertedID.(primitive.ObjectID).Hex(), nil
 }
 
-func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*File, error) {
+func (m *MongoMapper) FindOne(ctx context.Context, id string) (*File, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.FindOne", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
 	var data File
-	filter := makeMongoFilter(fopts)
-	if err := m.conn.FindOneNoCache(ctx, &data, filter); err != nil {
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, consts.ErrInvalidId
+	}
+	key := prefixFileCacheKey + id
+	if err := m.conn.FindOne(ctx, key, &data, bson.M{consts.ID: oid}); err != nil {
 		if errorx.Is(err, monc.ErrNotFound) {
 			return nil, consts.ErrNotFound
 		} else {
@@ -295,7 +320,7 @@ func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, e
 			{"$match", bson.M{
 				consts.Path:  bson.M{"$regex": "^" + path},
 				consts.Size:  bson.M{"$ne": consts.FolderSize},
-				consts.IsDel: gencontent.IsDel_Is_no,
+				consts.IsDel: consts.NotDel,
 			}},
 		},
 		{
@@ -314,7 +339,6 @@ func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, e
 			if err != nil {
 				return 0, err
 			}
-			fmt.Printf("[%v]\n", size)
 		} else {
 			return 0, nil
 		}

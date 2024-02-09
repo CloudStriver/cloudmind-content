@@ -14,6 +14,7 @@ import (
 	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/basic"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
@@ -58,7 +59,6 @@ func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 		SubZone:     data.SubZone,
 		Description: data.Description,
 		Labels:      data.Labels,
-		Url:         data.Url,
 		CreateAt:    data.CreateAt.UnixMilli(),
 		UpdateAt:    data.UpdateAt.UnixMilli(),
 	}
@@ -80,7 +80,24 @@ func FileToFileMapper(data *gencontent.File) *file.File {
 		SubZone:     data.SubZone,
 		Description: data.Description,
 		Labels:      data.Labels,
-		Url:         data.Url,
+	}
+}
+
+func FileInfoToFileMapper(data *gencontent.FileInfo) *file.File {
+	oid, _ := primitive.ObjectIDFromHex(data.FileId)
+	return &file.File{
+		ID:          oid,
+		UserId:      data.UserId,
+		Name:        data.Name,
+		Type:        data.Type,
+		Path:        data.Path,
+		FatherId:    data.FatherId,
+		Size:        lo.ToPtr(data.SpaceSize),
+		IsDel:       data.IsDel,
+		Zone:        data.Zone,
+		SubZone:     data.SubZone,
+		Description: data.Description,
+		Labels:      data.Labels,
 	}
 }
 
@@ -120,7 +137,7 @@ func ShareFileToShareFileMapper(data *gencontent.ShareFile) *sharefile.ShareFile
 		Name:          data.Name,
 		FileList:      data.FileList,
 		EffectiveTime: data.EffectiveTime,
-		BrowseNumber:  &data.BrowseNumber,
+		BrowseNumber:  lo.ToPtr(data.BrowseNumber),
 	}
 }
 
