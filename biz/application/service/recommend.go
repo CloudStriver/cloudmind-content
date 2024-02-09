@@ -46,34 +46,34 @@ func (s *RecommendService) GetLatestRecommend(ctx context.Context, req *genconte
 	}
 
 	var (
-		offset int64
+		offset int
 		val    string
 		items  []gorse.Score
 	)
 	if val, _ = s.Redis.GetCtx(ctx, fmt.Sprintf("cache:latest:recommend:%s", req.UserId)); val == "" {
 		offset = 0
 	} else {
-		if offset, err = strconv.ParseInt(val, 10, 32); err != nil {
+		if offset, err = strconv.Atoi(val); err != nil {
 			offset = 0
 		}
 	}
 
 	if req.Category != nil {
-		if items, err = s.Gorse.GetItemLatestWithCategory(ctx, req.UserId, req.GetCategory(), int(req.GetLimit()), int(offset)); err != nil {
+		if items, err = s.Gorse.GetItemLatestWithCategory(ctx, req.UserId, req.GetCategory(), int(req.GetLimit()), offset); err != nil {
 			return resp, err
 		}
 	} else {
-		if items, err = s.Gorse.GetItemLatest(ctx, req.UserId, int(req.GetLimit()), int(offset)); err != nil {
+		if items, err = s.Gorse.GetItemLatest(ctx, req.UserId, int(req.GetLimit()), offset); err != nil {
 			return resp, err
 		}
 	}
 	if len(resp.ItemIds) < int(req.GetLimit()) {
 		offset = 0
 	} else {
-		offset += req.GetLimit()
+		offset += int(req.GetLimit())
 	}
 
-	_ = s.Redis.SetexCtx(ctx, fmt.Sprintf("cache:latest:recommend:%s", req.UserId), strconv.Itoa(int(offset)), 3600)
+	_ = s.Redis.SetexCtx(ctx, fmt.Sprintf("cache:latest:recommend:%s", req.UserId), strconv.Itoa(offset), 3600)
 	resp.ItemIds = lo.Map[gorse.Score, string](items, func(score gorse.Score, _ int) string {
 		return score.Id
 	})
@@ -116,34 +116,34 @@ func (s *RecommendService) GetPopularRecommend(ctx context.Context, req *gencont
 	}
 
 	var (
-		offset int64
+		offset int
 		items  []gorse.Score
 		val    string
 	)
 	if val, _ = s.Redis.GetCtx(ctx, fmt.Sprintf("cache:popular:recommend:%s", req.UserId)); val == "" {
 		offset = 0
 	} else {
-		if offset, err = strconv.ParseInt(val, 10, 32); err != nil {
+		if offset, err = strconv.Atoi(val); err != nil {
 			offset = 0
 		}
 	}
 
 	if req.Category != nil {
-		if items, err = s.Gorse.GetItemPopularWithCategory(ctx, req.UserId, req.GetCategory(), int(req.GetLimit()), int(offset)); err != nil {
+		if items, err = s.Gorse.GetItemPopularWithCategory(ctx, req.UserId, req.GetCategory(), int(req.GetLimit()), offset); err != nil {
 			return resp, err
 		}
 	} else {
-		if items, err = s.Gorse.GetItemPopular(ctx, req.UserId, int(req.GetLimit()), int(offset)); err != nil {
+		if items, err = s.Gorse.GetItemPopular(ctx, req.UserId, int(req.GetLimit()), offset); err != nil {
 			return resp, err
 		}
 	}
 	if len(items) < int(req.GetLimit()) {
 		offset = 0
 	} else {
-		offset += req.GetLimit()
+		offset += int(req.GetLimit())
 	}
 
-	_ = s.Redis.SetexCtx(ctx, fmt.Sprintf("cache:popular:recommend:%s", req.UserId), strconv.Itoa(int(offset)), 3600)
+	_ = s.Redis.SetexCtx(ctx, fmt.Sprintf("cache:popular:recommend:%s", req.UserId), strconv.Itoa(offset), 3600)
 
 	resp.ItemIds = lo.Map[gorse.Score, string](items, func(score gorse.Score, _ int) string {
 		return score.Id
@@ -158,34 +158,34 @@ func (s *RecommendService) GetRecommendByItem(ctx context.Context, req *genconte
 	}
 
 	var (
-		offset int64
+		offset int
 		val    string
 		items  []gorse.Score
 	)
 	if val, _ = s.Redis.GetCtx(ctx, fmt.Sprintf("cache:item:recommend:%s", req.ItemId)); val == "" {
 		offset = 0
 	} else {
-		if offset, err = strconv.ParseInt(val, 10, 32); err != nil {
+		if offset, err = strconv.Atoi(val); err != nil {
 			offset = 0
 		}
 	}
 
 	if req.Category != nil {
-		if items, err = s.Gorse.GetItemNeighborsWithCategory(ctx, req.ItemId, req.GetCategory(), int(req.GetLimit()), int(offset)); err != nil {
+		if items, err = s.Gorse.GetItemNeighborsWithCategory(ctx, req.ItemId, req.GetCategory(), int(req.GetLimit()), offset); err != nil {
 			return resp, err
 		}
 	} else {
-		if items, err = s.Gorse.GetItemNeighbors(ctx, req.ItemId, int(req.GetLimit()), int(offset)); err != nil {
+		if items, err = s.Gorse.GetItemNeighbors(ctx, req.ItemId, int(req.GetLimit()), offset); err != nil {
 			return resp, err
 		}
 	}
 	if len(resp.ItemIds) < int(req.GetLimit()) {
 		offset = 0
 	} else {
-		offset += req.GetLimit()
+		offset += int(req.GetLimit())
 	}
 
-	_ = s.Redis.SetexCtx(ctx, fmt.Sprintf("cache:item:recommend:%s", req.ItemId), strconv.Itoa(int(offset)), 3600)
+	_ = s.Redis.SetexCtx(ctx, fmt.Sprintf("cache:item:recommend:%s", req.ItemId), strconv.Itoa(offset), 3600)
 	resp.ItemIds = lo.Map[gorse.Score, string](items, func(score gorse.Score, _ int) string {
 		return score.Id
 	})
@@ -199,33 +199,33 @@ func (s *RecommendService) GetRecommendByUser(ctx context.Context, req *genconte
 	}
 
 	var (
-		offset int64
+		offset int
 		val    string
 	)
 	if val, _ = s.Redis.GetCtx(ctx, fmt.Sprintf("cache:user:recommend:%s", req.UserId)); val == "" {
 		offset = 0
 	} else {
-		if offset, err = strconv.ParseInt(val, 10, 32); err != nil {
+		if offset, err = strconv.Atoi(val); err != nil {
 			offset = 0
 		}
 	}
 
 	if req.Category != nil {
-		if resp.ItemIds, err = s.Gorse.GetItemRecommendWithCategory(ctx, req.UserId, req.GetCategory(), "read", "60m", int(req.GetLimit()), int(offset)); err != nil {
+		if resp.ItemIds, err = s.Gorse.GetItemRecommendWithCategory(ctx, req.UserId, req.GetCategory(), "read", "60m", int(req.GetLimit()), offset); err != nil {
 			return resp, err
 		}
 	} else {
-		if resp.ItemIds, err = s.Gorse.GetItemRecommend(ctx, req.UserId, []string{}, "read", "60m", int(req.GetLimit()), int(offset)); err != nil {
+		if resp.ItemIds, err = s.Gorse.GetItemRecommend(ctx, req.UserId, []string{}, "read", "60m", int(req.GetLimit()), offset); err != nil {
 			return resp, err
 		}
 	}
 	if len(resp.ItemIds) < int(req.GetLimit()) {
 		offset = 0
 	} else {
-		offset += req.GetLimit()
+		offset += int(req.GetLimit())
 	}
 
-	_ = s.Redis.SetexCtx(ctx, fmt.Sprintf("cache:user:recommend:%s", req.UserId), strconv.Itoa(int(offset)), 3600)
+	_ = s.Redis.SetexCtx(ctx, fmt.Sprintf("cache:user:recommend:%s", req.UserId), strconv.Itoa(offset), 3600)
 	return resp, nil
 }
 
