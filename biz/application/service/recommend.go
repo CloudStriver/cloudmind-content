@@ -24,6 +24,11 @@ type IRecommendService interface {
 	CreateFeedBacks(ctx context.Context, req *gencontent.CreateFeedBacksReq) (resp *gencontent.CreateFeedBacksResp, err error)
 }
 
+var RecommendSet = wire.NewSet(
+	wire.Struct(new(RecommendService), "*"),
+	wire.Bind(new(IRecommendService), new(*RecommendService)),
+)
+
 type RecommendService struct {
 	Redis *redis.Redis
 	Gorse *gorse.GorseClient
@@ -58,14 +63,8 @@ func (s *RecommendService) GetLatestRecommend(ctx context.Context, req *genconte
 		}
 	}
 
-	if req.Category != nil {
-		if items, err = s.Gorse.GetItemLatestWithCategory(ctx, req.UserId, req.GetCategory(), int(req.GetLimit()), offset); err != nil {
-			return resp, err
-		}
-	} else {
-		if items, err = s.Gorse.GetItemLatest(ctx, req.UserId, int(req.GetLimit()), offset); err != nil {
-			return resp, err
-		}
+	if items, err = s.Gorse.GetItemLatestWithCategory(ctx, req.UserId, strconv.Itoa(int(req.Category)), int(req.GetLimit()), offset); err != nil {
+		return resp, err
 	}
 	if len(resp.ItemIds) < int(req.GetLimit()) {
 		offset = 0
@@ -77,6 +76,7 @@ func (s *RecommendService) GetLatestRecommend(ctx context.Context, req *genconte
 	resp.ItemIds = lo.Map[gorse.Score, string](items, func(score gorse.Score, _ int) string {
 		return score.Id
 	})
+
 	return resp, nil
 }
 
@@ -91,9 +91,13 @@ func (s *RecommendService) CreateItems(ctx context.Context, req *gencontent.Crea
 }
 
 func (s *RecommendService) UpdateItem(ctx context.Context, req *gencontent.UpdateItemReq) (resp *gencontent.UpdateItemResp, err error) {
+	categories := make([]string, 0, 1)
+	if req.Categories != nil {
+		categories = append(categories, strconv.Itoa(int(req.GetCategories())))
+	}
 	if _, err = s.Gorse.UpdateItem(ctx, req.ItemId, &gorse.ItemPatch{
 		IsHidden:   req.IsHidden,
-		Categories: req.Categories,
+		Categories: categories,
 		Labels:     req.Labels,
 		Comment:    req.Comment,
 	}); err != nil {
@@ -128,14 +132,8 @@ func (s *RecommendService) GetPopularRecommend(ctx context.Context, req *gencont
 		}
 	}
 
-	if req.Category != nil {
-		if items, err = s.Gorse.GetItemPopularWithCategory(ctx, req.UserId, req.GetCategory(), int(req.GetLimit()), offset); err != nil {
-			return resp, err
-		}
-	} else {
-		if items, err = s.Gorse.GetItemPopular(ctx, req.UserId, int(req.GetLimit()), offset); err != nil {
-			return resp, err
-		}
+	if items, err = s.Gorse.GetItemPopularWithCategory(ctx, req.UserId, strconv.Itoa(int(req.Category)), int(req.GetLimit()), offset); err != nil {
+		return resp, err
 	}
 	if len(items) < int(req.GetLimit()) {
 		offset = 0
@@ -170,14 +168,8 @@ func (s *RecommendService) GetRecommendByItem(ctx context.Context, req *genconte
 		}
 	}
 
-	if req.Category != nil {
-		if items, err = s.Gorse.GetItemNeighborsWithCategory(ctx, req.ItemId, req.GetCategory(), int(req.GetLimit()), offset); err != nil {
-			return resp, err
-		}
-	} else {
-		if items, err = s.Gorse.GetItemNeighbors(ctx, req.ItemId, int(req.GetLimit()), offset); err != nil {
-			return resp, err
-		}
+	if items, err = s.Gorse.GetItemNeighborsWithCategory(ctx, req.ItemId, strconv.Itoa(int(req.Category)), int(req.GetLimit()), offset); err != nil {
+		return resp, err
 	}
 	if len(resp.ItemIds) < int(req.GetLimit()) {
 		offset = 0
@@ -210,14 +202,8 @@ func (s *RecommendService) GetRecommendByUser(ctx context.Context, req *genconte
 		}
 	}
 
-	if req.Category != nil {
-		if resp.ItemIds, err = s.Gorse.GetItemRecommendWithCategory(ctx, req.UserId, req.GetCategory(), "read", "60m", int(req.GetLimit()), offset); err != nil {
-			return resp, err
-		}
-	} else {
-		if resp.ItemIds, err = s.Gorse.GetItemRecommend(ctx, req.UserId, []string{}, "read", "60m", int(req.GetLimit()), offset); err != nil {
-			return resp, err
-		}
+	if resp.ItemIds, err = s.Gorse.GetItemRecommendWithCategory(ctx, req.UserId, strconv.Itoa(int(req.Category)), "read", "60m", int(req.GetLimit()), offset); err != nil {
+		return resp, err
 	}
 	if len(resp.ItemIds) < int(req.GetLimit()) {
 		offset = 0
@@ -228,8 +214,3 @@ func (s *RecommendService) GetRecommendByUser(ctx context.Context, req *genconte
 	_ = s.Redis.SetexCtx(ctx, fmt.Sprintf("cache:user:recommend:%s", req.UserId), strconv.Itoa(offset), 3600)
 	return resp, nil
 }
-
-var RecommendSet = wire.NewSet(
-	wire.Struct(new(RecommendService), "*"),
-	wire.Bind(new(IRecommendService), new(*RecommendService)),
-)
