@@ -33,19 +33,6 @@ func UserMapperToUser(in *usermapper.User) *gencontent.User {
 	}
 }
 
-func UserToUserMapper(in *gencontent.User) *usermapper.User {
-	oid, _ := primitive.ObjectIDFromHex(in.UserId)
-	return &usermapper.User{
-		ID:          oid,
-		Name:        in.Name,
-		Sex:         in.Sex,
-		FullName:    in.FullName,
-		IdCard:      in.IdCard,
-		Description: in.Description,
-		Url:         in.Url,
-	}
-}
-
 func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 	return &gencontent.FileInfo{
 		FileId:      data.ID.Hex(),
@@ -227,19 +214,6 @@ func PostFilterOptionsToFilterOptions(in *gencontent.PostFilterOptions) *postmap
 		OnlyTags:        in.OnlyTags,
 		OnlySetRelation: in.OnlySetRelation,
 		OnlyStatus:      in.OnlyStatus,
-	}
-}
-
-func PostToPostMapper(in *gencontent.Post) *postmapper.Post {
-	oid, _ := primitive.ObjectIDFromHex(in.PostId)
-	return &postmapper.Post{
-		ID:     oid,
-		Title:  in.Title,
-		Text:   in.Text,
-		Url:    in.Url,
-		Tags:   in.Tags,
-		UserId: in.UserId,
-		Status: in.Status,
 	}
 }
 
@@ -592,6 +566,47 @@ func ConvertCouponAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey
 }
 
 func ConvertCouponMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsKey) []types.Query {
+	var q []types.Query
+	if in.MultiFieldsKey.Name != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.Name: {
+					Query: *in.MultiFieldsKey.Name + "^3",
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Id != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.ID: {
+					Query: *in.MultiFieldsKey.Id,
+				},
+			},
+		})
+	}
+	if in.MultiFieldsKey.Description != nil {
+		q = append(q, types.Query{
+			Match: map[string]types.MatchQuery{
+				consts.Description: {
+					Query: *in.MultiFieldsKey.Description,
+				},
+			},
+		})
+	}
+	return q
+}
+
+func ConvertUserAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey) []types.Query {
+	return []types.Query{{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:  in.AllFieldsKey,
+			Fields: []string{consts.Name + "^3", consts.ID, consts.Description},
+		}},
+	}
+}
+
+func ConvertUserMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsKey) []types.Query {
 	var q []types.Query
 	if in.MultiFieldsKey.Name != nil {
 		q = append(q, types.Query{

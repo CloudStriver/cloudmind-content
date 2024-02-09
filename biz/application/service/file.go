@@ -671,7 +671,6 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 		}
 		return nil
 	})
-
 	resp.FileIds = ids
 	return resp, err
 }

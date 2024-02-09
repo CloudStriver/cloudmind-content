@@ -228,7 +228,6 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 		data.ID = primitive.NewObjectID()
 		data.CreateAt = time.Now()
 	}
-
 	data.UpdateAt = time.Now()
 	data.Path = data.Path + "/" + data.ID.Hex()
 	key := prefixFileCacheKey + data.ID.Hex()
