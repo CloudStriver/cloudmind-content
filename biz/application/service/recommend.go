@@ -53,7 +53,7 @@ func (s *RecommendService) GetLatestRecommend(ctx context.Context, req *genconte
 	if val, _ = s.Redis.GetCtx(ctx, fmt.Sprintf("cache:latest:recommend:%s", req.UserId)); val == "" {
 		offset = 0
 	} else {
-		if offset, err = strconv.ParseInt(val, 10, 64); err != nil {
+		if offset, err = strconv.ParseInt(val, 10, 32); err != nil {
 			offset = 0
 		}
 	}
@@ -123,7 +123,7 @@ func (s *RecommendService) GetPopularRecommend(ctx context.Context, req *gencont
 	if val, _ = s.Redis.GetCtx(ctx, fmt.Sprintf("cache:popular:recommend:%s", req.UserId)); val == "" {
 		offset = 0
 	} else {
-		if offset, err = strconv.ParseInt(val, 10, 64); err != nil {
+		if offset, err = strconv.ParseInt(val, 10, 32); err != nil {
 			offset = 0
 		}
 	}
@@ -165,7 +165,7 @@ func (s *RecommendService) GetRecommendByItem(ctx context.Context, req *genconte
 	if val, _ = s.Redis.GetCtx(ctx, fmt.Sprintf("cache:item:recommend:%s", req.ItemId)); val == "" {
 		offset = 0
 	} else {
-		if offset, err = strconv.ParseInt(val, 10, 64); err != nil {
+		if offset, err = strconv.ParseInt(val, 10, 32); err != nil {
 			offset = 0
 		}
 	}
@@ -205,7 +205,7 @@ func (s *RecommendService) GetRecommendByUser(ctx context.Context, req *genconte
 	if val, _ = s.Redis.GetCtx(ctx, fmt.Sprintf("cache:user:recommend:%s", req.UserId)); val == "" {
 		offset = 0
 	} else {
-		if offset, err = strconv.ParseInt(val, 10, 64); err != nil {
+		if offset, err = strconv.ParseInt(val, 10, 32); err != nil {
 			offset = 0
 		}
 	}
