@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/CloudStriver/go-pkg v0.0.0-20231229114943-910edcb8788d
-	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240206150308-c7a07fdf6d24
+	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240209072649-698e4ff5d11f
 	github.com/bytedance/sonic v1.10.2
 	github.com/cloudwego/kitex v0.8.0
 	github.com/elastic/go-elasticsearch/v8 v8.11.1
@@ -18,10 +18,6 @@ require (
 	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/trace v1.19.0
 	google.golang.org/grpc v1.60.1
-)
-
-replace (
-	github.com/CloudStriver/service-idl-gen-go => ../service-idl-gen-go
 )
 
 require (
