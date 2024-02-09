@@ -9,13 +9,47 @@ import (
 
 type ContentServerImpl struct {
 	*config.Config
-	FileService    service.IFileService
-	PostService    service.IPostService
-	ZoneService    service.IZoneService
-	UserService    service.IUserService
-	ProductService service.IProductService
-	CouponService  service.ICouponService
-	OrderService   service.IOrderService
+	FileService      service.IFileService
+	PostService      service.IPostService
+	ZoneService      service.IZoneService
+	UserService      service.IUserService
+	ProductService   service.IProductService
+	CouponService    service.ICouponService
+	OrderService     service.IOrderService
+	RecommendService service.IRecommendService
+}
+
+func (s *ContentServerImpl) CreateFeedBacks(ctx context.Context, req *content.CreateFeedBacksReq) (res *content.CreateFeedBacksResp, err error) {
+	return s.RecommendService.CreateFeedBacks(ctx, req)
+}
+
+func (s *ContentServerImpl) GetLatestRecommend(ctx context.Context, req *content.GetLatestRecommendReq) (res *content.GetLatestRecommendResp, err error) {
+	return s.RecommendService.GetLatestRecommend(ctx, req)
+}
+
+func (s *ContentServerImpl) CreateItems(ctx context.Context, req *content.CreateItemsReq) (res *content.CreateItemsResp, err error) {
+	return s.RecommendService.CreateItems(ctx, req)
+}
+
+func (s *ContentServerImpl) UpdateItem(ctx context.Context, req *content.UpdateItemReq) (res *content.UpdateItemResp, err error) {
+	return s.RecommendService.UpdateItem(ctx, req)
+}
+
+func (s *ContentServerImpl) DeleteItem(ctx context.Context, req *content.DeleteItemReq) (res *content.DeleteItemResp, err error) {
+	return s.RecommendService.DeleteItem(ctx, req)
+}
+
+func (s *ContentServerImpl) GetRecommendByUser(ctx context.Context, req *content.GetRecommendByUserReq) (res *content.GetRecommendByUserResp, err error) {
+	return s.RecommendService.GetRecommendByUser(ctx, req)
+}
+
+func (s *ContentServerImpl) GetRecommendByItem(ctx context.Context, req *content.GetRecommendByItemReq) (res *content.GetRecommendByItemResp, err error) {
+	return s.RecommendService.GetRecommendByItem(ctx, req)
+}
+
+func (s *ContentServerImpl) GetPopularRecommend(ctx context.Context, req *content.GetPopularRecommendReq) (res *content.GetPopularRecommendResp, err error) {
+	return s.RecommendService.GetPopularRecommend(ctx, req)
+
 }
 
 func (s *ContentServerImpl) CompletelyRemoveFile(ctx context.Context, req *content.CompletelyRemoveFileReq) (res *content.CompletelyRemoveFileResp, err error) {

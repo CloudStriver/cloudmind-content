@@ -10,6 +10,7 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/adaptor"
 	"github.com/CloudStriver/cloudmind-content/biz/application/service"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/gorse"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/coupon"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/order"
@@ -81,15 +82,21 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		OrderEsMapper:    orderIEsMapper,
 		Redis:            redisRedis,
 	}
+	gorseClient := gorse.NewGorseClient(configConfig)
+	recommendService := &service.RecommendService{
+		Redis: redisRedis,
+		Gorse: gorseClient,
+	}
 	contentServerImpl := &adaptor.ContentServerImpl{
-		Config:         configConfig,
-		FileService:    fileService,
-		PostService:    postService,
-		ZoneService:    zoneService,
-		UserService:    userService,
-		ProductService: productService,
-		CouponService:  couponService,
-		OrderService:   orderService,
+		Config:           configConfig,
+		FileService:      fileService,
+		PostService:      postService,
+		ZoneService:      zoneService,
+		UserService:      userService,
+		ProductService:   productService,
+		CouponService:    couponService,
+		OrderService:     orderService,
+		RecommendService: recommendService,
 	}
 	return contentServerImpl, nil
 }

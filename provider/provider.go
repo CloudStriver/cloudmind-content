@@ -3,6 +3,7 @@ package provider
 import (
 	"github.com/CloudStriver/cloudmind-content/biz/application/service"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/gorse"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/coupon"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/order"
@@ -28,11 +29,13 @@ var ApplicationSet = wire.NewSet(
 	service.CouponSet,
 	service.ProductSet,
 	service.OrderSet,
+	service.RecommendSet,
 )
 
 var InfrastructureSet = wire.NewSet(
 	config.NewConfig,
 	redis.NewRedis,
+	gorse.NewGorseClient,
 	MapperSet,
 )
 
