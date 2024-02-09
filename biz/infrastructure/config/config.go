@@ -24,6 +24,10 @@ type Config struct {
 	CacheConf     cache.CacheConf
 	Elasticsearch ElasticsearchConf
 	Redis         *redis.RedisConf
+	GorseConf     struct {
+		Url    string
+		ApiKey string
+	}
 }
 
 func NewConfig() (*Config, error) {

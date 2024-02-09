@@ -42,7 +42,8 @@ const (
 )
 
 var (
-	NotDel  int64 = 1
-	SoftDel int64 = 2
-	HardDel int64 = 3
+	NotDel       int64 = 1
+	SoftDel      int64 = 2
+	HardDel      int64 = 3
+	DefaultLimit       = 10
 )

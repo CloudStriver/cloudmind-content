@@ -2,6 +2,7 @@ package convertor
 
 import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/gorse"
 	couponmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/coupon"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	ordermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/order"
@@ -636,4 +637,24 @@ func ConvertUserMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsK
 		})
 	}
 	return q
+}
+
+func ItemToGorseItem(in *gencontent.Item) gorse.Item {
+	return gorse.Item{
+		ItemId:     in.ItemId,
+		IsHidden:   in.IsHidden,
+		Labels:     in.Labels,
+		Categories: in.Categories,
+		Timestamp:  in.Timestamp,
+		Comment:    in.Comment,
+	}
+}
+
+func FeedBackToGorseFeedBack(in *gencontent.FeedBack) gorse.Feedback {
+	return gorse.Feedback{
+		FeedbackType: in.FeedbackType,
+		UserId:       in.UserId,
+		ItemId:       in.ItemId,
+		Timestamp:    in.Timestamp,
+	}
 }
