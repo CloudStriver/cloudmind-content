@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"strconv"
 	"time"
 )
 
@@ -645,8 +646,8 @@ func ItemToGorseItem(in *gencontent.Item) gorse.Item {
 		ItemId:     in.ItemId,
 		IsHidden:   in.IsHidden,
 		Labels:     in.Labels,
-		Categories: in.Categories,
-		Timestamp:  in.Timestamp,
+		Categories: []string{strconv.Itoa(int(in.Category))},
+		Timestamp:  time.Now().String(),
 		Comment:    in.Comment,
 	}
 }
@@ -656,6 +657,6 @@ func FeedBackToGorseFeedBack(in *gencontent.FeedBack) gorse.Feedback {
 		FeedbackType: in.FeedbackType,
 		UserId:       in.UserId,
 		ItemId:       in.ItemId,
-		Timestamp:    in.Timestamp,
+		Timestamp:    time.Now().String(),
 	}
 }
