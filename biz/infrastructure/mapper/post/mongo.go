@@ -23,7 +23,7 @@ const prefixPostCacheKey = "cache:post:"
 
 type (
 	IPostMongoMapper interface {
-		Insert(ctx context.Context, data *Post) error
+		Insert(ctx context.Context, data *Post) (string, error)
 		FindOne(ctx context.Context, id string) (*Post, error)
 		Update(ctx context.Context, data *Post) error
 		Delete(ctx context.Context, id string) error
@@ -118,7 +118,7 @@ func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions
 	return posts, total, nil
 }
 
-func (m *MongoMapper) Insert(ctx context.Context, data *Post) error {
+func (m *MongoMapper) Insert(ctx context.Context, data *Post) (string, error) {
 	if data.ID.IsZero() {
 		data.ID = primitive.NewObjectID()
 		data.CreateAt = time.Now()
@@ -127,7 +127,7 @@ func (m *MongoMapper) Insert(ctx context.Context, data *Post) error {
 
 	key := prefixPostCacheKey + data.ID.Hex()
 	_, err := m.conn.InsertOne(ctx, key, data)
-	return err
+	return data.ID.Hex(), err
 }
 
 func (m *MongoMapper) FindOne(ctx context.Context, id string) (*Post, error) {
