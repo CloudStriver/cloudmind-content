@@ -36,6 +36,7 @@ var PostSet = wire.NewSet(
 )
 
 func (s *PostService) CreatePost(ctx context.Context, req *gencontent.CreatePostReq) (resp *gencontent.CreatePostResp, err error) {
+	resp = new(gencontent.CreatePostResp)
 	if resp.PostId, err = s.PostMongoMapper.Insert(ctx, &postmapper.Post{
 		Title:  req.Title,
 		Text:   req.Text,
