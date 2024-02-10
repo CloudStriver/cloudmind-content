@@ -660,3 +660,12 @@ func FeedBackToGorseFeedBack(in *gencontent.FeedBack) gorse.Feedback {
 		Timestamp:    time.Now().String(),
 	}
 }
+
+func UserFilterToUserFilterMapper(in *gencontent.UserFilterOptions) *usermapper.FilterOptions {
+	if in == nil {
+		return &usermapper.FilterOptions{}
+	}
+	return &usermapper.FilterOptions{
+		OnlyUserIds: in.UserIds,
+	}
+}

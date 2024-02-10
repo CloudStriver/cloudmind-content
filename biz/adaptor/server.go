@@ -152,8 +152,8 @@ func (s *ContentServerImpl) GetUser(ctx context.Context, req *content.GetUserReq
 	return s.UserService.GetUser(ctx, req)
 }
 
-func (s *ContentServerImpl) SearchUser(ctx context.Context, req *content.SearchUserReq) (resp *content.SearchUserResp, err error) {
-	return s.UserService.SearchUser(ctx, req)
+func (s *ContentServerImpl) GetUsers(ctx context.Context, req *content.GetUsersReq) (resp *content.GetUsersResp, err error) {
+	return s.UserService.GetUsers(ctx, req)
 }
 
 func (s *ContentServerImpl) CreateUser(ctx context.Context, req *content.CreateUserReq) (resp *content.CreateUserResp, err error) {

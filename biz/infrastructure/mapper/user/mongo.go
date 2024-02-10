@@ -5,10 +5,14 @@ import (
 	"errors"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
+	"github.com/CloudStriver/go-pkg/utils/pagination"
+	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
+	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/stores/monc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
 
@@ -24,6 +28,7 @@ type (
 		FindOne(ctx context.Context, id string) (*User, error)
 		Update(ctx context.Context, data *User) (*mongo.UpdateResult, error)
 		Delete(ctx context.Context, id string) (int64, error)
+		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*User, error)
 	}
 	User struct {
 		ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
@@ -48,6 +53,37 @@ func NewMongoMapper(config *config.Config) IUserMongoMapper {
 	return &MongoMapper{
 		conn: conn,
 	}
+}
+
+func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*User, error) {
+	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
+
+	filter := MakeBsonFilter(fopts)
+	sort, err := p.MakeSortOptions(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var data []*User
+	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
+		Sort:  sort,
+		Limit: popts.Limit,
+		Skip:  popts.Offset,
+	}); err != nil {
+		return nil, err
+	}
+
+	// 如果是反向查询，反转数据
+	if *popts.Backward {
+		lo.Reverse(data)
+	}
+	if len(data) > 0 {
+		err = p.StoreCursor(ctx, data[0], data[len(data)-1])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return data, nil
 }
 
 func (m *MongoMapper) Insert(ctx context.Context, data *User) (string, error) {
