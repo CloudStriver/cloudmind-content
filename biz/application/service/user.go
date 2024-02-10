@@ -7,6 +7,7 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	usermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
+	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/pconvertor"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/google/wire"
@@ -19,7 +20,7 @@ type IUserService interface {
 	GetUser(ctx context.Context, req *gencontent.GetUserReq) (resp *gencontent.GetUserResp, err error)
 	CreateUser(ctx context.Context, req *gencontent.CreateUserReq) (resp *gencontent.CreateUserResp, err error)
 	UpdateUser(ctx context.Context, req *gencontent.UpdateUserReq) (resp *gencontent.UpdateUserResp, err error)
-	SearchUser(ctx context.Context, req *gencontent.SearchUserReq) (resp *gencontent.SearchUserResp, err error)
+	GetUsers(ctx context.Context, req *gencontent.GetUsersReq) (resp *gencontent.GetUsersResp, err error)
 	DeleteUser(ctx context.Context, req *gencontent.DeleteUserReq) (resp *gencontent.DeleteUserResp, err error)
 }
 
@@ -42,19 +43,24 @@ func (s *UserService) DeleteUser(ctx context.Context, req *gencontent.DeleteUser
 	return resp, nil
 }
 
-func (s *UserService) SearchUser(ctx context.Context, req *gencontent.SearchUserReq) (resp *gencontent.SearchUserResp, err error) {
-	resp = new(gencontent.SearchUserResp)
+func (s *UserService) GetUsers(ctx context.Context, req *gencontent.GetUsersReq) (resp *gencontent.GetUsersResp, err error) {
+	resp = new(gencontent.GetUsersResp)
 	var (
 		users []*usermapper.User
 		total int64
 	)
 
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
-	switch o := req.SearchOptions.Type.(type) {
-	case *gencontent.SearchOptions_AllFieldsKey:
-		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(o), p, esp.ScoreCursorType)
-	case *gencontent.SearchOptions_MultiFieldsKey:
-		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserMultiFieldsSearchQuery(o), p, esp.ScoreCursorType)
+	if req.SearchOptions != nil {
+		switch o := req.SearchOptions.Type.(type) {
+		case *gencontent.SearchOptions_AllFieldsKey:
+			users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(o), p, esp.ScoreCursorType)
+		case *gencontent.SearchOptions_MultiFieldsKey:
+			users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserMultiFieldsSearchQuery(o), p, esp.ScoreCursorType)
+		}
+	} else {
+		users, err = s.UserMongoMapper.FindMany(ctx, convertor.UserFilterToUserFilterMapper(req.UserFilterOptions),
+			p, mongop.IdCursorType)
 	}
 	if err != nil {
 		return resp, err
