@@ -44,6 +44,7 @@ func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 		Path:        data.Path,
 		FatherId:    data.FatherId,
 		SpaceSize:   *data.Size,
+		IsDel:       data.IsDel,
 		Zone:        data.Zone,
 		SubZone:     data.SubZone,
 		Description: data.Description,
