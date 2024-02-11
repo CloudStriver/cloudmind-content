@@ -90,18 +90,16 @@ func FileInfoToFileMapper(data *gencontent.FileInfo) *file.File {
 	}
 }
 
-// 0:永久有效 1:有效 2:已失效 ...
-
 func IsExpired(ctime time.Time, effectiveTime int64) int64 {
 	if effectiveTime < 0 {
-		return 0
+		return int64(gencontent.Validity_Validity_perpetuity)
 	}
 	now := time.Now()
 	ctime = ctime.Add(time.Duration(effectiveTime) * time.Second)
 	if now.After(ctime) {
-		return 2
+		return int64(gencontent.Validity_Validity_expired)
 	} else {
-		return 1
+		return int64(gencontent.Validity_Validity_temporary)
 	}
 }
 

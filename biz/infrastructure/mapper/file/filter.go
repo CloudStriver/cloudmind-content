@@ -1,6 +1,7 @@
 package file
 
 import (
+	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
@@ -89,7 +90,7 @@ func (f *MongoFileFilter) CheckOnlyIsDel() {
 }
 
 func (f *MongoFileFilter) CheckOnlyDocumentType() {
-	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == consts.PublicSpace {
+	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == int64(gencontent.Space_Space_public) {
 		if f.OnlyZone != nil {
 			f.m[consts.Zone] = *f.OnlyZone
 		} else {
@@ -143,7 +144,7 @@ func (f *EsFilter) checkOnlyIsDel() {
 }
 
 func (f *EsFilter) checkOnlyDocumentType() {
-	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == consts.PublicSpace {
+	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == int64(gencontent.Space_Space_public) {
 		if f.OnlyZone != nil {
 			f.q = append(f.q, types.Query{
 				Term: map[string]types.TermQuery{

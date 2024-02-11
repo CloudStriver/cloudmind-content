@@ -9,6 +9,7 @@ import (
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
+	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/mr"
 	"github.com/zeromicro/go-zero/core/stores/monc"
@@ -322,8 +323,8 @@ func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, e
 		{
 			{"$match", bson.M{
 				consts.Path:  bson.M{"$regex": "^" + path},
-				consts.Size:  bson.M{"$ne": consts.FolderSize},
-				consts.IsDel: consts.NotDel,
+				consts.Size:  bson.M{"$ne": int64(gencontent.Folder_Folder_Size)},
+				consts.IsDel: int64(gencontent.Deletion_Deletion_notDel),
 			}},
 		},
 		{
