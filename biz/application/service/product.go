@@ -12,6 +12,7 @@ import (
 	"github.com/google/wire"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/stores/redis"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type IProductService interface {
@@ -22,6 +23,11 @@ type IProductService interface {
 	DeleteProduct(ctx context.Context, req *gencontent.DeleteProductReq) (resp *gencontent.DeleteProductResp, err error)
 }
 
+var ProductSet = wire.NewSet(
+	wire.Struct(new(ProductService), "*"),
+	wire.Bind(new(IProductService), new(*ProductService)),
+)
+
 type ProductService struct {
 	Config             *config.Config
 	ProductMongoMapper productmapper.IProductMongoMapper
@@ -30,13 +36,23 @@ type ProductService struct {
 }
 
 func (s *ProductService) GetProduct(ctx context.Context, req *gencontent.GetProductReq) (resp *gencontent.GetProductResp, err error) {
-	resp = new(gencontent.GetProductResp)
-	product, err := s.ProductMongoMapper.FindOne(ctx, convertor.ProductFilterOptionsToFilterOptions(req.ProductFilterOptions))
+	product, err := s.ProductMongoMapper.FindOne(ctx, req.ProductId)
 	if err != nil {
 		return resp, err
 	}
-	resp.Product = convertor.ProductMapperToProduct(product)
-	return resp, nil
+	return &gencontent.GetProductResp{
+		UserId:      product.UserId,
+		Name:        product.Name,
+		Description: product.Description,
+		Status:      product.Status,
+		Urls:        product.Urls,
+		Tags:        product.Tags,
+		Type:        product.Type,
+		Price:       product.Price,
+		ProductSize: product.ProductSize,
+		CreateTime:  product.CreateAt.UnixMilli(),
+		UpdateTime:  product.UpdateAt.UnixMilli(),
+	}, nil
 }
 
 func (s *ProductService) GetProducts(ctx context.Context, req *gencontent.GetProductsReq) (resp *gencontent.GetProductsResp, err error) {
@@ -76,29 +92,45 @@ func (s *ProductService) GetProducts(ctx context.Context, req *gencontent.GetPro
 
 func (s *ProductService) CreateProduct(ctx context.Context, req *gencontent.CreateProductReq) (resp *gencontent.CreateProductResp, err error) {
 	resp = new(gencontent.CreateProductResp)
-	if err = s.ProductMongoMapper.Insert(ctx, convertor.ProductToProductMapper(req.Product)); err != nil {
+	if resp.ProductId, err = s.ProductMongoMapper.Insert(ctx, &productmapper.Product{
+		UserId:      req.UserId,
+		Name:        req.Name,
+		Status:      req.Status,
+		Description: req.Description,
+		Urls:        req.Urls,
+		Tags:        req.Tags,
+		Type:        req.Type,
+		Price:       req.Price,
+		ProductSize: req.ProductSize,
+		Score_:      0,
+	}); err != nil {
 		return resp, err
 	}
 	return resp, nil
 }
 
 func (s *ProductService) UpdateProduct(ctx context.Context, req *gencontent.UpdateProductReq) (resp *gencontent.UpdateProductResp, err error) {
-	resp = new(gencontent.UpdateProductResp)
-	if err = s.ProductMongoMapper.Update(ctx, convertor.ProductToProductMapper(req.Product)); err != nil {
+	oid, _ := primitive.ObjectIDFromHex(req.ProductId)
+	if err = s.ProductMongoMapper.Update(ctx, &productmapper.Product{
+		ID:          oid,
+		Name:        req.Name,
+		Status:      req.Status,
+		Description: req.Description,
+		Urls:        req.Urls,
+		Tags:        req.Tags,
+		Type:        req.Type,
+		Price:       req.Price,
+		ProductSize: req.ProductSize,
+		Score_:      0,
+	}); err != nil {
 		return resp, err
 	}
 	return resp, nil
 }
 
 func (s *ProductService) DeleteProduct(ctx context.Context, req *gencontent.DeleteProductReq) (resp *gencontent.DeleteProductResp, err error) {
-	resp = new(gencontent.DeleteProductResp)
 	if err = s.ProductMongoMapper.Delete(ctx, req.ProductId); err != nil {
 		return resp, err
 	}
 	return resp, nil
 }
-
-var ProductSet = wire.NewSet(
-	wire.Struct(new(ProductService), "*"),
-	wire.Bind(new(IProductService), new(*ProductService)),
-)
