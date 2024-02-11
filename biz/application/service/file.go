@@ -562,12 +562,13 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 	var err1 error
 	file := convertor.FileInfoToFileMapper(req.File)
 	tx := s.FileMongoMapper.StartClient()
+
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 		if err1 = sessionContext.StartTransaction(); err1 != nil {
 			return err1
 		}
 		if resp.FileId, err1 = s.FileMongoMapper.FindAndInsert(sessionContext, &filemapper.File{ // 创建根文件
-			UserId:   file.UserId,
+			UserId:   req.UserId,
 			Name:     file.Name,
 			Type:     file.Type,
 			Path:     req.NewPath,
