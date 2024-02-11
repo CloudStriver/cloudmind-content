@@ -24,8 +24,8 @@ var _ IProductMongoMapper = (*MongoMapper)(nil)
 
 type (
 	IProductMongoMapper interface {
-		Insert(ctx context.Context, data *Product) error
-		FindOne(ctx context.Context, fopts *FilterOptions) (*Product, error)
+		Insert(ctx context.Context, data *Product) (string, error)
+		FindOne(ctx context.Context, id string) (*Product, error)
 		Update(ctx context.Context, data *Product) error
 		Delete(ctx context.Context, id string) error
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Product, error)
@@ -120,7 +120,7 @@ func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions
 	return products, total, nil
 }
 
-func (m *MongoMapper) Insert(ctx context.Context, data *Product) error {
+func (m *MongoMapper) Insert(ctx context.Context, data *Product) (string, error) {
 	if data.ID.IsZero() {
 		data.ID = primitive.NewObjectID()
 		data.CreateAt = time.Now()
@@ -129,17 +129,14 @@ func (m *MongoMapper) Insert(ctx context.Context, data *Product) error {
 
 	key := prefixProductCacheKey + data.ID.Hex()
 	_, err := m.conn.InsertOne(ctx, key, data)
-	return err
+	return data.ID.Hex(), err
 }
 
-func (m *MongoMapper) FindOne(ctx context.Context, fopts *FilterOptions) (*Product, error) {
-	filter := MakeBsonFilter(fopts)
+func (m *MongoMapper) FindOne(ctx context.Context, id string) (*Product, error) {
 	var data Product
-	if fopts.OnlyProductId == nil {
-		return nil, consts.ErrInvalidId
-	}
-	key := prefixProductCacheKey + *fopts.OnlyProductId
-	err := m.conn.FindOne(ctx, key, &data, filter)
+	key := prefixProductCacheKey + id
+	oid, _ := primitive.ObjectIDFromHex(id)
+	err := m.conn.FindOne(ctx, key, &data, bson.M{consts.ID: oid})
 	switch {
 	case err == nil:
 		return &data, nil
