@@ -349,22 +349,6 @@ func ProductFilterOptionsToFilterOptions(in *gencontent.ProductFilterOptions) *p
 	}
 }
 
-func ProductToProductMapper(in *gencontent.Product) *productmapper.Product {
-	oid, _ := primitive.ObjectIDFromHex(in.ProductId)
-	return &productmapper.Product{
-		ID:          oid,
-		UserId:      in.UserId,
-		Name:        in.Name,
-		Status:      in.Status,
-		Description: in.Description,
-		Urls:        in.Urls,
-		Tags:        in.Tags,
-		Type:        in.Type,
-		Price:       in.Price,
-		ProductSize: in.ProductSize,
-	}
-}
-
 func ProductMapperToProduct(in *productmapper.Product) *gencontent.Product {
 	if in == nil {
 		return &gencontent.Product{}
