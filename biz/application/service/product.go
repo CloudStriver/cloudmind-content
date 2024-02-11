@@ -118,7 +118,6 @@ func (s *ProductService) UpdateProduct(ctx context.Context, req *gencontent.Upda
 		Description: req.Description,
 		Urls:        req.Urls,
 		Tags:        req.Tags,
-		Type:        req.Type,
 		Price:       req.Price,
 		ProductSize: req.ProductSize,
 		Score_:      0,
