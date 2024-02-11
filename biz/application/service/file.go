@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	filemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
@@ -248,6 +249,7 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 		return resp, err
 	}
 
+	fmt.Printf("\n[%v]\n", req)
 	if req.OnlyFileId != nil {
 		if res, ok, err = s.CheckShareFile(ctx, shareFiles, req.OnlyFileId); err != nil {
 			return resp, err
@@ -256,6 +258,7 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 			resp.Files = []*gencontent.FileInfo{res}
 		}
 	} else if req.OnlyFatherId != nil {
+		fmt.Printf("\n---[%v]---\n", *req.OnlyFatherId)
 		if _, ok, err = s.CheckShareFile(ctx, shareFiles, req.OnlyFatherId); err != nil {
 			return resp, err
 		}
@@ -263,18 +266,23 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 			if data, err = s.GetFileList(ctx, &gencontent.GetFileListReq{
 				FilterOptions:     &gencontent.FileFilterOptions{OnlyFatherId: req.OnlyFatherId, OnlyIsDel: lo.ToPtr(consts.NotDel)},
 				PaginationOptions: req.PaginationOptions,
+				SortOptions:       req.SortOptions,
 			}); err != nil {
 				return resp, err
 			}
 			resp.Files = data.Files
 			resp.Total = data.Total
 			resp.Token = data.Token
+			resp.FatherIdPath = data.FatherIdPath
+			resp.FatherNamePath = data.FatherNamePath
 		}
 	} else {
 		resp.Files = lo.Map[*filemapper.File, *gencontent.FileInfo](shareFiles, func(item *filemapper.File, _ int) *gencontent.FileInfo {
 			return convertor.FileMapperToFile(item)
 		})
 		resp.Total = int64(len(shareFiles))
+		resp.FatherIdPath = data.FatherIdPath
+		resp.FatherNamePath = data.FatherNamePath
 	}
 
 	return resp, nil
