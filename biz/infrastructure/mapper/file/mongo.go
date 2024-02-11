@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	errorx "errors"
+	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
@@ -148,9 +149,11 @@ func (m *MongoMapper) FindAndInsert(ctx context.Context, data *File) (string, er
 	_, span := tracer.Start(ctx, "mongo.FindAndInsert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
+	fmt.Printf("\n[%v]\n", *data)
+
 	var res File
 	if err := m.conn.FindOneNoCache(ctx, &res, bson.M{consts.FatherId: data.FatherId, consts.Name: data.Name, consts.IsDel: data.IsDel}); err != nil {
-		if errorx.Is(err, consts.ErrNotFound) {
+		if errorx.Is(err, monc.ErrNotFound) {
 			return m.Insert(ctx, data)
 		}
 		return "", err
@@ -231,6 +234,7 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 	data.UpdateAt = time.Now()
 	data.Path = data.Path + "/" + data.ID.Hex()
 	key := prefixFileCacheKey + data.ID.Hex()
+	fmt.Printf("\n[%v]\n", *data)
 	ID, err := m.conn.InsertOne(ctx, key, data)
 	if err != nil {
 		data.Name = data.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
