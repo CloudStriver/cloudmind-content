@@ -19,6 +19,10 @@ type ContentServerImpl struct {
 	RecommendService service.IRecommendService
 }
 
+func (s *ContentServerImpl) GetRecycleBinFiles(ctx context.Context, req *content.GetRecycleBinFilesReq) (res *content.GetRecycleBinFilesResp, err error) {
+	return s.FileService.GetRecycleBinFiles(ctx, req)
+}
+
 func (s *ContentServerImpl) CreateFeedBacks(ctx context.Context, req *content.CreateFeedBacksReq) (res *content.CreateFeedBacksResp, err error) {
 	return s.RecommendService.CreateFeedBacks(ctx, req)
 }

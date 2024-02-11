@@ -27,6 +27,7 @@ type IFileService interface {
 	GetFilesByIds(ctx context.Context, req *gencontent.GetFilesByIdsReq) (resp *gencontent.GetFilesByIdsResp, err error)
 	GetFileList(ctx context.Context, req *gencontent.GetFileListReq) (resp *gencontent.GetFileListResp, err error)
 	GetFileBySharingCode(ctx context.Context, req *gencontent.GetFileBySharingCodeReq) (resp *gencontent.GetFileBySharingCodeResp, err error)
+	GetRecycleBinFiles(ctx context.Context, req *gencontent.GetRecycleBinFilesReq) (resp *gencontent.GetRecycleBinFilesResp, err error)
 	GetFolderSize(ctx context.Context, path string) (resp int64, err error)
 	CreateFile(ctx context.Context, req *gencontent.CreateFileReq) (resp *gencontent.CreateFileResp, err error)
 	UpdateFile(ctx context.Context, req *gencontent.UpdateFileReq) (resp *gencontent.UpdateFileResp, err error)
@@ -104,6 +105,25 @@ func (s *FileService) GetFilesByIds(ctx context.Context, req *gencontent.GetFile
 		}
 		return nil // 或者处理找不到文件的情况
 	})
+	return resp, nil
+}
+func (s *FileService) GetRecycleBinFiles(ctx context.Context, req *gencontent.GetRecycleBinFilesReq) (resp *gencontent.GetRecycleBinFilesResp, err error) {
+	resp = new(gencontent.GetRecycleBinFilesResp)
+	var total int64
+	var files []*filemapper.File
+	filter := convertor.FileFilterOptionsToFilterOptions(req.FilterOptions)
+	p := convertor.ParsePagination(req.PaginationOptions)
+	if files, total, err = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, mongop.IdCursorType); err != nil {
+		log.CtxError(ctx, "查询回收站文件列表: 发生异常[%v]\n", err)
+		return resp, err
+	}
+	if p.LastToken != nil {
+		resp.Token = *p.LastToken
+	}
+	resp.Files = lo.Map[*filemapper.File, *gencontent.FileInfo](files, func(item *filemapper.File, _ int) *gencontent.FileInfo {
+		return convertor.FileMapperToFile(item)
+	})
+	resp.Total = total
 	return resp, nil
 }
 
