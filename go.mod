@@ -11,6 +11,7 @@ require (
 	github.com/google/wire v0.5.0
 	github.com/kitex-contrib/obs-opentelemetry v0.2.5
 	github.com/mitchellh/mapstructure v1.1.2
+	github.com/pkg/errors v0.9.1
 	github.com/samber/lo v1.38.1
 	github.com/zeromicro/go-zero v1.6.1
 	go.mongodb.org/mongo-driver v1.13.1

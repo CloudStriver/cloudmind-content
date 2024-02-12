@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	filemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	sharefilemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
+	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
@@ -58,14 +58,10 @@ var FileSet = wire.NewSet(
 
 func (s *FileService) GetFileIsExist(ctx context.Context, req *gencontent.GetFileIsExistReq) (resp *gencontent.GetFileIsExistResp, err error) {
 	resp = new(gencontent.GetFileIsExistResp)
-	var ok bool
-	ok, err = s.FileMongoMapper.FindFileIsExist(ctx, req.Md5)
+	resp.Ok, err = s.FileMongoMapper.FindFileIsExist(ctx, req.Md5)
 	if err != nil {
-		log.CtxError(ctx, "查询文件md5值是否存在: 发生异常[%v]\n", err)
 		return resp, err
 	}
-
-	resp.Ok = ok
 	return resp, nil
 }
 
@@ -73,13 +69,14 @@ func (s *FileService) GetFile(ctx context.Context, req *gencontent.GetFileReq) (
 	resp = new(gencontent.GetFileResp)
 	var file *filemapper.File
 	if file, err = s.FileMongoMapper.FindOne(ctx, req.FileId); err != nil {
-		log.CtxError(ctx, "查询文件详细信息: 发生异常[%v]\n", err)
 		return resp, err
 	}
 	resp.File = convertor.FileMapperToFile(file)
+
+	// 如果是获取文件夹大小，需要计算文件夹大小
 	if req.IsGetSize && resp.File.SpaceSize == int64(gencontent.Folder_Folder_Size) {
 		if resp.File.SpaceSize, err = s.GetFolderSize(ctx, resp.File.Path); err != nil {
-			return resp, consts.ErrCalFileSize
+			return resp, err
 		}
 	}
 	return resp, nil
@@ -89,15 +86,14 @@ func (s *FileService) GetFilesByIds(ctx context.Context, req *gencontent.GetFile
 	resp = new(gencontent.GetFilesByIdsResp)
 	var files []*filemapper.File
 	if files, err = s.FileMongoMapper.FindManyByIds(ctx, req.FileIds); err != nil {
-		log.CtxError(ctx, "获取标签集 失败[%v]\n", err)
 		return resp, err
 	}
 
 	// 创建映射：文件ID到文件
-	fileMap := make(map[string]*filemapper.File)
-	for _, file := range files {
+	fileMap := make(map[string]*filemapper.File, len(req.FileIds))
+	lo.ForEach(files, func(file *filemapper.File, _ int) {
 		fileMap[file.ID.Hex()] = file
-	}
+	})
 
 	// 按req.FileIds中的ID顺序映射和转换
 	resp.Files = lo.Map(req.FileIds, func(id string, _ int) *gencontent.FileInfo {
@@ -110,12 +106,13 @@ func (s *FileService) GetFilesByIds(ctx context.Context, req *gencontent.GetFile
 }
 func (s *FileService) GetRecycleBinFiles(ctx context.Context, req *gencontent.GetRecycleBinFilesReq) (resp *gencontent.GetRecycleBinFilesResp, err error) {
 	resp = new(gencontent.GetRecycleBinFilesResp)
-	var total int64
-	var files []*filemapper.File
-	filter := convertor.FileFilterOptionsToFilterOptions(req.FilterOptions)
+	var (
+		total int64
+		files []*filemapper.File
+	)
 	p := convertor.ParsePagination(req.PaginationOptions)
-	if files, total, err = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, mongop.IdCursorType); err != nil {
-		log.CtxError(ctx, "查询回收站文件列表: 发生异常[%v]\n", err)
+	if files, total, err = s.FileMongoMapper.FindManyAndCount(ctx, convertor.FileFilterOptionsToFilterOptions(req.FilterOptions),
+		p, mongop.IdCursorType); err != nil {
 		return resp, err
 	}
 	if p.LastToken != nil {
@@ -152,9 +149,11 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 		resp.FatherIdPath = getFileResp.File.Path
 		paths := strings.Split(getFileResp.File.Path, "/")
 		if len(paths) > 1 {
-			filelist, err1 := s.FileMongoMapper.FindManyNotPagination(ctx, &filemapper.FilterOptions{
+			filelist, err1 := s.FileMongoMapper.FindMany(ctx, &filemapper.FilterOptions{
 				OnlyFileIds: paths[1:],
-			})
+			}, &pagination.PaginationOptions{
+				Limit: lo.ToPtr(int64(len(paths) - 1)),
+			}, mongop.IdCursorType)
 			if err1 != nil {
 				return err1
 			}
@@ -179,7 +178,6 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 		p := convertor.ParsePagination(req.PaginationOptions)
 		if req.SearchOptions == nil {
 			if files, total, err2 = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, cursor); err != nil {
-				log.CtxError(ctx, "查询文件列表: 发生异常[%v]\n", err2)
 				return err2
 			}
 		} else {
@@ -242,22 +240,24 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 		data       *gencontent.GetFileListResp
 	)
 
-	if shareFiles, err = s.FileMongoMapper.FindManyNotPagination(ctx, &filemapper.FilterOptions{
+	if shareFiles, err = s.FileMongoMapper.FindMany(ctx, &filemapper.FilterOptions{
 		OnlyFileIds: req.FileIds,
 		OnlyIsDel:   lo.ToPtr(int64(gencontent.Deletion_Deletion_notDel)),
-	}); err != nil {
+	}, &pagination.PaginationOptions{
+		Limit: lo.ToPtr(int64(len(req.FileIds))),
+	}, mongop.IdCursorType); err != nil {
 		return resp, err
 	}
 
-	fmt.Printf("\n[%v]\n", req)
-	if req.OnlyFileId != nil {
+	switch {
+	case req.OnlyFileId != nil:
 		if res, ok, err = s.CheckShareFile(ctx, shareFiles, req.OnlyFileId); err != nil {
 			return resp, err
 		}
 		if ok {
 			resp.Files = []*gencontent.FileInfo{res}
 		}
-	} else if req.OnlyFatherId != nil {
+	case req.OnlyFatherId != nil:
 		if _, ok, err = s.CheckShareFile(ctx, shareFiles, req.OnlyFatherId); err != nil {
 			return resp, err
 		}
@@ -275,7 +275,7 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 			resp.FatherIdPath = data.FatherIdPath
 			resp.FatherNamePath = data.FatherNamePath
 		}
-	} else {
+	default:
 		resp.Files = lo.Map[*filemapper.File, *gencontent.FileInfo](shareFiles, func(item *filemapper.File, _ int) *gencontent.FileInfo {
 			return convertor.FileMapperToFile(item)
 		})
@@ -289,7 +289,6 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 
 func (s *FileService) GetFolderSize(ctx context.Context, path string) (resp int64, err error) {
 	if resp, err = s.FileMongoMapper.FindFolderSize(ctx, path); err != nil {
-		log.CtxError(ctx, "查询文件夹空间大小: 发生异常[%v]\n", err)
 		return 0, err
 	}
 	return resp, nil
@@ -297,10 +296,8 @@ func (s *FileService) GetFolderSize(ctx context.Context, path string) (resp int6
 
 func (s *FileService) CreateFile(ctx context.Context, req *gencontent.CreateFileReq) (resp *gencontent.CreateFileResp, err error) {
 	resp = new(gencontent.CreateFileResp)
-	data := convertor.FileToFileMapper(req.File)
-	resp.FileId, err = s.FileMongoMapper.Insert(ctx, data)
+	resp.FileId, err = s.FileMongoMapper.Insert(ctx, convertor.FileToFileMapper(req.File))
 	if err != nil {
-		log.CtxError(ctx, "创建文件: 发生异常[%v]\n", err)
 		return resp, err
 	}
 
@@ -311,7 +308,6 @@ func (s *FileService) UpdateFile(ctx context.Context, req *gencontent.UpdateFile
 	resp = new(gencontent.UpdateFileResp)
 	data := convertor.FileToFileMapper(req.File)
 	if _, err = s.FileMongoMapper.Update(ctx, data); err != nil {
-		log.CtxError(ctx, "更新文件信息: 发生异常[%v]\n", err)
 		return resp, err
 	}
 	return resp, nil
@@ -366,7 +362,6 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 func (s *FileService) CompletelyRemoveFile(ctx context.Context, req *gencontent.CompletelyRemoveFileReq) (resp *gencontent.CompletelyRemoveFileResp, err error) {
 	resp = new(gencontent.CompletelyRemoveFileResp)
 	if _, err = s.FileMongoMapper.Delete(ctx, req.FileId, req.UserId); err != nil {
-		log.CtxError(ctx, "删除文件: 发生异常[%v]\n", err)
 		return resp, err
 	}
 	return resp, nil
@@ -493,8 +488,7 @@ func (s *FileService) GetShareList(ctx context.Context, req *gencontent.GetShare
 	p := convertor.ParsePagination(req.PaginationOptions)
 	if shareCodes, total, err = s.ShareFileMongoMapper.FindManyAndCount(ctx, convertor.ShareFileFilterOptionsToShareCodeOptions(req.ShareFileFilterOptions),
 		p, mongop.IdCursorType); err != nil {
-		log.CtxError(ctx, "查询文件分享链接列表: 发生异常[%v]\n", err)
-		return nil, err
+		return resp, err
 	}
 
 	if p.LastToken != nil {
@@ -509,36 +503,28 @@ func (s *FileService) GetShareList(ctx context.Context, req *gencontent.GetShare
 
 func (s *FileService) CreateShareCode(ctx context.Context, req *gencontent.CreateShareCodeReq) (resp *gencontent.CreateShareCodeResp, err error) {
 	resp = new(gencontent.CreateShareCodeResp)
-	var id, key string
 	data := convertor.ShareFileToShareFileMapper(req.ShareFile)
 	data.CreateAt = time.Now()
 	if req.ShareFile.EffectiveTime >= 0 {
 		data.DeletedAt = data.CreateAt.Add(time.Duration(req.ShareFile.EffectiveTime)*time.Second + 720*time.Hour)
 	}
-	if id, key, err = s.ShareFileMongoMapper.Insert(ctx, data); err != nil {
-		log.CtxError(ctx, "创建文件分享链接: 发生异常[%v]\n", err)
+	if resp.Code, resp.Key, err = s.ShareFileMongoMapper.Insert(ctx, data); err != nil {
 		return resp, err
 	}
 
-	resp.Code = id
-	resp.Key = key
 	return resp, nil
 }
 
 func (s *FileService) UpdateShareCode(ctx context.Context, req *gencontent.UpdateShareCodeReq) (resp *gencontent.UpdateShareCodeResp, err error) {
-	resp = new(gencontent.UpdateShareCodeResp)
 	data := convertor.ShareFileToShareFileMapper(req.ShareFile)
 	if _, err = s.ShareFileMongoMapper.Update(ctx, data); err != nil {
-		log.CtxError(ctx, "修改文件分享链接: 发生异常[%v]\n", err)
 		return resp, err
 	}
 	return resp, nil
 }
 
 func (s *FileService) DeleteShareCode(ctx context.Context, req *gencontent.DeleteShareCodeReq) (resp *gencontent.DeleteShareCodeResp, err error) {
-	resp = new(gencontent.DeleteShareCodeResp)
-	filter := convertor.ShareFileFilterOptionsToShareCodeOptions(req.ShareFileFilterOptions)
-	if _, err := s.ShareFileMongoMapper.Delete(ctx, filter); err != nil {
+	if _, err := s.ShareFileMongoMapper.Delete(ctx, convertor.ShareFileFilterOptionsToShareCodeOptions(req.ShareFileFilterOptions)); err != nil {
 		log.CtxError(ctx, "删除文件分享链接: 发生异常[%v]\n", err)
 		return resp, err
 	}
@@ -549,7 +535,6 @@ func (s *FileService) ParsingShareCode(ctx context.Context, req *gencontent.Pars
 	resp = new(gencontent.ParsingShareCodeResp)
 	var shareFile *sharefilemapper.ShareFile
 	if shareFile, err = s.ShareFileMongoMapper.FindOne(ctx, req.Code, req.Key); err != nil {
-		log.CtxError(ctx, "提取文件分享链接: 发生异常[%v]\n", err)
 		return resp, err
 	}
 	res := convertor.ShareFileMapperToShareFile(shareFile)

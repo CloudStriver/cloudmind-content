@@ -2,8 +2,7 @@ package file
 
 import (
 	"context"
-	errorx "errors"
-	"fmt"
+	"errors"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
@@ -40,7 +39,6 @@ type (
 		FindOne(ctx context.Context, id string) (*File, error)
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, error)
 		FindManyByIds(ctx context.Context, ids []string) ([]*File, error)
-		FindManyNotPagination(ctx context.Context, fopts *FilterOptions) ([]*File, error)
 		FindFolderSize(ctx context.Context, path string) (int64, error)
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, int64, error)
 		Update(ctx context.Context, data *File) (*mongo.UpdateResult, error)
@@ -120,29 +118,16 @@ func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*File,
 			}),
 		},
 	}
-	if err := m.conn.Find(ctx, &data, filter); err != nil {
-		if errorx.Is(err, monc.ErrNotFound) {
-			return nil, consts.ErrNotFound
-		}
+	err := m.conn.Find(ctx, &data, filter)
+	switch {
+	case errors.Is(err, monc.ErrNotFound):
+		return nil, consts.ErrNotFound
+	case err == nil:
+		return data, nil
+	default:
+		log.CtxError(ctx, "获取文件列表异常[%v]\n", err)
 		return nil, err
 	}
-	return data, nil
-}
-
-func (m *MongoMapper) FindManyNotPagination(ctx context.Context, fopts *FilterOptions) ([]*File, error) {
-	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
-	_, span := tracer.Start(ctx, "mongo.FindManyNotPagination", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
-	defer span.End()
-
-	filter := makeMongoFilter(fopts)
-	var data []*File
-	if err := m.conn.Find(ctx, &data, filter); err != nil {
-		if errorx.Is(err, monc.ErrNotFound) {
-			return nil, consts.ErrNotFound
-		}
-		return nil, err
-	}
-	return data, nil
 }
 
 func (m *MongoMapper) FindAndInsert(ctx context.Context, data *File) (string, error) {
@@ -150,11 +135,9 @@ func (m *MongoMapper) FindAndInsert(ctx context.Context, data *File) (string, er
 	_, span := tracer.Start(ctx, "mongo.FindAndInsert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
-	fmt.Printf("\n[%v]\n", *data)
-
 	var res File
 	if err := m.conn.FindOneNoCache(ctx, &res, bson.M{consts.FatherId: data.FatherId, consts.Name: data.Name, consts.IsDel: data.IsDel}); err != nil {
-		if errorx.Is(err, monc.ErrNotFound) {
+		if errors.Is(err, monc.ErrNotFound) {
 			return m.Insert(ctx, data)
 		}
 		return "", err
@@ -185,7 +168,7 @@ func (m *MongoMapper) FindAndInsertMany(ctx context.Context, data []*File) ([]st
 		return func() error {
 			var file File
 			if err := m.conn.FindOneNoCache(ctx, &file, bson.M{consts.FatherId: item.FatherId, consts.Name: item.Name, consts.IsDel: item.IsDel}); err != nil {
-				if errorx.Is(err, monc.ErrNotFound) {
+				if errors.Is(err, monc.ErrNotFound) {
 					return nil
 				} else {
 					return err
@@ -214,13 +197,17 @@ func (m *MongoMapper) FindFileIsExist(ctx context.Context, md5 string) (bool, er
 	defer span.End()
 
 	var data []*File
-	if err := m.conn.Find(ctx, &data, bson.M{consts.FileMd5: md5}, &options.FindOptions{Limit: lo.ToPtr(int64(1))}); err != nil {
+	key := prefixFileCacheKey + md5
+	err := m.conn.FindOne(ctx, key, &data, bson.M{consts.FileMd5: md5})
+	switch {
+	case errors.Is(err, monc.ErrNotFound):
+		return false, nil
+	case err == nil:
+		return true, nil
+	default:
+		log.CtxError(ctx, "查询文件md5值是否存在: 发生异常[%v]\n", err)
 		return false, err
 	}
-	if len(data) == 0 {
-		return false, nil
-	}
-	return true, nil
 }
 
 func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
@@ -230,41 +217,39 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 
 	if data.ID.IsZero() {
 		data.ID = primitive.NewObjectID()
-		data.CreateAt = time.Now()
 	}
+	data.CreateAt = time.Now()
 	data.UpdateAt = time.Now()
 	data.Path = data.Path + "/" + data.ID.Hex()
 	key := prefixFileCacheKey + data.ID.Hex()
-	fmt.Printf("\n[%v]\n", *data)
-	ID, err := m.conn.InsertOne(ctx, key, data)
+	_, err := m.conn.InsertOne(ctx, key, data)
 	if err != nil {
 		data.Name = data.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
-		if ID, err = m.conn.InsertOne(ctx, key, data); err != nil {
+		if _, err = m.conn.InsertOne(ctx, key, data); err != nil {
+			log.CtxError(ctx, "插入文件信息: 发生异常[%v]\n", err)
 			return "", err
 		}
 	}
-	return ID.InsertedID.(primitive.ObjectID).Hex(), nil
+	return data.ID.Hex(), nil
 }
 
 func (m *MongoMapper) FindOne(ctx context.Context, id string) (*File, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.FindOne", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
-
 	var data File
-	oid, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return nil, consts.ErrInvalidId
-	}
+	oid, _ := primitive.ObjectIDFromHex(id)
 	key := prefixFileCacheKey + id
-	if err := m.conn.FindOne(ctx, key, &data, bson.M{consts.ID: oid}); err != nil {
-		if errorx.Is(err, monc.ErrNotFound) {
-			return nil, consts.ErrNotFound
-		} else {
-			return nil, err
-		}
+	err := m.conn.FindOne(ctx, key, &data, bson.M{consts.ID: oid})
+	switch {
+	case errors.Is(err, monc.ErrNotFound):
+		return nil, consts.ErrNotFound
+	case err == nil:
+		return &data, nil
+	default:
+		log.CtxError(ctx, "查询文件详细信息: 发生异常[%v]\n", err)
+		return nil, err
 	}
-	return &data, nil
 }
 
 func (m *MongoMapper) Count(ctx context.Context, fopts *FilterOptions) (int64, error) {
@@ -289,14 +274,16 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 	}
 
 	var data []*File
-	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
+	err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
 		Sort:  sort,
 		Limit: popts.Limit,
 		Skip:  popts.Offset,
-	}); err != nil {
-		if errorx.Is(err, monc.ErrNotFound) {
-			return nil, consts.ErrNotFound
-		}
+	})
+	switch {
+	case errors.Is(err, monc.ErrNotFound):
+		return nil, consts.ErrNotFound
+	case err != nil:
+		log.CtxError(ctx, "查询文件列表: 发生异常[%v]\n", err)
 		return nil, err
 	}
 
@@ -341,19 +328,23 @@ func (m *MongoMapper) FindFolderSize(ctx context.Context, path string) (int64, e
 		if result.Next(ctx) {
 			err = result.Decode(&size)
 			if err != nil {
+				log.CtxError(ctx, "查询文件夹大小: 解码结果失败[%v]\n", err)
 				return 0, err
 			}
 		} else {
+			log.CtxError(ctx, "查询文件夹大小: 未查询到结果\n")
 			return 0, nil
 		}
 
 		if err = result.Err(); err != nil {
+			log.CtxError(ctx, "查询文件夹大小: 获取结果失败[%v]\n", err)
 			return 0, err
 		}
 		return size.Size, nil
-	case errorx.Is(err, monc.ErrNotFound):
+	case errors.Is(err, monc.ErrNotFound):
 		return 0, consts.ErrNotFound
 	default:
+		log.CtxError(ctx, "查询文件夹大小: 发生异常[%v]\n", err)
 		return 0, err
 	}
 }
@@ -392,6 +383,7 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 	if err != nil {
 		data.Name = data.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
 		if res, err = m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID, consts.UserId: data.UserId}, bson.M{"$set": data}); err != nil {
+			log.CtxError(ctx, "更新文件信息: 发生异常[%v]\n", err)
 			return res, err
 		}
 	}
@@ -424,13 +416,13 @@ func (m *MongoMapper) Delete(ctx context.Context, id, userId string) (int64, err
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.Delete", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
-
-	oid, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return 0, consts.ErrInvalidId
-	}
+	oid, _ := primitive.ObjectIDFromHex(id)
 	key := prefixFileCacheKey + id
 	resp, err := m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid, consts.UserId: userId})
+	if err != nil {
+		log.CtxError(ctx, "删除文件信息: 发生异常[%v]\n", err)
+		return 0, err
+	}
 	return resp, err
 }
 
