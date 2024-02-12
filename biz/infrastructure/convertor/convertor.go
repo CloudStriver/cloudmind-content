@@ -152,6 +152,7 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 			OnlyIsDel:        opts.OnlyIsDel,
 			OnlyDocumentType: opts.OnlyDocumentType,
 			OnlyType:         opts.OnlyType,
+			OnlyLabelId:      opts.OnlyLabelId,
 		}
 	}
 

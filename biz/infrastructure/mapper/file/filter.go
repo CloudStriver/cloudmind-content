@@ -20,6 +20,7 @@ type FilterOptions struct {
 	OnlyIsDel        *int64
 	OnlyDocumentType *int64
 	OnlyType         []string
+	OnlyLabelId      *string
 }
 
 type MongoFileFilter struct {
@@ -42,6 +43,7 @@ func (f *MongoFileFilter) toBson() bson.M {
 	f.CheckOnlyIsDel()
 	f.CheckOnlyDocumentType()
 	f.CheckOnlyType()
+	f.CheckOnlyLabelId()
 	return f.m
 }
 
@@ -50,6 +52,12 @@ func (f *MongoFileFilter) CheckOnlyType() {
 		f.m[consts.Type] = bson.M{
 			"$in": f.OnlyType,
 		}
+	}
+}
+
+func (f *MongoFileFilter) CheckOnlyLabelId() {
+	if f.OnlyLabelId != nil {
+		f.m[consts.Labels] = bson.M{"$in": *f.OnlyLabelId}
 	}
 }
 

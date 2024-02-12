@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	filemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
@@ -46,6 +46,7 @@ type IFileService interface {
 }
 
 type FileService struct {
+	config               config.Config
 	FileMongoMapper      filemapper.IMongoMapper
 	FileEsMapper         filemapper.IFileEsMapper
 	ShareFileMongoMapper sharefilemapper.IMongoMapper
@@ -238,7 +239,6 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 	var (
 		ok         bool
 		shareFiles []*filemapper.File
-		res        *gencontent.FileInfo
 		data       *gencontent.GetFileListResp
 	)
 
@@ -248,16 +248,7 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 	}); err != nil {
 		return resp, err
 	}
-
-	fmt.Printf("\n[%v]\n", req)
-	if req.OnlyFileId != nil {
-		if res, ok, err = s.CheckShareFile(ctx, shareFiles, req.OnlyFileId); err != nil {
-			return resp, err
-		}
-		if ok {
-			resp.Files = []*gencontent.FileInfo{res}
-		}
-	} else if req.OnlyFatherId != nil {
+	if req.OnlyFatherId != nil {
 		if _, ok, err = s.CheckShareFile(ctx, shareFiles, req.OnlyFatherId); err != nil {
 			return resp, err
 		}
@@ -513,7 +504,7 @@ func (s *FileService) CreateShareCode(ctx context.Context, req *gencontent.Creat
 	data := convertor.ShareFileToShareFileMapper(req.ShareFile)
 	data.CreateAt = time.Now()
 	if req.ShareFile.EffectiveTime >= 0 {
-		data.DeletedAt = data.CreateAt.Add(time.Duration(req.ShareFile.EffectiveTime)*time.Second + 720*time.Hour)
+		data.DeletedAt = data.CreateAt.Add(time.Duration(req.ShareFile.EffectiveTime)*time.Second + time.Duration(s.config.DeletionCoolingOffPeriod)*time.Hour)
 	}
 	if id, key, err = s.ShareFileMongoMapper.Insert(ctx, data); err != nil {
 		log.CtxError(ctx, "创建文件分享链接: 发生异常[%v]\n", err)
