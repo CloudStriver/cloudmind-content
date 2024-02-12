@@ -8,6 +8,8 @@ import (
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
+	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/mr"
 	"github.com/zeromicro/go-zero/core/stores/monc"
 	"github.com/zeromicro/go-zero/core/trace"
@@ -103,11 +105,12 @@ func (m *MongoMapper) Insert(ctx context.Context, data *ShareFile) (string, stri
 
 	data.Key = RandomString(4)
 	key := prefixPublicFileCacheKey + data.ID.Hex()
-	ID, err := m.conn.InsertOne(ctx, key, data)
+	_, err := m.conn.InsertOne(ctx, key, data)
 	if err != nil {
+		log.CtxError(ctx, "创建文件分享链接: 发生异常[%v]\n", err)
 		return "", "", err
 	}
-	return ID.InsertedID.(primitive.ObjectID).Hex(), data.Key, err
+	return data.ID.Hex(), data.Key, err
 }
 
 func (m *MongoMapper) FindOne(ctx context.Context, id, key string) (*ShareFile, error) {
@@ -115,18 +118,16 @@ func (m *MongoMapper) FindOne(ctx context.Context, id, key string) (*ShareFile, 
 	_, span := tracer.Start(ctx, "mongo.FindOne", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
-	oid, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return nil, consts.ErrInvalidId
-	}
+	oid, _ := primitive.ObjectIDFromHex(id)
 	var data ShareFile
-	err = m.conn.FindOneNoCache(ctx, &data, bson.M{"_id": oid, consts.Key: key})
+	err := m.conn.FindOneNoCache(ctx, &data, bson.M{"_id": oid, consts.Key: key})
 	switch {
 	case err == nil:
 		return &data, nil
 	case errorx.Is(err, monc.ErrNotFound):
 		return nil, consts.ErrNotFound
 	default:
+		log.CtxError(ctx, "mongo.FindOne error: %v", err)
 		return nil, err
 	}
 }
@@ -144,21 +145,21 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *ShareCodeOptions, pop
 	}
 
 	var data []*ShareFile
-	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
+	err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
 		Sort:  sort,
 		Limit: popts.Limit,
 		Skip:  popts.Offset,
-	}); err != nil {
-		if errorx.Is(err, monc.ErrNotFound) {
-			return nil, consts.ErrNotFound
-		}
+	})
+	switch {
+	case errors.Is(err, monc.ErrNotFound):
+		return nil, consts.ErrNotFound
+	case err != nil:
+		log.CtxError(ctx, "mongo.FindMany error: %v", err)
 		return nil, err
 	}
 
 	if *popts.Backward {
-		for i := 0; i < len(data)/2; i++ {
-			data[i], data[len(data)-i-1] = data[len(data)-i-1], data[i]
-		}
+		lo.Reverse(data)
 	}
 	if len(data) > 0 {
 		if err = p.StoreCursor(ctx, data[0], data[len(data)-1]); err != nil {
@@ -180,7 +181,7 @@ func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *ShareCodeOpti
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	err = mr.Finish(func() error {
+	if err = mr.Finish(func() error {
 		data, err1 = m.FindMany(ctx, fopts, popts, sorter)
 		if err1 != nil {
 			return err1
@@ -192,9 +193,7 @@ func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *ShareCodeOpti
 			return err2
 		}
 		return nil
-	})
-
-	if err != nil {
+	}); err != nil {
 		return nil, 0, err
 	}
 
@@ -208,7 +207,11 @@ func (m *MongoMapper) Update(ctx context.Context, data *ShareFile) (*mongo.Updat
 
 	key := prefixPublicFileCacheKey + data.ID.Hex()
 	res, err := m.conn.UpdateOne(ctx, key, bson.M{"_id": data.ID}, bson.M{"$set": data})
-	return res, err
+	if err != nil {
+		log.CtxError(ctx, "修改文件分享链接: 发生异常[%v]\n", err)
+		return res, err
+	}
+	return res, nil
 }
 
 func (m *MongoMapper) Delete(ctx context.Context, fopts *ShareCodeOptions) (int64, error) {
