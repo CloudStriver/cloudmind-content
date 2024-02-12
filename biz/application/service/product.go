@@ -92,7 +92,9 @@ func (s *ProductService) GetProducts(ctx context.Context, req *gencontent.GetPro
 
 func (s *ProductService) CreateProduct(ctx context.Context, req *gencontent.CreateProductReq) (resp *gencontent.CreateProductResp, err error) {
 	resp = new(gencontent.CreateProductResp)
+	oid, _ := primitive.ObjectIDFromHex(req.ObjectId)
 	if resp.ProductId, err = s.ProductMongoMapper.Insert(ctx, &productmapper.Product{
+		ID:          oid,
 		UserId:      req.UserId,
 		Name:        req.Name,
 		Status:      req.Status,

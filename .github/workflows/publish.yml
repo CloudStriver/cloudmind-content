@@ -1,0 +1,29 @@
+name: Publish
+on:
+  push:
+    tags:
+      - '*'
+env:
+  REGISTRY: docker.io
+  USERNAME: lansongxx
+  IMAGE_NAME: cloudmind-content
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: ${{ vars.KUBE_VERSION }}
+
+      - name: Deploy
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          mkdir $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+          kubectl get deployment ${{ env.IMAGE_NAME }} -n ${{ vars.BASE_NAMESPACE }} -o yaml |\
+          sed "s|^\(      - image: ${USERNAME}/${IMAGE_NAME}:\).*\$|\1${TAG_NAME}|" |\
+          kubectl apply -f -
