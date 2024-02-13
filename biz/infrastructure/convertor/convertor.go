@@ -72,24 +72,6 @@ func FileToFileMapper(data *gencontent.File) *file.File {
 	}
 }
 
-func FileInfoToFileMapper(data *gencontent.FileInfo) *file.File {
-	oid, _ := primitive.ObjectIDFromHex(data.FileId)
-	return &file.File{
-		ID:          oid,
-		UserId:      data.UserId,
-		Name:        data.Name,
-		Type:        data.Type,
-		Path:        data.Path,
-		FatherId:    data.FatherId,
-		Size:        lo.ToPtr(data.SpaceSize),
-		IsDel:       data.IsDel,
-		Zone:        data.Zone,
-		SubZone:     data.SubZone,
-		Description: data.Description,
-		Labels:      data.Labels,
-	}
-}
-
 func IsExpired(ctime time.Time, effectiveTime int64) int64 {
 	if effectiveTime < 0 {
 		return int64(gencontent.Validity_Validity_perpetuity)
