@@ -28,6 +28,8 @@ type Config struct {
 		Url    string
 		ApiKey string
 	}
+	DeletionCoolingOffPeriod int64
+	InitialSliceLength       int64
 }
 
 func NewConfig() (*Config, error) {
