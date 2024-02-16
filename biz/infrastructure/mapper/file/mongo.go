@@ -237,10 +237,13 @@ func (m *MongoMapper) FindOne(ctx context.Context, id string) (*File, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.FindOne", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
-	var data File
-	oid, _ := primitive.ObjectIDFromHex(id)
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, consts.ErrInvalidId
+	}
 	key := prefixFileCacheKey + id
-	err := m.conn.FindOne(ctx, key, &data, bson.M{consts.ID: oid})
+	var data File
+	err = m.conn.FindOne(ctx, key, &data, bson.M{consts.ID: oid})
 	switch {
 	case errors.Is(err, monc.ErrNotFound):
 		return nil, consts.ErrNotFound
