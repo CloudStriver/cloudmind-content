@@ -20,8 +20,7 @@ type ContentServerImpl struct {
 }
 
 func (s *ContentServerImpl) CheckShareFile(ctx context.Context, req *content.CheckShareFileReq) (res *content.CheckShareFileResp, err error) {
-	//TODO implement me
-	panic("implement me")
+	return s.FileService.CheckShareFile(ctx, req)
 }
 
 func (s *ContentServerImpl) GetRecycleBinFiles(ctx context.Context, req *content.GetRecycleBinFilesReq) (res *content.GetRecycleBinFilesResp, err error) {
