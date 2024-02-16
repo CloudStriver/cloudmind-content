@@ -45,18 +45,15 @@ func (s *UserService) DeleteUser(ctx context.Context, req *gencontent.DeleteUser
 
 func (s *UserService) GetUsers(ctx context.Context, req *gencontent.GetUsersReq) (resp *gencontent.GetUsersResp, err error) {
 	resp = new(gencontent.GetUsersResp)
-	var (
-		users []*usermapper.User
-		total int64
-	)
+	var users []*usermapper.User
 
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
 	if req.SearchOptions != nil {
 		switch o := req.SearchOptions.Type.(type) {
 		case *gencontent.SearchOptions_AllFieldsKey:
-			users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(o), p, esp.ScoreCursorType)
+			users, _, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(o), p, esp.ScoreCursorType)
 		case *gencontent.SearchOptions_MultiFieldsKey:
-			users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserMultiFieldsSearchQuery(o), p, esp.ScoreCursorType)
+			users, _, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserMultiFieldsSearchQuery(o), p, esp.ScoreCursorType)
 		}
 	} else {
 		users, err = s.UserMongoMapper.FindMany(ctx, convertor.UserFilterToUserFilterMapper(req.UserFilterOptions),
@@ -72,8 +69,6 @@ func (s *UserService) GetUsers(ctx context.Context, req *gencontent.GetUsersReq)
 	resp.Users = lo.Map[*usermapper.User, *gencontent.User](users, func(item *usermapper.User, _ int) *gencontent.User {
 		return convertor.UserMapperToUser(item)
 	})
-	resp.Total = total
-
 	return resp, nil
 }
 
