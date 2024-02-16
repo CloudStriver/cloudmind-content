@@ -88,10 +88,11 @@ func (s *UserService) GetUser(ctx context.Context, req *gencontent.GetUserReq) (
 		Sex:         user.Sex,
 		FullName:    user.FullName,
 		IdCard:      user.IdCard,
-		CreateTime:  user.CreateAt.UnixMilli(),
-		UpdateTime:  user.UpdateAt.UnixMilli(),
 		Description: user.Description,
 		Url:         user.Url,
+		CreateTime:  user.CreateAt.UnixMilli(),
+		UpdateTime:  user.UpdateAt.UnixMilli(),
+		Labels:      user.Labels,
 	}, nil
 }
 
@@ -117,6 +118,7 @@ func (s *UserService) UpdateUser(ctx context.Context, req *gencontent.UpdateUser
 		IdCard:      req.IdCard,
 		Description: req.Description,
 		Url:         req.Url,
+		Labels:      req.Labels,
 	}); err != nil {
 		return resp, err
 	}
