@@ -511,10 +511,10 @@ func (s *FileService) UpdateShareCode(ctx context.Context, req *gencontent.Updat
 }
 
 func (s *FileService) DeleteShareCode(ctx context.Context, req *gencontent.DeleteShareCodeReq) (resp *gencontent.DeleteShareCodeResp, err error) {
-	if _, err := s.ShareFileMongoMapper.Delete(ctx, convertor.ShareFileFilterOptionsToShareCodeOptions(req.ShareFileFilterOptions)); err != nil {
-		log.CtxError(ctx, "删除文件分享链接: 发生异常[%v]\n", err)
-		return resp, err
-	}
+	//if _, err := s.ShareFileMongoMapper.Delete(ctx, convertor.ShareFileFilterOptionsToShareCodeOptions(req.ShareFileFilterOptions)); err != nil {
+	//	log.CtxError(ctx, "删除文件分享链接: 发生异常[%v]\n", err)
+	//	return resp, err
+	//}
 	return resp, nil
 }
 

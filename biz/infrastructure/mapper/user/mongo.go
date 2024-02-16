@@ -40,6 +40,7 @@ type (
 		Url         string             `bson:"url,omitempty" json:"url,omitempty"`
 		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
 		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
+		Labels      []string           `bson:"labels,omitempty" json:"labels,omitempty"`
 		Score_      float64            `bson:"_score,omitempty" json:"_score,omitempty"`
 	}
 

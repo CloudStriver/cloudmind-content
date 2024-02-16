@@ -31,6 +31,7 @@ func UserMapperToUser(in *usermapper.User) *gencontent.User {
 		UpdateTime:  in.UpdateAt.UnixMilli(),
 		Description: in.Description,
 		Url:         in.Url,
+		Labels:      in.Labels,
 	}
 }
 
