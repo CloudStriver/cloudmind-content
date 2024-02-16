@@ -26,7 +26,7 @@ import (
 
 const CollectionName = "shareFile"
 
-var prefixPublicFileCacheKey = "cache:shareFile:"
+var prefixShareFileCacheKey = "cache:shareFile:"
 
 var _ IMongoMapper = (*MongoMapper)(nil)
 
@@ -34,11 +34,11 @@ type (
 	IMongoMapper interface {
 		Count(ctx context.Context, filter *ShareCodeOptions) (int64, error)
 		Insert(ctx context.Context, data *ShareFile) (string, string, error)
-		FindOne(ctx context.Context, id, key string) (*ShareFile, error)
+		FindOne(ctx context.Context, id string) (*ShareFile, error)
 		FindMany(ctx context.Context, fopts *ShareCodeOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*ShareFile, error)
 		FindManyAndCount(ctx context.Context, fopts *ShareCodeOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*ShareFile, int64, error)
 		Update(ctx context.Context, data *ShareFile) (*mongo.UpdateResult, error)
-		Delete(ctx context.Context, fopts *ShareCodeOptions) (int64, error)
+		Delete(ctx context.Context, id, userId string) (int64, error)
 		GetConn() *monc.Model
 	}
 
@@ -103,24 +103,30 @@ func (m *MongoMapper) Insert(ctx context.Context, data *ShareFile) (string, stri
 	_, span := tracer.Start(ctx, "mongo.Insert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
+	if data.ID.IsZero() {
+		data.ID = primitive.NewObjectID()
+	}
+
 	data.Key = RandomString(4)
-	key := prefixPublicFileCacheKey + data.ID.Hex()
-	_, err := m.conn.InsertOne(ctx, key, data)
-	if err != nil {
+	key := prefixShareFileCacheKey + data.ID.Hex()
+	if _, err := m.conn.InsertOne(ctx, key, data); err != nil {
 		log.CtxError(ctx, "创建文件分享链接: 发生异常[%v]\n", err)
 		return "", "", err
 	}
-	return data.ID.Hex(), data.Key, err
+	return data.ID.Hex(), data.Key, nil
 }
 
-func (m *MongoMapper) FindOne(ctx context.Context, id, key string) (*ShareFile, error) {
+func (m *MongoMapper) FindOne(ctx context.Context, id string) (*ShareFile, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.FindOne", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
-
-	oid, _ := primitive.ObjectIDFromHex(id)
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, consts.ErrInvalidId
+	}
+	key := prefixShareFileCacheKey + id
 	var data ShareFile
-	err := m.conn.FindOneNoCache(ctx, &data, bson.M{"_id": oid, consts.Key: key})
+	err = m.conn.FindOne(ctx, key, &data, bson.M{"_id": oid})
 	switch {
 	case err == nil:
 		return &data, nil
@@ -205,7 +211,7 @@ func (m *MongoMapper) Update(ctx context.Context, data *ShareFile) (*mongo.Updat
 	_, span := tracer.Start(ctx, "mongo.Update", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
-	key := prefixPublicFileCacheKey + data.ID.Hex()
+	key := prefixShareFileCacheKey + data.ID.Hex()
 	res, err := m.conn.UpdateOne(ctx, key, bson.M{"_id": data.ID}, bson.M{"$set": data})
 	if err != nil {
 		log.CtxError(ctx, "修改文件分享链接: 发生异常[%v]\n", err)
@@ -214,21 +220,17 @@ func (m *MongoMapper) Update(ctx context.Context, data *ShareFile) (*mongo.Updat
 	return res, nil
 }
 
-func (m *MongoMapper) Delete(ctx context.Context, fopts *ShareCodeOptions) (int64, error) {
+func (m *MongoMapper) Delete(ctx context.Context, id, userId string) (int64, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.Delete", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
-	if fopts.OnlyCode != nil {
-		_, err := primitive.ObjectIDFromHex(*fopts.OnlyCode)
-		if err != nil {
-			return 0, consts.ErrInvalidId
-		}
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return 0, consts.ErrInvalidId
 	}
-
-	filter := makeMongoShareCodeFilter(fopts)
-	key := prefixPublicFileCacheKey + *fopts.OnlyCode
-	res, err := m.conn.DeleteOne(ctx, key, filter)
+	key := prefixShareFileCacheKey + id
+	res, err := m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid, consts.UserId: userId})
 	return res, err
 }
 
