@@ -356,7 +356,6 @@ func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.FindManyAndCount", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
-
 	var (
 		err, err1, err2 error
 		data            []*File

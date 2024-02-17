@@ -8,7 +8,6 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	filemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	sharefilemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
-	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
@@ -153,15 +152,11 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 		resp.FatherIdPath = getFileResp.File.Path
 		paths := strings.Split(getFileResp.File.Path, "/")
 		if len(paths) > 1 {
-			filelist, err1 := s.FileMongoMapper.FindMany(ctx, &filemapper.FilterOptions{
-				OnlyFileIds: paths[1:],
-			}, &pagination.PaginationOptions{
-				Limit: lo.ToPtr(int64(len(paths) - 1)),
-			}, mongop.IdCursorType)
-			if err1 != nil {
+			var res *gencontent.GetFilesByIdsResp
+			if res, err1 = s.GetFilesByIds(ctx, &gencontent.GetFilesByIdsReq{FileIds: paths[1:]}); err1 != nil {
 				return err1
 			}
-			lo.ForEach(filelist, func(item *filemapper.File, _ int) {
+			lo.ForEach(res.Files, func(item *gencontent.FileInfo, _ int) {
 				resp.FatherNamePath += "/" + item.Name
 			})
 		}
@@ -220,13 +215,18 @@ func (s *FileService) CheckShareFile(ctx context.Context, req *gencontent.CheckS
 	)
 	// 检查文件是否在分享文件夹中， 查询分享链接中的所有根文件
 	if err = mr.Finish(func() error {
-		shareFiles, err1 = s.FileMongoMapper.FindMany(ctx, &filemapper.FilterOptions{
-			OnlyFileIds: req.FileIds,
-			OnlyIsDel:   lo.ToPtr(int64(gencontent.Deletion_Deletion_notDel)),
-		}, &pagination.PaginationOptions{
-			Limit: lo.ToPtr(int64(len(req.FileIds))),
-		}, mongop.IdCursorType)
-		return err1
+		if shareFiles, err1 = s.FileMongoMapper.FindManyByIds(ctx, req.FileIds); err1 != nil {
+			return err1
+		}
+		shareFiles = lo.Filter(shareFiles, func(item *filemapper.File, _ int) bool {
+			switch item.IsDel {
+			case int64(gencontent.Deletion_Deletion_notDel):
+				return true
+			default:
+				return false
+			}
+		})
+		return nil
 	}, func() error {
 		res, err1 = s.GetFile(ctx, &gencontent.GetFileReq{FileId: req.FileId, IsGetSize: false})
 		return err1
@@ -268,16 +268,16 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 		}
 	default:
 		var shareFiles []*filemapper.File
-		if shareFiles, err = s.FileMongoMapper.FindMany(ctx, &filemapper.FilterOptions{
-			OnlyFileIds: req.FileIds,
-			OnlyIsDel:   lo.ToPtr(int64(gencontent.Deletion_Deletion_notDel)),
-		}, &pagination.PaginationOptions{
-			Limit: lo.ToPtr(int64(len(req.FileIds))),
-		}, mongop.IdCursorType); err != nil {
+		if shareFiles, err = s.FileMongoMapper.FindManyByIds(ctx, req.FileIds); err != nil {
 			return resp, err
 		}
-		resp.Files = lo.Map[*filemapper.File, *gencontent.FileInfo](shareFiles, func(item *filemapper.File, _ int) *gencontent.FileInfo {
-			return convertor.FileMapperToFile(item)
+		resp.Files = lo.FilterMap[*filemapper.File, *gencontent.FileInfo](shareFiles, func(item *filemapper.File, _ int) (*gencontent.FileInfo, bool) {
+			switch item.IsDel {
+			case int64(gencontent.Deletion_Deletion_notDel):
+				return convertor.FileMapperToFile(item), true
+			default:
+				return nil, false
+			}
 		})
 		resp.Total = int64(len(shareFiles))
 	}

@@ -71,7 +71,6 @@ func (s *UserService) GetUsers(ctx context.Context, req *gencontent.GetUsersReq)
 	resp.Users = lo.Map[*usermapper.User, *gencontent.User](users, func(item *usermapper.User, _ int) *gencontent.User {
 		return convertor.UserMapperToUser(item)
 	})
-
 	return resp, nil
 }
 
