@@ -132,6 +132,10 @@ func (s *ContentServerImpl) CreatePost(ctx context.Context, req *content.CreateP
 	return s.PostService.CreatePost(ctx, req)
 }
 
+func (s *ContentServerImpl) GetPostsByPostIds(ctx context.Context, req *content.GetPostsByPostIdsReq) (res *content.GetPostsByPostIdsResp, err error) {
+	return s.PostService.GetPostsByPostIds(ctx, req)
+}
+
 func (s *ContentServerImpl) DeletePost(ctx context.Context, req *content.DeletePostReq) (res *content.DeletePostResp, err error) {
 	return s.PostService.DeletePost(ctx, req)
 }

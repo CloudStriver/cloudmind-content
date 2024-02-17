@@ -28,6 +28,7 @@ type (
 		FindOne(ctx context.Context, id string) (*Product, error)
 		Update(ctx context.Context, data *Product) error
 		Delete(ctx context.Context, id string) error
+		FindManyByIds(ctx context.Context, ids []string) ([]*Product, error)
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Product, error)
 		Count(ctx context.Context, fopts *FilterOptions) (int64, error)
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Product, int64, error)
@@ -60,6 +61,21 @@ func NewMongoMapper(config *config.Config) IProductMongoMapper {
 	}
 }
 
+func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*Product, error) {
+	var (
+		products []*Product
+		err      error
+	)
+
+	fopts := &FilterOptions{OnlyProductIds: ids}
+	filter := MakeBsonFilter(fopts)
+	if err = m.conn.Find(ctx, &products, filter, &options.FindOptions{
+		Limit: lo.ToPtr(int64(len(ids))),
+	}); err != nil {
+		return nil, err
+	}
+	return products, nil
+}
 func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Product, error) {
 	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
 

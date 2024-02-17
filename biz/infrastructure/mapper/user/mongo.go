@@ -29,6 +29,7 @@ type (
 		Update(ctx context.Context, data *User) (*mongo.UpdateResult, error)
 		Delete(ctx context.Context, id string) (int64, error)
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*User, error)
+		FindManyByIds(ctx context.Context, ids []string) ([]*User, error)
 	}
 	User struct {
 		ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
@@ -54,6 +55,22 @@ func NewMongoMapper(config *config.Config) IUserMongoMapper {
 	return &MongoMapper{
 		conn: conn,
 	}
+}
+
+func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*User, error) {
+	var (
+		users []*User
+		err   error
+	)
+
+	fopts := &FilterOptions{OnlyUserIds: ids}
+	filter := MakeBsonFilter(fopts)
+	if err = m.conn.Find(ctx, &users, filter, &options.FindOptions{
+		Limit: lo.ToPtr(int64(len(ids))),
+	}); err != nil {
+		return nil, err
+	}
+	return users, nil
 }
 
 func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*User, error) {
