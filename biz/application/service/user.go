@@ -7,7 +7,6 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	usermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
-	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/pconvertor"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/google/wire"
@@ -62,16 +61,11 @@ func (s *UserService) GetUsers(ctx context.Context, req *gencontent.GetUsersReq)
 	)
 
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
-	if req.SearchOptions != nil {
-		switch o := req.SearchOptions.Type.(type) {
-		case *gencontent.SearchOptions_AllFieldsKey:
-			users, _, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(o), p, esp.ScoreCursorType)
-		case *gencontent.SearchOptions_MultiFieldsKey:
-			users, _, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserMultiFieldsSearchQuery(o), p, esp.ScoreCursorType)
-		}
-	} else {
-		users, err = s.UserMongoMapper.FindMany(ctx, convertor.UserFilterToUserFilterMapper(req.UserFilterOptions),
-			p, mongop.IdCursorType)
+	switch o := req.SearchOptions.Type.(type) {
+	case *gencontent.SearchOptions_AllFieldsKey:
+		users, _, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(o), p, esp.ScoreCursorType)
+	case *gencontent.SearchOptions_MultiFieldsKey:
+		users, _, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserMultiFieldsSearchQuery(o), p, esp.ScoreCursorType)
 	}
 	if err != nil {
 		return resp, err
