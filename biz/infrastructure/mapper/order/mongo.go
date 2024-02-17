@@ -24,6 +24,7 @@ var _ IOrderMongoMapper = (*MongoMapper)(nil)
 
 type (
 	IOrderMongoMapper interface {
+		FindManyByIds(ctx context.Context, ids []string) ([]*Order, error)
 		Insert(ctx context.Context, data *Order) error
 		FindOne(ctx context.Context, fopts *FilterOptions) (*Order, error)
 		Update(ctx context.Context, data *Order) error
@@ -54,6 +55,22 @@ func NewMongoMapper(config *config.Config) IOrderMongoMapper {
 	return &MongoMapper{
 		conn: conn,
 	}
+}
+
+func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*Order, error) {
+	var (
+		orders []*Order
+		err    error
+	)
+
+	fopts := &FilterOptions{OnlyOrderIds: ids}
+	filter := MakeBsonFilter(fopts)
+	if err = m.conn.Find(ctx, &orders, filter, &options.FindOptions{
+		Limit: lo.ToPtr(int64(len(ids))),
+	}); err != nil {
+		return nil, err
+	}
+	return orders, nil
 }
 
 func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Order, error) {

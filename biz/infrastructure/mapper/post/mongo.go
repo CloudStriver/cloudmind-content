@@ -30,6 +30,7 @@ type (
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error)
 		Count(ctx context.Context, fopts *FilterOptions) (int64, error)
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, int64, error)
+		FindManyByIds(ctx context.Context, ids []string) ([]*Post, error)
 	}
 
 	MongoMapper struct {
@@ -56,6 +57,22 @@ func NewMongoMapper(config *config.Config) IPostMongoMapper {
 	return &MongoMapper{
 		conn: conn,
 	}
+}
+
+func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*Post, error) {
+	var (
+		posts []*Post
+		err   error
+	)
+
+	fopts := &FilterOptions{OnlyPostIds: ids}
+	filter := MakeBsonFilter(fopts)
+	if err = m.conn.Find(ctx, &posts, filter, &options.FindOptions{
+		Limit: lo.ToPtr(int64(len(ids))),
+	}); err != nil {
+		return nil, err
+	}
+	return posts, nil
 }
 
 func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error) {
