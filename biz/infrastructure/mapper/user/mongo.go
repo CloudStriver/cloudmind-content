@@ -58,16 +58,9 @@ func NewMongoMapper(config *config.Config) IUserMongoMapper {
 
 func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*User, error) {
 	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
-
 	filter := MakeBsonFilter(fopts)
-	sort, err := p.MakeSortOptions(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-
 	var data []*User
-	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
-		Sort:  sort,
+	if err := m.conn.Find(ctx, &data, filter, &options.FindOptions{
 		Limit: popts.Limit,
 		Skip:  popts.Offset,
 	}); err != nil {
@@ -79,7 +72,7 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 		lo.Reverse(data)
 	}
 	if len(data) > 0 {
-		err = p.StoreCursor(ctx, data[0], data[len(data)-1])
+		err := p.StoreCursor(ctx, data[0], data[len(data)-1])
 		if err != nil {
 			return nil, err
 		}

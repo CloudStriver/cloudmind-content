@@ -4,24 +4,24 @@ import (
 	"context"
 	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/gorse"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/google/wire"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"strconv"
+	"time"
 )
 
 type IRecommendService interface {
-	CreateItems(ctx context.Context, req *gencontent.CreateItemsReq) (resp *gencontent.CreateItemsResp, err error)
+	CreateItem(ctx context.Context, req *gencontent.CreateItemReq) (resp *gencontent.CreateItemResp, err error)
 	UpdateItem(ctx context.Context, req *gencontent.UpdateItemReq) (resp *gencontent.UpdateItemResp, err error)
 	DeleteItem(ctx context.Context, req *gencontent.DeleteItemReq) (resp *gencontent.DeleteItemResp, err error)
 	GetPopularRecommend(ctx context.Context, req *gencontent.GetPopularRecommendReq) (resp *gencontent.GetPopularRecommendResp, err error)
 	GetRecommendByItem(ctx context.Context, req *gencontent.GetRecommendByItemReq) (resp *gencontent.GetRecommendByItemResp, err error)
 	GetRecommendByUser(ctx context.Context, req *gencontent.GetRecommendByUserReq) (resp *gencontent.GetRecommendByUserResp, err error)
 	GetLatestRecommend(ctx context.Context, req *gencontent.GetLatestRecommendReq) (resp *gencontent.GetLatestRecommendResp, err error)
-	CreateFeedBacks(ctx context.Context, req *gencontent.CreateFeedBacksReq) (resp *gencontent.CreateFeedBacksResp, err error)
+	CreateFeedBack(ctx context.Context, req *gencontent.CreateFeedBackReq) (resp *gencontent.CreateFeedBackResp, err error)
 }
 
 var RecommendSet = wire.NewSet(
@@ -34,11 +34,13 @@ type RecommendService struct {
 	Gorse *gorse.GorseClient
 }
 
-func (s *RecommendService) CreateFeedBacks(ctx context.Context, req *gencontent.CreateFeedBacksReq) (resp *gencontent.CreateFeedBacksResp, err error) {
-	feedbacks := lo.Map[*gencontent.FeedBack, gorse.Feedback](req.FeedBacks, func(feedback *gencontent.FeedBack, index int) gorse.Feedback {
-		return convertor.FeedBackToGorseFeedBack(feedback)
-	})
-	if _, err = s.Gorse.InsertFeedback(ctx, feedbacks); err != nil {
+func (s *RecommendService) CreateFeedBack(ctx context.Context, req *gencontent.CreateFeedBackReq) (resp *gencontent.CreateFeedBackResp, err error) {
+	if _, err = s.Gorse.InsertFeedback(ctx, []gorse.Feedback{{
+		FeedbackType: req.FeedbackType,
+		UserId:       req.UserId,
+		ItemId:       req.ItemId,
+		Timestamp:    time.Now().String(),
+	}}); err != nil {
 		return resp, err
 	}
 	return resp, nil
@@ -80,11 +82,14 @@ func (s *RecommendService) GetLatestRecommend(ctx context.Context, req *genconte
 	return resp, nil
 }
 
-func (s *RecommendService) CreateItems(ctx context.Context, req *gencontent.CreateItemsReq) (resp *gencontent.CreateItemsResp, err error) {
-	items := lo.Map[*gencontent.Item, gorse.Item](req.Items, func(item *gencontent.Item, index int) gorse.Item {
-		return convertor.ItemToGorseItem(item)
-	})
-	if _, err = s.Gorse.InsertItems(ctx, items); err != nil {
+func (s *RecommendService) CreateItem(ctx context.Context, req *gencontent.CreateItemReq) (resp *gencontent.CreateItemResp, err error) {
+	if _, err = s.Gorse.InsertItems(ctx, []gorse.Item{{
+		ItemId:     req.ItemId,
+		IsHidden:   req.IsHidden,
+		Labels:     req.Labels,
+		Categories: []string{req.Category},
+		Timestamp:  time.Now().String(),
+	}}); err != nil {
 		return resp, err
 	}
 	return resp, nil
