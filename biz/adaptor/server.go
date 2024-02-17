@@ -168,6 +168,10 @@ func (s *ContentServerImpl) GetUsers(ctx context.Context, req *content.GetUsersR
 	return s.UserService.GetUsers(ctx, req)
 }
 
+func (s *ContentServerImpl) GetUsersByUserIds(ctx context.Context, req *content.GetUsersByUserIdsReq) (res *content.GetUsersByUserIdsResp, err error) {
+	return s.UserService.GetUsersByUserIds(ctx, req)
+}
+
 func (s *ContentServerImpl) CreateUser(ctx context.Context, req *content.CreateUserReq) (resp *content.CreateUserResp, err error) {
 	return s.UserService.CreateUser(ctx, req)
 }
