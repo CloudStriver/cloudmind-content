@@ -22,6 +22,7 @@ type IUserService interface {
 	UpdateUser(ctx context.Context, req *gencontent.UpdateUserReq) (resp *gencontent.UpdateUserResp, err error)
 	GetUsers(ctx context.Context, req *gencontent.GetUsersReq) (resp *gencontent.GetUsersResp, err error)
 	DeleteUser(ctx context.Context, req *gencontent.DeleteUserReq) (resp *gencontent.DeleteUserResp, err error)
+	GetUsersByUserIds(ctx context.Context, req *gencontent.GetUsersByUserIdsReq) (resp *gencontent.GetUsersByUserIdsResp, err error)
 }
 
 type UserService struct {
@@ -36,6 +37,17 @@ var UserSet = wire.NewSet(
 	wire.Bind(new(IUserService), new(*UserService)),
 )
 
+func (s *UserService) GetUsersByUserIds(ctx context.Context, req *gencontent.GetUsersByUserIdsReq) (resp *gencontent.GetUsersByUserIdsResp, err error) {
+	resp = new(gencontent.GetUsersByUserIdsResp)
+	users, err := s.UserMongoMapper.FindManyByIds(ctx, req.UserIds)
+	if err != nil {
+		return resp, err
+	}
+	resp.Users = lo.Map[*usermapper.User, *gencontent.User](users, func(item *usermapper.User, _ int) *gencontent.User {
+		return convertor.UserMapperToUser(item)
+	})
+	return resp, nil
+}
 func (s *UserService) DeleteUser(ctx context.Context, req *gencontent.DeleteUserReq) (resp *gencontent.DeleteUserResp, err error) {
 	if _, err = s.UserMongoMapper.Delete(ctx, req.UserId); err != nil {
 		return resp, err
