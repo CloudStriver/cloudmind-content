@@ -27,16 +27,16 @@ func (s *ContentServerImpl) GetRecycleBinFiles(ctx context.Context, req *content
 	return s.FileService.GetRecycleBinFiles(ctx, req)
 }
 
-func (s *ContentServerImpl) CreateFeedBacks(ctx context.Context, req *content.CreateFeedBacksReq) (res *content.CreateFeedBacksResp, err error) {
-	return s.RecommendService.CreateFeedBacks(ctx, req)
+func (s *ContentServerImpl) CreateFeedBack(ctx context.Context, req *content.CreateFeedBackReq) (res *content.CreateFeedBackResp, err error) {
+	return s.RecommendService.CreateFeedBack(ctx, req)
 }
 
 func (s *ContentServerImpl) GetLatestRecommend(ctx context.Context, req *content.GetLatestRecommendReq) (res *content.GetLatestRecommendResp, err error) {
 	return s.RecommendService.GetLatestRecommend(ctx, req)
 }
 
-func (s *ContentServerImpl) CreateItems(ctx context.Context, req *content.CreateItemsReq) (res *content.CreateItemsResp, err error) {
-	return s.RecommendService.CreateItems(ctx, req)
+func (s *ContentServerImpl) CreateItem(ctx context.Context, req *content.CreateItemReq) (res *content.CreateItemResp, err error) {
+	return s.RecommendService.CreateItem(ctx, req)
 }
 
 func (s *ContentServerImpl) UpdateItem(ctx context.Context, req *content.UpdateItemReq) (res *content.UpdateItemResp, err error) {

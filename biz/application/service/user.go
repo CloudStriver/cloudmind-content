@@ -45,7 +45,9 @@ func (s *UserService) DeleteUser(ctx context.Context, req *gencontent.DeleteUser
 
 func (s *UserService) GetUsers(ctx context.Context, req *gencontent.GetUsersReq) (resp *gencontent.GetUsersResp, err error) {
 	resp = new(gencontent.GetUsersResp)
-	var users []*usermapper.User
+	var (
+		users []*usermapper.User
+	)
 
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
 	if req.SearchOptions != nil {
