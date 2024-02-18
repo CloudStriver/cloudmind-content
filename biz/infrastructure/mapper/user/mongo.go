@@ -29,6 +29,7 @@ type (
 		Update(ctx context.Context, data *User) (*mongo.UpdateResult, error)
 		Delete(ctx context.Context, id string) (int64, error)
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*User, error)
+		FindManyByIds(ctx context.Context, ids []string) ([]*User, error)
 	}
 	User struct {
 		ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
@@ -56,18 +57,27 @@ func NewMongoMapper(config *config.Config) IUserMongoMapper {
 	}
 }
 
-func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*User, error) {
-	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
+func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*User, error) {
+	var (
+		users []*User
+		err   error
+	)
 
+	fopts := &FilterOptions{OnlyUserIds: ids}
 	filter := MakeBsonFilter(fopts)
-	sort, err := p.MakeSortOptions(ctx, filter)
-	if err != nil {
+	if err = m.conn.Find(ctx, &users, filter, &options.FindOptions{
+		Limit: lo.ToPtr(int64(len(ids))),
+	}); err != nil {
 		return nil, err
 	}
+	return users, nil
+}
 
+func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*User, error) {
+	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
+	filter := MakeBsonFilter(fopts)
 	var data []*User
-	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
-		Sort:  sort,
+	if err := m.conn.Find(ctx, &data, filter, &options.FindOptions{
 		Limit: popts.Limit,
 		Skip:  popts.Offset,
 	}); err != nil {
@@ -79,7 +89,7 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 		lo.Reverse(data)
 	}
 	if len(data) > 0 {
-		err = p.StoreCursor(ctx, data[0], data[len(data)-1])
+		err := p.StoreCursor(ctx, data[0], data[len(data)-1])
 		if err != nil {
 			return nil, err
 		}

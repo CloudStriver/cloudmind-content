@@ -21,7 +21,13 @@ type IPostService interface {
 	GetPosts(ctx context.Context, req *gencontent.GetPostsReq) (resp *gencontent.GetPostsResp, err error)
 	UpdatePost(ctx context.Context, req *gencontent.UpdatePostReq) (resp *gencontent.UpdatePostResp, err error)
 	DeletePost(ctx context.Context, req *gencontent.DeletePostReq) (resp *gencontent.DeletePostResp, err error)
+	GetPostsByPostIds(ctx context.Context, req *gencontent.GetPostsByPostIdsReq) (resp *gencontent.GetPostsByPostIdsResp, err error)
 }
+
+var PostSet = wire.NewSet(
+	wire.Struct(new(PostService), "*"),
+	wire.Bind(new(IPostService), new(*PostService)),
+)
 
 type PostService struct {
 	Config          *config.Config
@@ -30,10 +36,18 @@ type PostService struct {
 	Redis           *redis.Redis
 }
 
-var PostSet = wire.NewSet(
-	wire.Struct(new(PostService), "*"),
-	wire.Bind(new(IPostService), new(*PostService)),
-)
+func (s *PostService) GetPostsByPostIds(ctx context.Context, req *gencontent.GetPostsByPostIdsReq) (resp *gencontent.GetPostsByPostIdsResp, err error) {
+	resp = new(gencontent.GetPostsByPostIdsResp)
+	posts, err := s.PostMongoMapper.FindManyByIds(ctx, req.PostIds)
+	if err != nil {
+		return resp, err
+	}
+
+	resp.Posts = lo.Map[*postmapper.Post, *gencontent.Post](posts, func(item *postmapper.Post, _ int) *gencontent.Post {
+		return convertor.PostMapperToPost(item)
+	})
+	return resp, nil
+}
 
 func (s *PostService) CreatePost(ctx context.Context, req *gencontent.CreatePostReq) (resp *gencontent.CreatePostResp, err error) {
 	resp = new(gencontent.CreatePostResp)

@@ -48,7 +48,7 @@ type IFileService interface {
 }
 
 type FileService struct {
-	config               config.Config
+	Config               *config.Config
 	FileMongoMapper      filemapper.IMongoMapper
 	FileEsMapper         filemapper.IFileEsMapper
 	ShareFileMongoMapper sharefilemapper.IMongoMapper
@@ -385,7 +385,7 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 			consts.Labels:      "",
 		}
 	}
-	ids := make([]string, 0, s.config.InitialSliceLength)
+	ids := make([]string, 0, s.Config.InitialSliceLength)
 	tx := s.FileMongoMapper.StartClient()
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 		if err = sessionContext.StartTransaction(); err != nil {
@@ -424,7 +424,7 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 		"$unset": bson.M{consts.DeletedAt: ""},
 	}
 
-	ids := make([]string, 0, s.config.InitialSliceLength)
+	ids := make([]string, 0, s.Config.InitialSliceLength)
 	paths := strings.Split(req.Path, "/")
 	for i, id := range paths {
 		if i == 0 {
@@ -490,7 +490,7 @@ func (s *FileService) CreateShareCode(ctx context.Context, req *gencontent.Creat
 	data := convertor.ShareFileToShareFileMapper(req.ShareFile)
 	data.CreateAt = time.Now()
 	if req.ShareFile.EffectiveTime >= 0 {
-		data.DeletedAt = data.CreateAt.Add(time.Duration(req.ShareFile.EffectiveTime)*time.Second + time.Duration(s.config.DeletionCoolingOffPeriod)*time.Hour)
+		data.DeletedAt = data.CreateAt.Add(time.Duration(req.ShareFile.EffectiveTime)*time.Second + time.Duration(s.Config.DeletionCoolingOffPeriod)*time.Hour)
 	}
 	if resp.Code, resp.Key, err = s.ShareFileMongoMapper.Insert(ctx, data); err != nil {
 		return resp, err
@@ -561,7 +561,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 		}
 		if req.SpaceSize == int64(gencontent.Folder_Folder_Size) { // 若是文件夹，开始根据原文件夹层层创建
 			var front kv
-			queue := make([]kv, 0, s.config.InitialSliceLength)
+			queue := make([]kv, 0, s.Config.InitialSliceLength)
 			queue = append(queue, kv{id: req.FileId, path: req.NewPath + "/" + resp.FileId})
 			for len(queue) > 0 {
 				front = queue[0]
@@ -639,7 +639,7 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 			consts.Labels:      req.Labels,
 		},
 	}
-	ids := make([]string, 0, s.config.InitialSliceLength)
+	ids := make([]string, 0, s.Config.InitialSliceLength)
 	tx := s.FileMongoMapper.StartClient()
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 		if err = sessionContext.StartTransaction(); err != nil {

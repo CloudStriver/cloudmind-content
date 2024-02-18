@@ -27,16 +27,16 @@ func (s *ContentServerImpl) GetRecycleBinFiles(ctx context.Context, req *content
 	return s.FileService.GetRecycleBinFiles(ctx, req)
 }
 
-func (s *ContentServerImpl) CreateFeedBacks(ctx context.Context, req *content.CreateFeedBacksReq) (res *content.CreateFeedBacksResp, err error) {
-	return s.RecommendService.CreateFeedBacks(ctx, req)
+func (s *ContentServerImpl) CreateFeedBack(ctx context.Context, req *content.CreateFeedBackReq) (res *content.CreateFeedBackResp, err error) {
+	return s.RecommendService.CreateFeedBack(ctx, req)
 }
 
 func (s *ContentServerImpl) GetLatestRecommend(ctx context.Context, req *content.GetLatestRecommendReq) (res *content.GetLatestRecommendResp, err error) {
 	return s.RecommendService.GetLatestRecommend(ctx, req)
 }
 
-func (s *ContentServerImpl) CreateItems(ctx context.Context, req *content.CreateItemsReq) (res *content.CreateItemsResp, err error) {
-	return s.RecommendService.CreateItems(ctx, req)
+func (s *ContentServerImpl) CreateItem(ctx context.Context, req *content.CreateItemReq) (res *content.CreateItemResp, err error) {
+	return s.RecommendService.CreateItem(ctx, req)
 }
 
 func (s *ContentServerImpl) UpdateItem(ctx context.Context, req *content.UpdateItemReq) (res *content.UpdateItemResp, err error) {
@@ -132,6 +132,10 @@ func (s *ContentServerImpl) CreatePost(ctx context.Context, req *content.CreateP
 	return s.PostService.CreatePost(ctx, req)
 }
 
+func (s *ContentServerImpl) GetPostsByPostIds(ctx context.Context, req *content.GetPostsByPostIdsReq) (res *content.GetPostsByPostIdsResp, err error) {
+	return s.PostService.GetPostsByPostIds(ctx, req)
+}
+
 func (s *ContentServerImpl) DeletePost(ctx context.Context, req *content.DeletePostReq) (res *content.DeletePostResp, err error) {
 	return s.PostService.DeletePost(ctx, req)
 }
@@ -162,6 +166,10 @@ func (s *ContentServerImpl) GetUser(ctx context.Context, req *content.GetUserReq
 
 func (s *ContentServerImpl) GetUsers(ctx context.Context, req *content.GetUsersReq) (resp *content.GetUsersResp, err error) {
 	return s.UserService.GetUsers(ctx, req)
+}
+
+func (s *ContentServerImpl) GetUsersByUserIds(ctx context.Context, req *content.GetUsersByUserIdsReq) (res *content.GetUsersByUserIdsResp, err error) {
+	return s.UserService.GetUsersByUserIds(ctx, req)
 }
 
 func (s *ContentServerImpl) CreateUser(ctx context.Context, req *content.CreateUserReq) (resp *content.CreateUserResp, err error) {
