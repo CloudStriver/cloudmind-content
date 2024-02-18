@@ -313,8 +313,10 @@ func (s *FileService) UpdateFile(ctx context.Context, req *gencontent.UpdateFile
 
 func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq) (resp *gencontent.MoveFileResp, err error) {
 	resp = new(gencontent.MoveFileResp)
-	oid, _ := primitive.ObjectIDFromHex(req.FileId)
-	file := &filemapper.File{ID: oid, UserId: req.UserId}
+	var oid primitive.ObjectID
+	if oid, err = primitive.ObjectIDFromHex(req.FileId); err != nil {
+		return resp, consts.ErrInvalidId
+	}
 	tx := s.FileMongoMapper.StartClient()
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 		if err = sessionContext.StartTransaction(); err != nil {
@@ -327,11 +329,7 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 				return err
 			}
 			for _, v := range data {
-				if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{
-					ID:     v.ID,
-					UserId: req.UserId,
-					Path:   req.NewPath + v.Path[len(req.OldPath)-len(req.FileId)-1:],
-				}); err != nil {
+				if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{ID: v.ID, Path: req.NewPath + v.Path[len(req.OldPath)-len(req.FileId)-1:]}); err != nil {
 					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 						log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 					}
@@ -339,10 +337,7 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 				}
 			}
 		}
-
-		file.Path = req.NewPath + "/" + file.ID.Hex()
-		file.FatherId = req.FatherId
-		if _, err = s.FileMongoMapper.Update(sessionContext, file); err != nil {
+		if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{ID: oid, Path: req.NewPath + "/" + oid.Hex(), FatherId: req.FatherId}); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 			}
@@ -360,7 +355,7 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 
 func (s *FileService) CompletelyRemoveFile(ctx context.Context, req *gencontent.CompletelyRemoveFileReq) (resp *gencontent.CompletelyRemoveFileResp, err error) {
 	resp = new(gencontent.CompletelyRemoveFileResp)
-	if _, err = s.FileMongoMapper.Delete(ctx, req.FileId, req.UserId); err != nil {
+	if _, err = s.FileMongoMapper.Delete(ctx, req.FileId); err != nil {
 		return resp, err
 	}
 	return resp, nil
@@ -407,7 +402,7 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 				ids = append(ids, v.ID.Hex())
 			}
 		}
-		if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, req.UserId, update); err != nil {
+		if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, update); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 			}
@@ -430,6 +425,13 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 	}
 
 	ids := make([]string, 0, s.config.InitialSliceLength)
+	paths := strings.Split(req.Path, "/")
+	for i, id := range paths {
+		if i == 0 {
+			continue
+		}
+		ids = append(ids, id)
+	}
 	tx := s.FileMongoMapper.StartClient()
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 		if err = sessionContext.StartTransaction(); err != nil {
@@ -445,16 +447,7 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 				ids = append(ids, v.ID.Hex())
 			}
 		}
-
-		paths := strings.Split(req.Path, "/")
-		for _, id := range paths {
-			if id == req.UserId {
-				continue
-			}
-			ids = append(ids, id)
-		}
-
-		if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, req.UserId, update); err != nil {
+		if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, update); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "恢复文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 			}
@@ -515,7 +508,7 @@ func (s *FileService) UpdateShareCode(ctx context.Context, req *gencontent.Updat
 }
 
 func (s *FileService) DeleteShareCode(ctx context.Context, req *gencontent.DeleteShareCodeReq) (resp *gencontent.DeleteShareCodeResp, err error) {
-	if _, err := s.ShareFileMongoMapper.Delete(ctx, req.Code, req.UserId); err != nil {
+	if _, err := s.ShareFileMongoMapper.Delete(ctx, req.Code); err != nil {
 		log.CtxError(ctx, "删除文件分享链接: 发生异常[%v]\n", err)
 		return resp, err
 	}
@@ -663,7 +656,7 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 				ids = append(ids, v.ID.Hex())
 			}
 		}
-		if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, req.UserId, update); err != nil {
+		if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, update); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "上传文件到社区过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 			}

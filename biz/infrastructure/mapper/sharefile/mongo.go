@@ -38,7 +38,7 @@ type (
 		FindMany(ctx context.Context, fopts *ShareCodeOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*ShareFile, error)
 		FindManyAndCount(ctx context.Context, fopts *ShareCodeOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*ShareFile, int64, error)
 		Update(ctx context.Context, data *ShareFile) (*mongo.UpdateResult, error)
-		Delete(ctx context.Context, id, userId string) (int64, error)
+		Delete(ctx context.Context, id string) (int64, error)
 		GetConn() *monc.Model
 	}
 
@@ -126,7 +126,7 @@ func (m *MongoMapper) FindOne(ctx context.Context, id string) (*ShareFile, error
 	}
 	key := prefixShareFileCacheKey + id
 	var data ShareFile
-	err = m.conn.FindOne(ctx, key, &data, bson.M{"_id": oid})
+	err = m.conn.FindOne(ctx, key, &data, bson.M{consts.ID: oid})
 	switch {
 	case err == nil:
 		return &data, nil
@@ -212,7 +212,7 @@ func (m *MongoMapper) Update(ctx context.Context, data *ShareFile) (*mongo.Updat
 	defer span.End()
 
 	key := prefixShareFileCacheKey + data.ID.Hex()
-	res, err := m.conn.UpdateOne(ctx, key, bson.M{"_id": data.ID}, bson.M{"$set": data})
+	res, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data})
 	if err != nil {
 		log.CtxError(ctx, "修改文件分享链接: 发生异常[%v]\n", err)
 		return res, err
@@ -220,7 +220,7 @@ func (m *MongoMapper) Update(ctx context.Context, data *ShareFile) (*mongo.Updat
 	return res, nil
 }
 
-func (m *MongoMapper) Delete(ctx context.Context, id, userId string) (int64, error) {
+func (m *MongoMapper) Delete(ctx context.Context, id string) (int64, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.Delete", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
@@ -230,7 +230,7 @@ func (m *MongoMapper) Delete(ctx context.Context, id, userId string) (int64, err
 		return 0, consts.ErrInvalidId
 	}
 	key := prefixShareFileCacheKey + id
-	res, err := m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid, consts.UserId: userId})
+	res, err := m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid})
 	return res, err
 }
 
