@@ -42,8 +42,8 @@ type (
 		FindFolderSize(ctx context.Context, path string) (int64, error)
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, int64, error)
 		Update(ctx context.Context, data *File) (*mongo.UpdateResult, error)
-		UpdateMany(ctx context.Context, ids []string, userId string, update bson.M) (*mongo.UpdateResult, error)
-		Delete(ctx context.Context, id, userId string) (int64, error)
+		UpdateMany(ctx context.Context, ids []string, update bson.M) (*mongo.UpdateResult, error)
+		Delete(ctx context.Context, id string) (int64, error)
 		GetConn() *monc.Model
 		StartClient() *mongo.Client
 	}
@@ -381,10 +381,10 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 
 	data.UpdateAt = time.Now()
 	key := prefixFileCacheKey + data.ID.Hex()
-	res, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID, consts.UserId: data.UserId}, bson.M{"$set": data})
+	res, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data})
 	if err != nil {
 		data.Name = data.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
-		if res, err = m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID, consts.UserId: data.UserId}, bson.M{"$set": data}); err != nil {
+		if res, err = m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data}); err != nil {
 			log.CtxError(ctx, "更新文件信息: 发生异常[%v]\n", err)
 			return res, err
 		}
@@ -392,7 +392,7 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 	return res, nil
 }
 
-func (m *MongoMapper) UpdateMany(ctx context.Context, ids []string, userId string, update bson.M) (*mongo.UpdateResult, error) {
+func (m *MongoMapper) UpdateMany(ctx context.Context, ids []string, update bson.M) (*mongo.UpdateResult, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.UpdateMany", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
@@ -406,7 +406,7 @@ func (m *MongoMapper) UpdateMany(ctx context.Context, ids []string, userId strin
 			oid, _ := primitive.ObjectIDFromHex(s)
 			return oid
 		}),
-	}, consts.UserId: userId}
+	}}
 	res, err := m.conn.UpdateMany(ctx, keys, filter, update)
 	if err != nil {
 		return res, err
@@ -414,13 +414,13 @@ func (m *MongoMapper) UpdateMany(ctx context.Context, ids []string, userId strin
 	return res, nil
 }
 
-func (m *MongoMapper) Delete(ctx context.Context, id, userId string) (int64, error) {
+func (m *MongoMapper) Delete(ctx context.Context, id string) (int64, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.Delete", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 	oid, _ := primitive.ObjectIDFromHex(id)
 	key := prefixFileCacheKey + id
-	resp, err := m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid, consts.UserId: userId})
+	resp, err := m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid})
 	if err != nil {
 		log.CtxError(ctx, "删除文件信息: 发生异常[%v]\n", err)
 		return 0, err
