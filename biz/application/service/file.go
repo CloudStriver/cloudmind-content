@@ -355,9 +355,35 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 
 func (s *FileService) CompletelyRemoveFile(ctx context.Context, req *gencontent.CompletelyRemoveFileReq) (resp *gencontent.CompletelyRemoveFileResp, err error) {
 	resp = new(gencontent.CompletelyRemoveFileResp)
-	if _, err = s.FileMongoMapper.Delete(ctx, req.FileId); err != nil {
-		return resp, err
-	}
+	ids := make([]string, 0, s.Config.InitialSliceLength)
+	tx := s.FileMongoMapper.StartClient()
+	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
+		if err = sessionContext.StartTransaction(); err != nil {
+			return err
+		}
+		ids = append(ids, req.FileId)
+		if req.SpaceSize == int64(gencontent.Folder_Folder_Size) {
+			var data []*filemapper.File
+			filter := bson.M{"path": bson.M{"$regex": "^" + req.Path + "/"}}
+			if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
+				return err
+			}
+			for _, v := range data {
+				ids = append(ids, v.ID.Hex())
+			}
+		}
+		if _, err = s.FileMongoMapper.DeleteMany(sessionContext, ids); err != nil {
+			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
+				log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
+			}
+			return err
+		}
+		if err = sessionContext.CommitTransaction(sessionContext); err != nil {
+			log.CtxError(ctx, "删除文件: 提交事务异常[%v]\n", err)
+			return err
+		}
+		return nil
+	})
 	return resp, nil
 }
 
@@ -521,13 +547,7 @@ func (s *FileService) ParsingShareCode(ctx context.Context, req *gencontent.Pars
 	if shareFile, err = s.ShareFileMongoMapper.FindOne(ctx, req.Code); err != nil {
 		return resp, err
 	}
-	if shareFile.Key != req.Key {
-		return resp, consts.ErrShareFileKey
-	}
 	res := convertor.ShareFileMapperToShareFile(shareFile)
-	if res.Status == int64(gencontent.Validity_Validity_expired) {
-		return resp, nil
-	}
 	resp.ShareFile = res
 	return resp, nil
 }

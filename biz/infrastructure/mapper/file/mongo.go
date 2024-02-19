@@ -44,6 +44,7 @@ type (
 		Update(ctx context.Context, data *File) (*mongo.UpdateResult, error)
 		UpdateMany(ctx context.Context, ids []string, update bson.M) (*mongo.UpdateResult, error)
 		Delete(ctx context.Context, id string) (int64, error)
+		DeleteMany(ctx context.Context, ids []string) (int64, error)
 		GetConn() *monc.Model
 		StartClient() *mongo.Client
 	}
@@ -421,6 +422,36 @@ func (m *MongoMapper) Delete(ctx context.Context, id string) (int64, error) {
 	oid, _ := primitive.ObjectIDFromHex(id)
 	key := prefixFileCacheKey + id
 	resp, err := m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid})
+	if err != nil {
+		log.CtxError(ctx, "删除文件信息: 发生异常[%v]\n", err)
+		return 0, err
+	}
+	return resp, err
+}
+
+func (m *MongoMapper) DeleteMany(ctx context.Context, ids []string) (int64, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.DeleteMany", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	var resp int64
+	var err1, err2 error
+	keys := lo.Map(ids, func(id string, _ int) string {
+		return prefixFileCacheKey + id
+	})
+	filter := bson.M{consts.ID: bson.M{
+		"$in": lo.Map[string, primitive.ObjectID](ids, func(s string, _ int) primitive.ObjectID {
+			oid, _ := primitive.ObjectIDFromHex(s)
+			return oid
+		}),
+	}}
+	err := mr.Finish(func() error {
+		resp, err1 = m.conn.DeleteMany(ctx, filter)
+		return err1
+	}, func() error {
+		err2 = m.conn.DelCache(ctx, keys...)
+		return err2
+	})
 	if err != nil {
 		log.CtxError(ctx, "删除文件信息: 发生异常[%v]\n", err)
 		return 0, err

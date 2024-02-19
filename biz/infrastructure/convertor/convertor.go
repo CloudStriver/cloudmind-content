@@ -96,6 +96,7 @@ func ShareFileMapperToShareFile(data *sharefile.ShareFile) *gencontent.ShareFile
 		BrowseNumber:  *data.BrowseNumber,
 		CreateAt:      data.CreateAt.Unix(),
 		FileList:      data.FileList,
+		Key:           data.Key,
 	}
 }
 
