@@ -33,8 +33,8 @@ type (
 	IMongoMapper interface {
 		FindFileIsExist(ctx context.Context, md5 string) (bool, error)
 		Count(ctx context.Context, filter *FilterOptions) (int64, error)
-		Insert(ctx context.Context, data *File) (string, error)
-		FindAndInsert(ctx context.Context, data *File) (string, error)
+		Insert(ctx context.Context, data *File) (string, string, error)
+		FindAndInsert(ctx context.Context, data *File) (string, string, error)
 		FindAndInsertMany(ctx context.Context, data []*File) ([]string, error)
 		FindOne(ctx context.Context, id string) (*File, error)
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, error)
@@ -131,7 +131,7 @@ func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*File,
 	}
 }
 
-func (m *MongoMapper) FindAndInsert(ctx context.Context, data *File) (string, error) {
+func (m *MongoMapper) FindAndInsert(ctx context.Context, data *File) (string, string, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.FindAndInsert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
@@ -141,7 +141,7 @@ func (m *MongoMapper) FindAndInsert(ctx context.Context, data *File) (string, er
 		if errors.Is(err, monc.ErrNotFound) {
 			return m.Insert(ctx, data)
 		}
-		return "", err
+		return "", "", err
 	}
 
 	// 如果文件已存在，修改文件名
@@ -211,7 +211,7 @@ func (m *MongoMapper) FindFileIsExist(ctx context.Context, md5 string) (bool, er
 	}
 }
 
-func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
+func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, string, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.Insert", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
@@ -228,10 +228,10 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, error) {
 		data.Name = data.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
 		if _, err = m.conn.InsertOne(ctx, key, data); err != nil {
 			log.CtxError(ctx, "插入文件信息: 发生异常[%v]\n", err)
-			return "", err
+			return "", "", err
 		}
 	}
-	return data.ID.Hex(), nil
+	return data.ID.Hex(), data.Name, nil
 }
 
 func (m *MongoMapper) FindOne(ctx context.Context, id string) (*File, error) {

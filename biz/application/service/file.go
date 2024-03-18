@@ -294,7 +294,7 @@ func (s *FileService) GetFolderSize(ctx context.Context, path string) (resp int6
 
 func (s *FileService) CreateFile(ctx context.Context, req *gencontent.CreateFileReq) (resp *gencontent.CreateFileResp, err error) {
 	resp = new(gencontent.CreateFileResp)
-	resp.FileId, err = s.FileMongoMapper.Insert(ctx, convertor.FileToFileMapper(req.File))
+	resp.FileId, resp.Name, err = s.FileMongoMapper.Insert(ctx, convertor.FileToFileMapper(req.File))
 	if err != nil {
 		return resp, err
 	}
@@ -570,7 +570,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 		if err1 = sessionContext.StartTransaction(); err1 != nil {
 			return err1
 		}
-		if resp.FileId, err1 = s.FileMongoMapper.FindAndInsert(sessionContext, &filemapper.File{ // 创建根文件
+		if resp.FileId, resp.Name, err1 = s.FileMongoMapper.FindAndInsert(sessionContext, &filemapper.File{ // 创建根文件
 			UserId:   req.UserId,
 			Name:     req.Name,
 			Type:     req.Type,
