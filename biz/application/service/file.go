@@ -417,15 +417,17 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
-		ids = append(ids, req.FileId)
-		if req.SpaceSize == int64(gencontent.Folder_Folder_Size) {
-			var data []*filemapper.File
-			filter := bson.M{"path": bson.M{"$regex": "^" + req.Path + "/"}}
-			if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
-				return err
-			}
-			for _, v := range data {
-				ids = append(ids, v.ID.Hex())
+		for _, file := range req.Files {
+			ids = append(ids, file.FileId)
+			if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
+				var data []*filemapper.File
+				filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
+				if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
+					return err
+				}
+				for _, v := range data {
+					ids = append(ids, v.ID.Hex())
+				}
 			}
 		}
 		if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, update); err != nil {
@@ -451,26 +453,30 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 	}
 
 	ids := make([]string, 0, s.Config.InitialSliceLength)
-	paths := strings.Split(req.Path, "/")
-	for i, id := range paths {
-		if i == 0 {
-			continue
+	for _, file := range req.Files {
+		paths := strings.Split(file.Path, "/")
+		for i, id := range paths {
+			if i == 0 {
+				continue
+			}
+			ids = append(ids, id)
 		}
-		ids = append(ids, id)
 	}
 	tx := s.FileMongoMapper.StartClient()
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
-		if req.SpaceSize == int64(gencontent.Folder_Folder_Size) {
-			var data []*filemapper.File
-			filter := bson.M{"path": bson.M{"$regex": "^" + req.Path + "/"}}
-			if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
-				return err
-			}
-			for _, v := range data {
-				ids = append(ids, v.ID.Hex())
+		for _, file := range req.Files {
+			if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
+				var data []*filemapper.File
+				filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
+				if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
+					return err
+				}
+				for _, v := range data {
+					ids = append(ids, v.ID.Hex())
+				}
 			}
 		}
 		if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, update); err != nil {
