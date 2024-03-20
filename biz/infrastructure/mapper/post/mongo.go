@@ -26,7 +26,7 @@ type (
 		Insert(ctx context.Context, data *Post) (string, error)
 		FindOne(ctx context.Context, id string) (*Post, error)
 		Update(ctx context.Context, data *Post) error
-		Delete(ctx context.Context, id string) error
+		Delete(ctx context.Context, id []string) error
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error)
 		Count(ctx context.Context, fopts *FilterOptions) (int64, error)
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, int64, error)
@@ -171,12 +171,25 @@ func (m *MongoMapper) Update(ctx context.Context, data *Post) error {
 	return err
 }
 
-func (m *MongoMapper) Delete(ctx context.Context, id string) error {
-	oid, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return consts.ErrInvalidId
+func (m *MongoMapper) Delete(ctx context.Context, id []string) error {
+	oids := lo.Map[string, primitive.ObjectID](id, func(item string, _ int) primitive.ObjectID {
+		oid, _ := primitive.ObjectIDFromHex(item)
+		return oid
+	})
+	keys := lo.Map(id, func(item string, index int) string {
+		return prefixPostCacheKey + item
+	})
+	if _, err := m.conn.DeleteMany(ctx, bson.M{
+		consts.ID: bson.M{
+			"$in": oids,
+		},
+	}); err != nil {
+		return err
 	}
-	key := prefixPostCacheKey + id
-	_, err = m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid})
-	return err
+
+	if err := m.conn.DelCache(ctx, keys...); err != nil {
+		return err
+	}
+
+	return nil
 }
