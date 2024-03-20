@@ -450,28 +450,28 @@ func (s *FileService) EmptyRecycleBin(ctx context.Context, req *gencontent.Empty
 	resp = new(gencontent.EmptyRecycleBinResp)
 	var (
 		err1, err2 error
-		sortRes    *gencontent.GetFileListResp
-		hardRes    *gencontent.GetFileListResp
+		sortList   []*filemapper.File
+		hardList   []*filemapper.File
 	)
 
 	if err = mr.Finish(func() error {
-		sortRes, err1 = s.GetFileList(ctx, &gencontent.GetFileListReq{FilterOptions: &gencontent.FileFilterOptions{OnlyUserId: lo.ToPtr(req.UserId), OnlyIsDel: lo.ToPtr(int64(gencontent.Deletion_Deletion_softDel))}, SortOptions: lo.ToPtr(gencontent.SortOptions_SortOptions_createAtAsc)})
+		sortList, err1 = s.FileMongoMapper.Find(ctx, bson.M{consts.UserId: req.UserId, consts.IsDel: int64(gencontent.Deletion_Deletion_softDel)})
 		return err1
 	}, func() error {
-		hardRes, err2 = s.GetFileList(ctx, &gencontent.GetFileListReq{FilterOptions: &gencontent.FileFilterOptions{OnlyUserId: lo.ToPtr(req.UserId), OnlyIsDel: lo.ToPtr(int64(gencontent.Deletion_Deletion_hardDel))}, SortOptions: lo.ToPtr(gencontent.SortOptions_SortOptions_createAtAsc)})
+		hardList, err2 = s.FileMongoMapper.Find(ctx, bson.M{consts.UserId: req.UserId, consts.IsDel: int64(gencontent.Deletion_Deletion_hardDel)})
 		return err2
 	}); err != nil {
 		return resp, err
 	}
 
-	n := len(sortRes.Files)
-	m := len(hardRes.Files)
+	n := len(sortList)
+	m := len(hardList)
 	ids := make([]string, n+m)
-	for i, v := range sortRes.Files {
-		ids[i] = v.FileId
+	for i, v := range sortList {
+		ids[i] = v.ID.Hex()
 	}
-	for i, v := range hardRes.Files {
-		ids[i+n] = v.FileId
+	for i, v := range hardList {
+		ids[i+n] = v.ID.Hex()
 	}
 	tx := s.FileMongoMapper.StartClient()
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
