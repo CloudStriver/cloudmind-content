@@ -35,6 +35,7 @@ type IFileService interface {
 	UpdateFile(ctx context.Context, req *gencontent.UpdateFileReq) (resp *gencontent.UpdateFileResp, err error)
 	MoveFile(ctx context.Context, req *gencontent.MoveFileReq) (resp *gencontent.MoveFileResp, err error)
 	DeleteFile(ctx context.Context, req *gencontent.DeleteFileReq) (resp *gencontent.DeleteFileResp, err error)
+	EmptyRecycleBin(ctx context.Context, req *gencontent.EmptyRecycleBinReq) (resp *gencontent.EmptyRecycleBinResp, err error)
 	CompletelyRemoveFile(ctx context.Context, req *gencontent.CompletelyRemoveFileReq) (resp *gencontent.CompletelyRemoveFileResp, err error)
 	RecoverRecycleBinFile(ctx context.Context, req *gencontent.RecoverRecycleBinFileReq) (resp *gencontent.RecoverRecycleBinFileResp, err error)
 	GetShareList(ctx context.Context, req *gencontent.GetShareListReq) (resp *gencontent.GetShareListResp, err error)
@@ -442,6 +443,54 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 		}
 		return nil
 	})
+	return resp, nil
+}
+
+func (s *FileService) EmptyRecycleBin(ctx context.Context, req *gencontent.EmptyRecycleBinReq) (resp *gencontent.EmptyRecycleBinResp, err error) {
+	resp = new(gencontent.EmptyRecycleBinResp)
+	var (
+		err1, err2 error
+		sortRes    *gencontent.GetFileListResp
+		hardRes    *gencontent.GetFileListResp
+	)
+
+	if err = mr.Finish(func() error {
+		sortRes, err1 = s.GetFileList(ctx, &gencontent.GetFileListReq{FilterOptions: &gencontent.FileFilterOptions{OnlyUserId: lo.ToPtr(req.UserId), OnlyIsDel: lo.ToPtr(int64(gencontent.Deletion_Deletion_softDel))}, SortOptions: lo.ToPtr(gencontent.SortOptions_SortOptions_createAtAsc)})
+		return err1
+	}, func() error {
+		hardRes, err2 = s.GetFileList(ctx, &gencontent.GetFileListReq{FilterOptions: &gencontent.FileFilterOptions{OnlyUserId: lo.ToPtr(req.UserId), OnlyIsDel: lo.ToPtr(int64(gencontent.Deletion_Deletion_hardDel))}, SortOptions: lo.ToPtr(gencontent.SortOptions_SortOptions_createAtAsc)})
+		return err2
+	}); err != nil {
+		return resp, err
+	}
+
+	n := len(sortRes.Files)
+	m := len(hardRes.Files)
+	ids := make([]string, n+m)
+	for i, v := range sortRes.Files {
+		ids[i] = v.FileId
+	}
+	for i, v := range hardRes.Files {
+		ids[i+n] = v.FileId
+	}
+	tx := s.FileMongoMapper.StartClient()
+	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
+		if err = sessionContext.StartTransaction(); err != nil {
+			return err
+		}
+		if _, err = s.FileMongoMapper.DeleteMany(sessionContext, ids); err != nil {
+			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
+				log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
+			}
+			return err
+		}
+		if err = sessionContext.CommitTransaction(sessionContext); err != nil {
+			log.CtxError(ctx, "删除文件: 提交事务异常[%v]\n", err)
+			return err
+		}
+		return nil
+	})
+
 	return resp, nil
 }
 
