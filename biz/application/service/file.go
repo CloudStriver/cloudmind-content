@@ -35,6 +35,7 @@ type IFileService interface {
 	UpdateFile(ctx context.Context, req *gencontent.UpdateFileReq) (resp *gencontent.UpdateFileResp, err error)
 	MoveFile(ctx context.Context, req *gencontent.MoveFileReq) (resp *gencontent.MoveFileResp, err error)
 	DeleteFile(ctx context.Context, req *gencontent.DeleteFileReq) (resp *gencontent.DeleteFileResp, err error)
+	EmptyRecycleBin(ctx context.Context, req *gencontent.EmptyRecycleBinReq) (resp *gencontent.EmptyRecycleBinResp, err error)
 	CompletelyRemoveFile(ctx context.Context, req *gencontent.CompletelyRemoveFileReq) (resp *gencontent.CompletelyRemoveFileResp, err error)
 	RecoverRecycleBinFile(ctx context.Context, req *gencontent.RecoverRecycleBinFileReq) (resp *gencontent.RecoverRecycleBinFileResp, err error)
 	GetShareList(ctx context.Context, req *gencontent.GetShareListReq) (resp *gencontent.GetShareListResp, err error)
@@ -442,6 +443,54 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 		}
 		return nil
 	})
+	return resp, nil
+}
+
+func (s *FileService) EmptyRecycleBin(ctx context.Context, req *gencontent.EmptyRecycleBinReq) (resp *gencontent.EmptyRecycleBinResp, err error) {
+	resp = new(gencontent.EmptyRecycleBinResp)
+	var (
+		err1, err2 error
+		sortList   []*filemapper.File
+		hardList   []*filemapper.File
+	)
+
+	if err = mr.Finish(func() error {
+		sortList, err1 = s.FileMongoMapper.Find(ctx, bson.M{consts.UserId: req.UserId, consts.IsDel: int64(gencontent.Deletion_Deletion_softDel)})
+		return err1
+	}, func() error {
+		hardList, err2 = s.FileMongoMapper.Find(ctx, bson.M{consts.UserId: req.UserId, consts.IsDel: int64(gencontent.Deletion_Deletion_hardDel)})
+		return err2
+	}); err != nil {
+		return resp, err
+	}
+
+	n := len(sortList)
+	m := len(hardList)
+	ids := make([]string, n+m)
+	for i, v := range sortList {
+		ids[i] = v.ID.Hex()
+	}
+	for i, v := range hardList {
+		ids[i+n] = v.ID.Hex()
+	}
+	tx := s.FileMongoMapper.StartClient()
+	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
+		if err = sessionContext.StartTransaction(); err != nil {
+			return err
+		}
+		if _, err = s.FileMongoMapper.DeleteMany(sessionContext, ids); err != nil {
+			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
+				log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
+			}
+			return err
+		}
+		if err = sessionContext.CommitTransaction(sessionContext); err != nil {
+			log.CtxError(ctx, "删除文件: 提交事务异常[%v]\n", err)
+			return err
+		}
+		return nil
+	})
+
 	return resp, nil
 }
 

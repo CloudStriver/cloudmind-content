@@ -37,6 +37,7 @@ type (
 		FindAndInsert(ctx context.Context, data *File) (string, string, error)
 		FindAndInsertMany(ctx context.Context, data []*File) ([]string, error)
 		FindOne(ctx context.Context, id string) (*File, error)
+		Find(ctx context.Context, filter bson.M) ([]*File, error)
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, error)
 		FindManyByIds(ctx context.Context, ids []string) ([]*File, error)
 		FindFolderSize(ctx context.Context, path string) (int64, error)
@@ -254,6 +255,23 @@ func (m *MongoMapper) FindOne(ctx context.Context, id string) (*File, error) {
 		log.CtxError(ctx, "查询文件详细信息: 发生异常[%v]\n", err)
 		return nil, err
 	}
+}
+
+func (m *MongoMapper) Find(ctx context.Context, filter bson.M) ([]*File, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.Find", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	var data []*File
+	err := m.conn.Find(ctx, &data, filter)
+	switch {
+	case errors.Is(err, monc.ErrNotFound):
+		return nil, consts.ErrNotFound
+	case err != nil:
+		log.CtxError(ctx, "查询文件列表: 发生异常[%v]\n", err)
+		return nil, err
+	}
+	return data, nil
 }
 
 func (m *MongoMapper) Count(ctx context.Context, fopts *FilterOptions) (int64, error) {

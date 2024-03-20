@@ -19,6 +19,10 @@ type ContentServerImpl struct {
 	RecommendService service.IRecommendService
 }
 
+func (s *ContentServerImpl) EmptyRecycleBin(ctx context.Context, req *content.EmptyRecycleBinReq) (res *content.EmptyRecycleBinResp, err error) {
+	return s.FileService.EmptyRecycleBin(ctx, req)
+}
+
 func (s *ContentServerImpl) CheckShareFile(ctx context.Context, req *content.CheckShareFileReq) (res *content.CheckShareFileResp, err error) {
 	return s.FileService.CheckShareFile(ctx, req)
 }
