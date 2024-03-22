@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/otel"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -54,6 +55,7 @@ type (
 		ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 		UserId      string             `bson:"userId,omitempty" json:"userId,omitempty"`
 		Name        string             `bson:"name,omitempty" json:"name,omitempty"`
+		Category    int64              `bson:"category,omitempty" json:"category,omitempty"`
 		Type        string             `bson:"type,omitempty" json:"type,omitempty"`
 		Path        string             `bson:"path,omitempty" json:"path,omitempty"`
 		FatherId    string             `bson:"fatherId,omitempty" json:"fatherId,omitempty"`
@@ -145,8 +147,18 @@ func (m *MongoMapper) FindAndInsert(ctx context.Context, data *File) (string, st
 		return "", "", err
 	}
 
-	// 如果文件已存在，修改文件名
-	data.Name = data.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
+	var builder strings.Builder
+	for i := len(data.Name) - 1; i >= 0; i-- {
+		if data.Name[i] == '.' {
+			builder.WriteString(data.Name[:i])
+			builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
+			builder.WriteString(data.Name[i:])
+			break
+		}
+	}
+
+	data.Name = builder.String()
+	builder.Reset()
 	return m.Insert(ctx, data)
 }
 
@@ -177,7 +189,17 @@ func (m *MongoMapper) FindAndInsertMany(ctx context.Context, data []*File) ([]st
 				}
 			}
 			// 如果文件已存在，修改文件名
-			item.Name = item.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
+			var builder strings.Builder
+			for i := len(item.Name) - 1; i >= 0; i-- {
+				if item.Name[i] == '.' {
+					builder.WriteString(item.Name[:i])
+					builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
+					builder.WriteString(item.Name[i:])
+					break
+				}
+			}
+			item.Name = builder.String()
+			builder.Reset()
 			return nil
 		}
 	})...); err != nil {
@@ -226,7 +248,17 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, string, e
 	key := prefixFileCacheKey + data.ID.Hex()
 	_, err := m.conn.InsertOne(ctx, key, data)
 	if err != nil {
-		data.Name = data.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
+		var builder strings.Builder
+		for i := len(data.Name) - 1; i >= 0; i-- {
+			if data.Name[i] == '.' {
+				builder.WriteString(data.Name[:i])
+				builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
+				builder.WriteString(data.Name[i:])
+				break
+			}
+		}
+		data.Name = builder.String()
+		builder.Reset()
 		if _, err = m.conn.InsertOne(ctx, key, data); err != nil {
 			log.CtxError(ctx, "插入文件信息: 发生异常[%v]\n", err)
 			return "", "", err
@@ -402,7 +434,17 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 	key := prefixFileCacheKey + data.ID.Hex()
 	res, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data})
 	if err != nil {
-		data.Name = data.Name + "_" + strconv.FormatInt(time.Now().Unix(), 10)
+		var builder strings.Builder
+		for i := len(data.Name) - 1; i >= 0; i-- {
+			if data.Name[i] == '.' {
+				builder.WriteString(data.Name[:i])
+				builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
+				builder.WriteString(data.Name[i:])
+				break
+			}
+		}
+		data.Name = builder.String()
+		builder.Reset()
 		if res, err = m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data}); err != nil {
 			log.CtxError(ctx, "更新文件信息: 发生异常[%v]\n", err)
 			return res, err
