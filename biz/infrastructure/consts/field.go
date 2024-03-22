@@ -4,6 +4,7 @@ const (
 	ID                 = "_id"
 	UserId             = "userId"
 	TypeString         = "typeString"
+	Category           = "category"
 	Name               = "name"
 	ProductId          = "productId"
 	ProductName        = "productName"

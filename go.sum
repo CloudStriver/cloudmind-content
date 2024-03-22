@@ -8,8 +8,10 @@ github.com/CloudStriver/go-pkg v0.0.0-20231229114943-910edcb8788d h1:c5M3637HJJN
 github.com/CloudStriver/go-pkg v0.0.0-20231229114943-910edcb8788d/go.mod h1:Oj6+J8ixQxqNunSpl9v64q6tAQ83wY/rRFI+3rhHVCk=
 github.com/CloudStriver/service-idl-gen-go v0.0.0-20240320125427-47ed02851d69 h1:O+ZMCTII1hT5Tdiz0TPO/i6zrAT9fnbqJlQKrbVUG/s=
 github.com/CloudStriver/service-idl-gen-go v0.0.0-20240320125427-47ed02851d69/go.mod h1:chtR82RvfrjUujTGWROSCNAwF9Lh/U959k34bXIDvBI=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240320133349-b226a7105473 h1:DmHH+V9hMFgGcXZSV8n/IW9OvD0ge9AiA+ZE+I73zUo=
-github.com/CloudStriver/service-idl-gen-go v0.0.0-20240320133349-b226a7105473/go.mod h1:chtR82RvfrjUujTGWROSCNAwF9Lh/U959k34bXIDvBI=
+github.com/CloudStriver/service-idl-gen-go v0.0.0-20240322034302-787c7682bb68 h1:P2suVAvtNSfUv3/QD8kfKUCYWhjKHSmhWGCQicVxSdo=
+github.com/CloudStriver/service-idl-gen-go v0.0.0-20240322034302-787c7682bb68/go.mod h1:chtR82RvfrjUujTGWROSCNAwF9Lh/U959k34bXIDvBI=
+github.com/CloudStriver/service-idl-gen-go v0.0.0-20240322034822-2a4faaabb020 h1:yHNxk0WCDVtOEY40U3PU+4zQ9ncUvWKvzpYVY0NdiZY=
+github.com/CloudStriver/service-idl-gen-go v0.0.0-20240322034822-2a4faaabb020/go.mod h1:chtR82RvfrjUujTGWROSCNAwF9Lh/U959k34bXIDvBI=
 github.com/ajstarks/deck v0.0.0-20200831202436-30c9fc6549a9/go.mod h1:JynElWSGnm/4RlzPXRlREEwqTHAN3T56Bv2ITsFT3gY=
 github.com/ajstarks/deck/generate v0.0.0-20210309230005-c3f852c02e19/go.mod h1:T13YZdzov6OU0A1+RfKZiZN9ca6VeKdBdyDV+BY97Tk=
 github.com/ajstarks/svgo v0.0.0-20180226025133-644b8db467af/go.mod h1:K08gAheRH3/J6wwsYMMT4xOr94bZjxIelGM0+d/wbFw=
