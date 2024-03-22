@@ -159,14 +159,12 @@ func (m *MongoMapper) FindAndInsert(ctx context.Context, data *File) (string, st
 		}
 	}
 
-	if flag {
-		data.Name = builder.String()
-	} else {
+	if !flag {
 		builder.WriteString(data.Name)
 		builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
 	}
+	data.Name = builder.String()
 	builder.Reset()
-
 	return m.Insert(ctx, data)
 }
 
@@ -209,14 +207,12 @@ func (m *MongoMapper) FindAndInsertMany(ctx context.Context, data []*File) ([]st
 				}
 			}
 
-			if flag {
-				item.Name = builder.String()
-			} else {
+			if !flag {
 				builder.WriteString(item.Name)
 				builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
 			}
+			item.Name = builder.String()
 			builder.Reset()
-
 			return nil
 		}
 	})...); err != nil {
@@ -277,12 +273,11 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, string, e
 			}
 		}
 
-		if flag {
-			data.Name = builder.String()
-		} else {
+		if !flag {
 			builder.WriteString(data.Name)
 			builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
 		}
+		data.Name = builder.String()
 		builder.Reset()
 		if _, err = m.conn.InsertOne(ctx, key, data); err != nil {
 			log.CtxError(ctx, "插入文件信息: 发生异常[%v]\n", err)
@@ -471,12 +466,11 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 			}
 		}
 
-		if flag {
-			data.Name = builder.String()
-		} else {
+		if !flag {
 			builder.WriteString(data.Name)
 			builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
 		}
+		data.Name = builder.String()
 		builder.Reset()
 		if res, err = m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data}); err != nil {
 			log.CtxError(ctx, "更新文件信息: 发生异常[%v]\n", err)
