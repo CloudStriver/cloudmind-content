@@ -61,6 +61,7 @@ func FileToFileMapper(data *gencontent.File) *file.File {
 		UserId:      data.UserId,
 		Name:        data.Name,
 		Type:        data.Type,
+		Category:    data.Category,
 		Path:        data.Path,
 		FatherId:    data.FatherId,
 		Size:        data.SpaceSize,
