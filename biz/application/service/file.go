@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
@@ -186,12 +185,10 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 		filter := convertor.FileFilterOptionsToFilterOptions(req.FilterOptions)
 		p := convertor.ParsePagination(req.PaginationOptions)
 		if req.SearchOptions == nil {
-			fmt.Printf("1：这里\n")
 			if files, total, err2 = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, cursor); err2 != nil {
 				return err2
 			}
 		} else {
-			fmt.Printf("2：这里\n")
 			switch o := req.SearchOptions.Type.(type) {
 			case *gencontent.SearchOptions_AllFieldsKey:
 				files, total, err2 = s.FileEsMapper.Search(ctx, convertor.ConvertFileAllFieldsSearchQuery(o), filter, p, esp.ScoreCursorType)
