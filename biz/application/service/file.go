@@ -172,12 +172,20 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 			cursor = filemapper.UpdateAtAscCursorType
 		case gencontent.SortOptions_SortOptions_updateAtDesc:
 			cursor = filemapper.UpdateAtDescCursorType
+		case gencontent.SortOptions_SortOptions_NameDesc:
+			cursor = filemapper.NameDescCursorType
+		case gencontent.SortOptions_SortOptions_NameAsc:
+			cursor = filemapper.NameAscCursorType
+		case gencontent.SortOptions_SortOptions_TypeAsc:
+			cursor = filemapper.TypeAscCursorType
+		case gencontent.SortOptions_SortOptions_TypeDesc:
+			cursor = filemapper.TypeDescCursorType
 		}
 
 		filter := convertor.FileFilterOptionsToFilterOptions(req.FilterOptions)
 		p := convertor.ParsePagination(req.PaginationOptions)
 		if req.SearchOptions == nil {
-			if files, total, err2 = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, cursor); err != nil {
+			if files, total, err2 = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, cursor); err2 != nil {
 				return err2
 			}
 		} else {
@@ -192,6 +200,7 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 				return err2
 			}
 		}
+
 		if p.LastToken != nil {
 			resp.Token = *p.LastToken
 		}
