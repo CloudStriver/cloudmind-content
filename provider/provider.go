@@ -6,12 +6,14 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/gorse"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/coupon"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/hot"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/order"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/product"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/zone"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/cache"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/redis"
 	"github.com/google/wire"
 )
@@ -30,12 +32,14 @@ var ApplicationSet = wire.NewSet(
 	service.ProductSet,
 	service.OrderSet,
 	service.RecommendSet,
+	service.HotSet,
 )
 
 var InfrastructureSet = wire.NewSet(
 	config.NewConfig,
 	redis.NewRedis,
 	gorse.NewGorseClient,
+	cache.NewLocalCache,
 	MapperSet,
 )
 
@@ -54,4 +58,5 @@ var MapperSet = wire.NewSet(
 	product.NewEsMapper,
 	coupon.NewMongoMapper,
 	coupon.NewEsMapper,
+	hot.NewMongoMapper,
 )

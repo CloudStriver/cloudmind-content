@@ -13,12 +13,14 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/gorse"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/coupon"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/hot"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/order"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/product"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/zone"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/cache"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/redis"
 )
 
@@ -88,6 +90,14 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		Redis: redisRedis,
 		Gorse: gorseClient,
 	}
+	iHotMongoMapper := hot.NewMongoMapper(configConfig)
+	collectionCache := cache.NewLocalCache(configConfig)
+	hotService := &service.HotService{
+		Config:         configConfig,
+		HotMongoMapper: iHotMongoMapper,
+		Redis:          redisRedis,
+		Cache:          collectionCache,
+	}
 	contentServerImpl := &adaptor.ContentServerImpl{
 		Config:           configConfig,
 		FileService:      fileService,
@@ -98,6 +108,7 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		CouponService:    couponService,
 		OrderService:     orderService,
 		RecommendService: recommendService,
+		HotService:       hotService,
 	}
 	return contentServerImpl, nil
 }
