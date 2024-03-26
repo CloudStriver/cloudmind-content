@@ -1,7 +1,9 @@
 package file
 
 import (
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"math"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -15,11 +17,23 @@ type (
 	UpdateAtDescCursor struct {
 		UpdateAt time.Time `json:"updateAt"`
 	}
+	NameDescCursor struct {
+		Name string `json:"name"`
+	}
+	TypeDescCursor struct {
+		Type string `json:"type"`
+	}
 	CreateAtAscCursor struct {
 		ID string `json:"_id"`
 	}
 	UpdateAtAscCursor struct {
 		UpdateAt time.Time `json:"updateAt"`
+	}
+	NameAscCursor struct {
+		Name string `json:"name"`
+	}
+	TypeAscCursor struct {
+		Type string `json:"type"`
 	}
 )
 
@@ -28,6 +42,10 @@ var (
 	CreateAtAscCursorType  = (*CreateAtAscCursor)(nil)
 	UpdateAtDescCursorType = (*UpdateAtDescCursor)(nil)
 	UpdateAtAscCursorType  = (*UpdateAtAscCursor)(nil)
+	NameDescCursorType     = (*NameDescCursor)(nil)
+	NameAscCursorType      = (*NameAscCursor)(nil)
+	TypeDescCursorType     = (*TypeDescCursor)(nil)
+	TypeAscCursorType      = (*TypeAscCursor)(nil)
 )
 
 // 降序
@@ -131,6 +149,132 @@ func (s *UpdateAtAscCursor) MakeSortOptions(filter bson.M, backward bool) (bson.
 	} else {
 		filter["updateAt"] = bson.M{"$lt": id}
 		sort = bson.M{"updateAt": -1}
+	}
+	return sort, err
+}
+
+func (s *NameDescCursor) MakeSortOptions(filter bson.M, backward bool) (bson.M, error) {
+	var data string
+	var err error
+	if s == nil {
+		var builder strings.Builder
+		if backward {
+			for i := 0; i <= 100; i++ {
+				builder.WriteString(" ")
+			}
+		} else {
+			for i := 0; i <= 100; i++ {
+				builder.WriteString("\U0010FFFF")
+			}
+		}
+		data = builder.String()
+		builder.Reset()
+	} else {
+		data = s.Name
+	}
+
+	var sort bson.M
+	if backward {
+		filter[consts.Name] = bson.M{"$gt": data}
+		sort = bson.M{consts.Name: 1}
+	} else {
+		filter[consts.Name] = bson.M{"$lt": data}
+		sort = bson.M{consts.Name: -1}
+	}
+	return sort, err
+}
+
+func (s *NameAscCursor) MakeSortOptions(filter bson.M, backward bool) (bson.M, error) {
+	var data string
+	var err error
+	if s == nil {
+		var builder strings.Builder
+		if !backward {
+			for i := 0; i <= 100; i++ {
+				builder.WriteString(" ")
+			}
+		} else {
+			for i := 0; i <= 100; i++ {
+				builder.WriteString("\U0010FFFF")
+			}
+		}
+		data = builder.String()
+		builder.Reset()
+	} else {
+		data = s.Name
+	}
+
+	var sort bson.M
+	if !backward {
+		filter[consts.Name] = bson.M{"$gt": data}
+		sort = bson.M{consts.Name: 1}
+	} else {
+		filter[consts.Name] = bson.M{"$lt": data}
+		sort = bson.M{consts.Name: -1}
+	}
+	return sort, err
+}
+
+func (s *TypeDescCursor) MakeSortOptions(filter bson.M, backward bool) (bson.M, error) {
+	//构造lastId
+	var data string
+	var err error
+	if s == nil {
+		var builder strings.Builder
+		if backward {
+			for i := 0; i <= 100; i++ {
+				builder.WriteString(" ")
+			}
+		} else {
+			for i := 0; i <= 100; i++ {
+				builder.WriteString("\U0010FFFF")
+			}
+		}
+		data = builder.String()
+		builder.Reset()
+	} else {
+		data = s.Type
+	}
+
+	var sort bson.M
+	if backward {
+		filter[consts.Type] = bson.M{"$gt": data}
+		sort = bson.M{consts.Type: 1}
+	} else {
+		filter[consts.Type] = bson.M{"$lt": data}
+		sort = bson.M{consts.Type: -1}
+	}
+	return sort, err
+}
+
+func (s *TypeAscCursor) MakeSortOptions(filter bson.M, backward bool) (bson.M, error) {
+	//构造lastId
+	var data string
+	var err error
+	if s == nil {
+		var builder strings.Builder
+		if !backward {
+			for i := 0; i <= 100; i++ {
+				builder.WriteString(" ")
+			}
+		} else {
+			for i := 0; i <= 100; i++ {
+				builder.WriteString("\U0010FFFF")
+			}
+		}
+		data = builder.String()
+		builder.Reset()
+	} else {
+		data = s.Type
+	}
+
+	var sort bson.M
+	if !backward {
+		filter[consts.Type] = bson.M{"$gt": data}
+		sort = bson.M{consts.Type: 1}
+	} else {
+		filter[consts.Type] = bson.M{"$lt": data}
+		sort = bson.M{consts.Type: -1}
 	}
 	return sort, err
 }
