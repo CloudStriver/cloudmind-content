@@ -30,6 +30,12 @@ type Config struct {
 	}
 	DeletionCoolingOffPeriod int64
 	InitialSliceLength       int64
+	LocalCacheConf           struct {
+		Expire int64
+	}
+	HotServiceConf struct {
+		RankKeyExpire int64
+	}
 }
 
 func NewConfig() (*Config, error) {

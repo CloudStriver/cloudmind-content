@@ -17,6 +17,23 @@ type ContentServerImpl struct {
 	CouponService    service.ICouponService
 	OrderService     service.IOrderService
 	RecommendService service.IRecommendService
+	HotService       service.IHotService
+}
+
+func (s *ContentServerImpl) GetHotValues(ctx context.Context, req *content.GetHotValuesReq) (res *content.GetHotValuesResp, err error) {
+	return s.HotService.GetHotValues(ctx, req)
+}
+
+func (s *ContentServerImpl) CreateHot(ctx context.Context, req *content.CreateHotReq) (res *content.CreateHotResp, err error) {
+	return s.HotService.CreateHot(ctx, req)
+}
+
+func (s *ContentServerImpl) IncrHotValue(ctx context.Context, req *content.IncrHotValueReq) (res *content.IncrHotValueResp, err error) {
+	return s.HotService.IncrHotValue(ctx, req)
+}
+
+func (s *ContentServerImpl) GetHotValue(ctx context.Context, req *content.GetHotValueReq) (res *content.GetHotValueResp, err error) {
+	return s.HotService.GetHotValue(ctx, req)
 }
 
 func (s *ContentServerImpl) EmptyRecycleBin(ctx context.Context, req *content.EmptyRecycleBinReq) (res *content.EmptyRecycleBinResp, err error) {
