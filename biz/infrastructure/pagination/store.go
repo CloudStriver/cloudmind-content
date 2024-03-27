@@ -3,18 +3,16 @@ package pagination
 import (
 	"context"
 	"encoding/json"
-	"reflect"
-	"time"
-
 	"github.com/jinzhu/copier"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"reflect"
 )
 
-const (
-	suffixFront   = ":front"
-	suffixBack    = ":back"
-	defaultExpire = time.Minute * 5
-)
+//const (
+//	suffixFront   = ":front"
+//	suffixBack    = ":back"
+//	defaultExpire = time.Minute * 5
+//)
 
 var copierOpt = &copier.Option{Converters: []copier.TypeConverter{{
 	SrcType: primitive.ObjectID{},
