@@ -8,6 +8,7 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	filemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	sharefilemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
+	mongop2 "github.com/CloudStriver/cloudmind-content/biz/infrastructure/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
@@ -143,7 +144,7 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 		getFileResp, err1 := s.GetFile(ctx, &gencontent.GetFileReq{
 			FileId: req.GetFilterOptions().GetOnlyFatherId(),
 		})
-		if errors.Is(err1, consts.ErrNotFound) {
+		if errors.Is(err1, consts.ErrNotFound) || errors.Is(err1, consts.ErrInvalidId) {
 			resp.FatherIdPath = req.GetFilterOptions().GetOnlyFatherId()
 			return nil
 		}
@@ -165,21 +166,21 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 	}, func() error {
 		switch req.GetSortOptions() {
 		case gencontent.SortOptions_SortOptions_createAtAsc:
-			cursor = filemapper.CreateAtAscCursorType
+			cursor = mongop2.CreateAtAscCursorType
 		case gencontent.SortOptions_SortOptions_createAtDesc:
-			cursor = filemapper.CreateAtDescCursorType
+			cursor = mongop2.CreateAtDescCursorType
 		case gencontent.SortOptions_SortOptions_updateAtAsc:
-			cursor = filemapper.UpdateAtAscCursorType
+			cursor = mongop2.UpdateAtAscCursorType
 		case gencontent.SortOptions_SortOptions_updateAtDesc:
-			cursor = filemapper.UpdateAtDescCursorType
+			cursor = mongop2.UpdateAtDescCursorType
 		case gencontent.SortOptions_SortOptions_NameDesc:
-			cursor = filemapper.NameDescCursorType
+			cursor = mongop2.NameDescCursorType
 		case gencontent.SortOptions_SortOptions_NameAsc:
-			cursor = filemapper.NameAscCursorType
+			cursor = mongop2.NameAscCursorType
 		case gencontent.SortOptions_SortOptions_TypeAsc:
-			cursor = filemapper.TypeAscCursorType
+			cursor = mongop2.TypeAscCursorType
 		case gencontent.SortOptions_SortOptions_TypeDesc:
-			cursor = filemapper.TypeDescCursorType
+			cursor = mongop2.TypeDescCursorType
 		}
 
 		filter := convertor.FileFilterOptionsToFilterOptions(req.FilterOptions)
@@ -718,7 +719,7 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 	update := bson.M{
 		"$set": bson.M{
 			consts.Zone:        req.Zone,
-			consts.SubZone:     req.Zone,
+			consts.SubZone:     req.SubZone,
 			consts.Description: req.Description,
 			consts.Labels:      req.Labels,
 		},
