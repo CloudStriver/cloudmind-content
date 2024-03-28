@@ -8,7 +8,7 @@ import (
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/mr"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
@@ -67,17 +67,24 @@ func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*Post,
 
 	fopts := &FilterOptions{OnlyPostIds: ids}
 	filter := MakeBsonFilter(fopts)
-	if err = m.conn.Find(ctx, &posts, filter, &options.FindOptions{
-		Limit: lo.ToPtr(int64(len(ids))),
-	}); err != nil {
+	// 创建聚合管道
+	pipeline := mongo.Pipeline{
+		{{"$match", filter}}, // 应用筛选条件
+		{{"$addFields", bson.M{
+			"text": bson.M{"$substrCP": []interface{}{"$text", 0, 200}},
+		}}},
+	}
+
+	// 使用聚合管道执行查询
+	if err = m.conn.Aggregate(ctx, &posts, pipeline); err != nil {
 		return nil, err
 	}
+
 	return posts, nil
 }
 
 func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error) {
 	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
-
 	filter := MakeBsonFilter(fopts)
 	sort, err := p.MakeSortOptions(ctx, filter)
 	if err != nil {
@@ -85,11 +92,25 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 	}
 
 	var data []*Post
-	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
-		Sort:  sort,
-		Limit: popts.Limit,
-		Skip:  popts.Offset,
-	}); err != nil {
+	// 创建聚合管道
+	pipeline := mongo.Pipeline{
+		{{"$match", filter}}, // 应用筛选条件
+		{{"$addFields", bson.M{
+			"text": bson.M{"$substrCP": []interface{}{"$text", 0, 200}},
+		}}},
+	}
+
+	// 考虑到排序和分页
+	pipeline = append(pipeline, bson.D{{"$sort", sort}})
+	if popts.Limit != nil {
+		pipeline = append(pipeline, bson.D{{"$limit", *popts.Limit}})
+	}
+	if popts.Offset != nil {
+		pipeline = append(pipeline, bson.D{{"$skip", *popts.Offset}})
+	}
+
+	// 使用聚合管道执行查询
+	if err = m.conn.Aggregate(ctx, &data, pipeline); err != nil {
 		return nil, err
 	}
 
