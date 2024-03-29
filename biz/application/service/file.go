@@ -116,7 +116,7 @@ func (s *FileService) GetRecycleBinFiles(ctx context.Context, req *gencontent.Ge
 	)
 	p := convertor.ParsePagination(req.PaginationOptions)
 	if files, total, err = s.FileMongoMapper.FindManyAndCount(ctx, convertor.FileFilterOptionsToFilterOptions(req.FilterOptions),
-		p, mongop.IdCursorType); err != nil {
+		p, mongop.CreateAtDescCursorType); err != nil {
 		return resp, err
 	}
 	if p.LastToken != nil {
@@ -143,7 +143,7 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 		getFileResp, err1 := s.GetFile(ctx, &gencontent.GetFileReq{
 			FileId: req.GetFilterOptions().GetOnlyFatherId(),
 		})
-		if errors.Is(err1, consts.ErrNotFound) {
+		if errors.Is(err1, consts.ErrNotFound) || errors.Is(err1, consts.ErrInvalidId) {
 			resp.FatherIdPath = req.GetFilterOptions().GetOnlyFatherId()
 			return nil
 		}
@@ -165,21 +165,21 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 	}, func() error {
 		switch req.GetSortOptions() {
 		case gencontent.SortOptions_SortOptions_createAtAsc:
-			cursor = filemapper.CreateAtAscCursorType
+			cursor = mongop.CreateAtAscCursorType
 		case gencontent.SortOptions_SortOptions_createAtDesc:
-			cursor = filemapper.CreateAtDescCursorType
+			cursor = mongop.CreateAtDescCursorType
 		case gencontent.SortOptions_SortOptions_updateAtAsc:
-			cursor = filemapper.UpdateAtAscCursorType
+			cursor = mongop.UpdateAtAscCursorType
 		case gencontent.SortOptions_SortOptions_updateAtDesc:
-			cursor = filemapper.UpdateAtDescCursorType
+			cursor = mongop.UpdateAtDescCursorType
 		case gencontent.SortOptions_SortOptions_NameDesc:
-			cursor = filemapper.NameDescCursorType
+			cursor = mongop.NameDescCursorType
 		case gencontent.SortOptions_SortOptions_NameAsc:
-			cursor = filemapper.NameAscCursorType
+			cursor = mongop.NameAscCursorType
 		case gencontent.SortOptions_SortOptions_TypeAsc:
-			cursor = filemapper.TypeAscCursorType
+			cursor = mongop.TypeAscCursorType
 		case gencontent.SortOptions_SortOptions_TypeDesc:
-			cursor = filemapper.TypeDescCursorType
+			cursor = mongop.TypeDescCursorType
 		}
 
 		filter := convertor.FileFilterOptionsToFilterOptions(req.FilterOptions)
@@ -371,15 +371,17 @@ func (s *FileService) CompletelyRemoveFile(ctx context.Context, req *gencontent.
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
-		ids = append(ids, req.FileId)
-		if req.SpaceSize == int64(gencontent.Folder_Folder_Size) {
-			var data []*filemapper.File
-			filter := bson.M{"path": bson.M{"$regex": "^" + req.Path + "/"}}
-			if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
-				return err
-			}
-			for _, v := range data {
-				ids = append(ids, v.ID.Hex())
+		for _, file := range req.Files {
+			ids = append(ids, file.FileId)
+			if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
+				var data []*filemapper.File
+				filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
+				if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
+					return err
+				}
+				for _, v := range data {
+					ids = append(ids, v.ID.Hex())
+				}
 			}
 		}
 		if _, err = s.FileMongoMapper.DeleteMany(sessionContext, ids); err != nil {
@@ -561,7 +563,7 @@ func (s *FileService) GetShareList(ctx context.Context, req *gencontent.GetShare
 	)
 	p := convertor.ParsePagination(req.PaginationOptions)
 	if shareCodes, total, err = s.ShareFileMongoMapper.FindManyAndCount(ctx, convertor.ShareFileFilterOptionsToShareCodeOptions(req.ShareFileFilterOptions),
-		p, mongop.IdCursorType); err != nil {
+		p, mongop.CreateAtDescCursorType); err != nil {
 		return resp, err
 	}
 
@@ -718,7 +720,7 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 	update := bson.M{
 		"$set": bson.M{
 			consts.Zone:        req.Zone,
-			consts.SubZone:     req.Zone,
+			consts.SubZone:     req.SubZone,
 			consts.Description: req.Description,
 			consts.Labels:      req.Labels,
 		},

@@ -114,15 +114,18 @@ func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*File,
 	defer span.End()
 
 	var data []*File
-	filter := bson.M{
-		consts.ID: bson.M{
-			"$in": lo.Map[string, primitive.ObjectID](ids, func(s string, _ int) primitive.ObjectID {
-				oid, _ := primitive.ObjectIDFromHex(s)
-				return oid
-			}),
-		},
+	fopts := &FilterOptions{OnlyFileIds: ids}
+	filter := makeMongoFilter(fopts)
+	// 创建聚合管道
+	pipeline := mongo.Pipeline{
+		{{"$match", filter}}, // 应用筛选条件
+		{{"$addFields", bson.M{
+			"description": bson.M{"$substrCP": []interface{}{"description", 0, 200}},
+		}}},
 	}
-	err := m.conn.Find(ctx, &data, filter)
+
+	// 使用聚合管道执行查询
+	err := m.conn.Aggregate(ctx, &data, pipeline)
 	switch {
 	case errors.Is(err, monc.ErrNotFound):
 		return nil, consts.ErrNotFound
@@ -348,11 +351,24 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 	}
 
 	var data []*File
-	err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
-		Sort:  sort,
-		Limit: popts.Limit,
-		Skip:  popts.Offset,
-	})
+	pipeline := mongo.Pipeline{
+		{{"$match", filter}}, // 应用筛选条件
+		{{"$addFields", bson.M{
+			"description": bson.M{"$substrCP": []interface{}{"description", 0, 200}},
+		}}},
+	}
+
+	// 考虑到排序和分页
+	pipeline = append(pipeline, bson.D{{"$sort", sort}})
+	if popts.Limit != nil {
+		pipeline = append(pipeline, bson.D{{"$limit", *popts.Limit}})
+	}
+	if popts.Offset != nil {
+		pipeline = append(pipeline, bson.D{{"$skip", *popts.Offset}})
+	}
+
+	// 使用聚合管道执行查询
+	err = m.conn.Aggregate(ctx, &data, pipeline)
 	switch {
 	case errors.Is(err, monc.ErrNotFound):
 		return nil, consts.ErrNotFound
@@ -365,9 +381,41 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 	if *popts.Backward {
 		lo.Reverse(data)
 	}
+
 	if len(data) > 0 {
-		if err = p.StoreCursor(ctx, data[0], data[len(data)-1]); err != nil {
-			return nil, err
+		switch sorter.(type) {
+		case *mongop.CreateAtDescCursor:
+			if err = p.StoreCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.CreateAtAscCursor:
+			if err = p.StoreCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.NameAscCursor:
+			if err = p.StoreStringCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.NameDescCursor:
+			if err = p.StoreStringCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.UpdateAtAscCursor:
+			if err = p.StoreTimeCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.UpdateAtDescCursor:
+			if err = p.StoreTimeCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.TypeAscCursor:
+			if err = p.StoreStringCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.TypeDescCursor:
+			if err = p.StoreStringCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
 		}
 	}
 
