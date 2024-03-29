@@ -366,8 +366,39 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 		lo.Reverse(data)
 	}
 	if len(data) > 0 {
-		if err = p.StoreCursor(ctx, data[0], data[len(data)-1]); err != nil {
-			return nil, err
+		switch sorter.(type) {
+		case *mongop.CreateAtDescCursor:
+			if err = p.StoreCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.CreateAtAscCursor:
+			if err = p.StoreCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.NameAscCursor:
+			if err = p.StoreStringCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.NameDescCursor:
+			if err = p.StoreStringCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.UpdateAtAscCursor:
+			if err = p.StoreTimeCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.UpdateAtDescCursor:
+			if err = p.StoreTimeCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.TypeAscCursor:
+			if err = p.StoreStringCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
+		case *mongop.TypeDescCursor:
+			if err = p.StoreStringCursor(ctx, data[0], data[len(data)-1]); err != nil {
+				return nil, err
+			}
 		}
 	}
 
