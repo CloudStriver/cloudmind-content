@@ -308,7 +308,6 @@ func (s *FileService) CreateFile(ctx context.Context, req *gencontent.CreateFile
 	if err != nil {
 		return resp, err
 	}
-
 	return resp, nil
 }
 
@@ -318,6 +317,7 @@ func (s *FileService) UpdateFile(ctx context.Context, req *gencontent.UpdateFile
 	if _, err = s.FileMongoMapper.Update(ctx, data); err != nil {
 		return resp, err
 	}
+	resp.Name = data.Name
 	return resp, nil
 }
 
