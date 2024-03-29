@@ -9,10 +9,13 @@ import (
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
 	"github.com/kitex-contrib/obs-opentelemetry/tracing"
+	"math/rand"
 	"net"
+	"time"
 )
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
 	klog.SetLogger(log.NewKlogLogger())
 	s, err := provider.NewContentServerImpl()
 	if err != nil {
