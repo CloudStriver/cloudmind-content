@@ -43,6 +43,7 @@ type (
 		FindManyByIds(ctx context.Context, ids []string) ([]*File, error)
 		FindFolderSize(ctx context.Context, path string) (int64, error)
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, int64, error)
+		FindAndUpdate(ctx context.Context, data *File) (*mongo.UpdateResult, error)
 		Update(ctx context.Context, data *File) (*mongo.UpdateResult, error)
 		UpdateMany(ctx context.Context, ids []string, update bson.M) (*mongo.UpdateResult, error)
 		Delete(ctx context.Context, id string) (int64, error)
@@ -59,7 +60,7 @@ type (
 		Type        string             `bson:"type,omitempty" json:"type,omitempty"`
 		Path        string             `bson:"path,omitempty" json:"path,omitempty"`
 		FatherId    string             `bson:"fatherId,omitempty" json:"fatherId,omitempty"`
-		Size        *int64             `bson:"size,omitempty" json:"size,omitempty"`
+		Size        int64              `bson:"size,omitempty" json:"size,omitempty"`
 		FileMd5     string             `bson:"fileMd5,omitempty" json:"fileMd5,omitempty"`
 		IsDel       int64              `bson:"isDel,omitempty" json:"isDel,omitempty"`
 		Zone        string             `bson:"zone,omitempty" json:"zone,omitempty"`
@@ -108,6 +109,30 @@ func NewMongoMapper(config *config.Config) IMongoMapper {
 	}
 }
 
+func (m *MongoMapper) Rename(data *File) {
+	var builder strings.Builder
+	var flag bool
+	if data.Size != -1 {
+		for i := len(data.Name) - 1; i >= 0; i-- {
+			if data.Name[i] == '.' {
+				builder.WriteString(data.Name[:i])
+				builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
+				builder.WriteString(data.Name[i:])
+				flag = true
+				break
+			}
+		}
+	}
+
+	if !flag {
+		builder.WriteString(data.Name)
+		builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
+	}
+
+	data.Name = builder.String()
+	builder.Reset()
+}
+
 func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*File, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.FindManyByIds", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
@@ -150,24 +175,7 @@ func (m *MongoMapper) FindAndInsert(ctx context.Context, data *File) (string, st
 		return "", "", err
 	}
 
-	var builder strings.Builder
-	var flag bool
-	for i := len(data.Name) - 1; i >= 0; i-- {
-		if data.Name[i] == '.' {
-			builder.WriteString(data.Name[:i])
-			builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
-			builder.WriteString(data.Name[i:])
-			flag = true
-			break
-		}
-	}
-
-	if !flag {
-		builder.WriteString(data.Name)
-		builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
-	}
-	data.Name = builder.String()
-	builder.Reset()
+	m.Rename(data)
 	return m.Insert(ctx, data)
 }
 
@@ -197,25 +205,7 @@ func (m *MongoMapper) FindAndInsertMany(ctx context.Context, data []*File) ([]st
 					return err
 				}
 			}
-			// 如果文件已存在，修改文件名
-			var builder strings.Builder
-			var flag bool
-			for i := len(item.Name) - 1; i >= 0; i-- {
-				if item.Name[i] == '.' {
-					builder.WriteString(item.Name[:i])
-					builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
-					builder.WriteString(item.Name[i:])
-					flag = true
-					break
-				}
-			}
-
-			if !flag {
-				builder.WriteString(item.Name)
-				builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
-			}
-			item.Name = builder.String()
-			builder.Reset()
+			m.Rename(item)
 			return nil
 		}
 	})...); err != nil {
@@ -264,24 +254,7 @@ func (m *MongoMapper) Insert(ctx context.Context, data *File) (string, string, e
 	key := prefixFileCacheKey + data.ID.Hex()
 	_, err := m.conn.InsertOne(ctx, key, data)
 	if err != nil {
-		var builder strings.Builder
-		var flag bool
-		for i := len(data.Name) - 1; i >= 0; i-- {
-			if data.Name[i] == '.' {
-				builder.WriteString(data.Name[:i])
-				builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
-				builder.WriteString(data.Name[i:])
-				flag = true
-				break
-			}
-		}
-
-		if !flag {
-			builder.WriteString(data.Name)
-			builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
-		}
-		data.Name = builder.String()
-		builder.Reset()
+		m.Rename(data)
 		if _, err = m.conn.InsertOne(ctx, key, data); err != nil {
 			log.CtxError(ctx, "插入文件信息: 发生异常[%v]\n", err)
 			return "", "", err
@@ -493,6 +466,24 @@ func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions
 	return data, total, nil
 }
 
+func (m *MongoMapper) FindAndUpdate(ctx context.Context, data *File) (*mongo.UpdateResult, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.FindAndUpdate", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	data.UpdateAt = time.Now()
+	var res File
+	if err := m.conn.FindOneNoCache(ctx, &res, bson.M{consts.FatherId: data.FatherId, consts.Name: data.Name, consts.IsDel: data.IsDel}); err != nil {
+		if errors.Is(err, monc.ErrNotFound) {
+			return m.Update(ctx, data)
+		}
+		return nil, err
+	}
+
+	m.Rename(data)
+	return m.Update(ctx, data)
+}
+
 func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResult, error) {
 	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
 	_, span := tracer.Start(ctx, "mongo.Update", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
@@ -502,24 +493,7 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 	key := prefixFileCacheKey + data.ID.Hex()
 	res, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data})
 	if err != nil {
-		var builder strings.Builder
-		var flag bool
-		for i := len(data.Name) - 1; i >= 0; i-- {
-			if data.Name[i] == '.' {
-				builder.WriteString(data.Name[:i])
-				builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
-				builder.WriteString(data.Name[i:])
-				flag = true
-				break
-			}
-		}
-
-		if !flag {
-			builder.WriteString(data.Name)
-			builder.WriteString("_" + strconv.FormatInt(time.Now().UnixMicro(), 10))
-		}
-		data.Name = builder.String()
-		builder.Reset()
+		m.Rename(data)
 		if res, err = m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data}); err != nil {
 			log.CtxError(ctx, "更新文件信息: 发生异常[%v]\n", err)
 			return res, err
@@ -537,12 +511,7 @@ func (m *MongoMapper) UpdateMany(ctx context.Context, ids []string, update bson.
 	keys = lo.Map(ids, func(id string, _ int) string {
 		return prefixFileCacheKey + id
 	})
-	filter := bson.M{consts.ID: bson.M{
-		"$in": lo.Map[string, primitive.ObjectID](ids, func(s string, _ int) primitive.ObjectID {
-			oid, _ := primitive.ObjectIDFromHex(s)
-			return oid
-		}),
-	}}
+	filter := makeMongoFilter(&FilterOptions{OnlyFileIds: ids})
 	res, err := m.conn.UpdateMany(ctx, keys, filter, update)
 	if err != nil {
 		return res, err
@@ -574,12 +543,7 @@ func (m *MongoMapper) DeleteMany(ctx context.Context, ids []string) (int64, erro
 	keys := lo.Map(ids, func(id string, _ int) string {
 		return prefixFileCacheKey + id
 	})
-	filter := bson.M{consts.ID: bson.M{
-		"$in": lo.Map[string, primitive.ObjectID](ids, func(s string, _ int) primitive.ObjectID {
-			oid, _ := primitive.ObjectIDFromHex(s)
-			return oid
-		}),
-	}}
+	filter := makeMongoFilter(&FilterOptions{OnlyFileIds: ids})
 	err := mr.Finish(func() error {
 		resp, err1 = m.conn.DeleteMany(ctx, filter)
 		return err1
