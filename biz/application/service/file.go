@@ -339,7 +339,7 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 				return err
 			}
 			for _, v := range data {
-				if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{ID: v.ID, Path: req.NewPath + v.Path[len(req.OldPath)-len(req.FileId)-1:]}); err != nil {
+				if _, err = s.FileMongoMapper.FindAndUpdate(sessionContext, &filemapper.File{ID: v.ID, Name: v.Name, Path: req.NewPath + v.Path[len(req.OldPath)-len(req.FileId)-1:]}); err != nil {
 					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 						log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 					}
@@ -347,7 +347,7 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 				}
 			}
 		}
-		if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{ID: oid, Path: req.NewPath + "/" + oid.Hex(), FatherId: req.FatherId}); err != nil {
+		if _, err = s.FileMongoMapper.FindAndUpdate(sessionContext, &filemapper.File{ID: oid, Name: req.Name, Path: req.NewPath + "/" + oid.Hex(), FatherId: req.FatherId}); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 			}
@@ -636,7 +636,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 			Type:     req.Type,
 			Path:     req.NewPath,
 			FatherId: req.FatherId,
-			Size:     lo.ToPtr(req.SpaceSize),
+			Size:     req.SpaceSize,
 			FileMd5:  req.FileMd5,
 			IsDel:    int64(gencontent.Deletion_Deletion_notDel),
 		}); err1 != nil {
@@ -698,7 +698,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 				}
 
 				for i, v := range data {
-					if *v.Size == int64(gencontent.Folder_Folder_Size) {
+					if v.Size == int64(gencontent.Folder_Folder_Size) {
 						queue = append(queue, kv{id: v.ID.Hex(), path: front.path + "/" + ids[i]})
 					}
 				}
