@@ -30,7 +30,7 @@ const (
 	TargetId           = "targetId"
 	TargetType         = "targetType"
 	RelationType       = "relationType"
-	DefaultAvatarUrl   = "d2042520dce2223751906a11e547d43e.png"
+	DefaultAvatarUrl   = "https://cloudmind.top/assets/avatar.png"
 	DefaultDescription = "点击添加描述，让大家更好的了解你..."
 	UserRankKey        = "cache:rank:user"
 	FileRankKey        = "cache:rank:file"

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	usermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
@@ -104,9 +105,11 @@ func (s *UserService) GetUser(ctx context.Context, req *gencontent.GetUserReq) (
 func (s *UserService) CreateUser(ctx context.Context, req *gencontent.CreateUserReq) (resp *gencontent.CreateUserResp, err error) {
 	oid, _ := primitive.ObjectIDFromHex(req.UserId)
 	if _, err = s.UserMongoMapper.Insert(ctx, &usermapper.User{
-		ID:   oid,
-		Name: req.Name,
-		Sex:  req.Sex,
+		ID:          oid,
+		Name:        req.Name,
+		Sex:         req.Sex,
+		Url:         consts.DefaultAvatarUrl,
+		Description: consts.DefaultDescription,
 	}); err != nil {
 		return resp, err
 	}
