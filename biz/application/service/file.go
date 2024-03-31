@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
@@ -527,9 +526,6 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 				if res, err = s.FileMongoMapper.FindOne(ctx, id); err != nil {
 					return resp, err
 				}
-
-				fmt.Printf("[\n%v\n]", res)
-
 				if err = s.FileMongoMapper.GetConn().FindOneNoCache(ctx, &old, bson.M{consts.FatherId: res.FatherId, consts.Name: res.Name, consts.IsDel: int64(gencontent.Deletion_Deletion_notDel)}); err != nil {
 					if errors.Is(err, monc.ErrNotFound) {
 						ids = append(ids, id)
