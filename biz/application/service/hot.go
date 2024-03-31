@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	hotmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/hot"
@@ -113,7 +112,6 @@ func (s *HotService) IncrHotValue(ctx context.Context, req *gencontent.IncrHotVa
 			flag = true
 		} else {
 			d := math.Float64bits(nowHot/(value.(float64))) * 10
-			fmt.Println(d)
 			if d >= 100 || d <= uint64(rand.Intn(100)) {
 				flag = true
 			}
@@ -143,7 +141,7 @@ func (s *HotService) IncrHotValue(ctx context.Context, req *gencontent.IncrHotVa
 	return resp, nil
 }
 
-const luaScript = `local limit = 10
+const luaScript = `local limit = 100
 redis.call('ZADD', KEYS[1], ARGV[1], ARGV[2])
 local currentSize = redis.call('ZCARD', KEYS[1])
 if currentSize > limit then
