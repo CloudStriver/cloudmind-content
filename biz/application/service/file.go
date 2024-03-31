@@ -15,6 +15,7 @@ import (
 	"github.com/google/wire"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/mr"
+	"github.com/zeromicro/go-zero/core/stores/monc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -339,7 +340,7 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 				return err
 			}
 			for _, v := range data {
-				if _, err = s.FileMongoMapper.FindAndUpdate(sessionContext, &filemapper.File{ID: v.ID, Name: v.Name, Path: req.NewPath + v.Path[len(req.OldPath)-len(req.FileId)-1:]}); err != nil {
+				if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{ID: v.ID, Path: req.NewPath + v.Path[len(req.OldPath)-len(req.FileId)-1:]}); err != nil {
 					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 						log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 					}
@@ -347,7 +348,7 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 				}
 			}
 		}
-		if _, err = s.FileMongoMapper.FindAndUpdate(sessionContext, &filemapper.File{ID: oid, Name: req.Name, Path: req.NewPath + "/" + oid.Hex(), FatherId: req.FatherId}); err != nil {
+		if _, err = s.FileMongoMapper.FindAndUpdate(sessionContext, &filemapper.File{ID: oid, Name: req.Name, Path: req.NewPath + "/" + oid.Hex(), FatherId: req.FatherId, IsDel: req.IsDel}); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 			}
@@ -513,10 +514,31 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 	}
 
 	ids := make([]string, 0, s.Config.InitialSliceLength)
+	updates := make(map[string]bson.M)
 	for _, file := range req.Files {
 		paths := strings.Split(file.Path, "/")
 		for i, id := range paths {
 			if i == 0 {
+				continue
+			} else if i == 1 {
+				var res *filemapper.File
+				var old filemapper.File
+				if res, err = s.FileMongoMapper.FindOne(ctx, id); err != nil {
+					return resp, err
+				}
+				if err = s.FileMongoMapper.GetConn().FindOneNoCache(ctx, &old, bson.M{consts.FatherId: res.FatherId, consts.Name: res.Name, consts.IsDel: int64(gencontent.Deletion_Deletion_notDel)}); err != nil {
+					if errors.Is(err, monc.ErrNotFound) {
+						ids = append(ids, id)
+						continue
+					}
+					return resp, err
+				}
+
+				s.FileMongoMapper.Rename(res)
+				updates[id] = bson.M{
+					"$set":   bson.M{consts.IsDel: int64(gencontent.Deletion_Deletion_notDel), consts.Name: res.Name},
+					"$unset": bson.M{consts.DeletedAt: ""},
+				}
 				continue
 			}
 			ids = append(ids, id)
@@ -539,6 +561,17 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 				}
 			}
 		}
+
+		for key, v := range updates {
+			oid, _ := primitive.ObjectIDFromHex(key)
+			if _, err = s.FileMongoMapper.GetConn().UpdateOneNoCache(ctx, bson.M{consts.ID: oid}, v); err != nil {
+				if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
+					log.CtxError(ctx, "恢复文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
+				}
+				return err
+			}
+		}
+
 		if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, update); err != nil {
 			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 				log.CtxError(ctx, "恢复文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
