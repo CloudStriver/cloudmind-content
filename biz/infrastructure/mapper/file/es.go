@@ -107,7 +107,6 @@ func (e *EsMapper) Search(ctx context.Context, query []types.Query, fopts *Filte
 }
 
 func NewEsMapper(config *config.Config) IFileEsMapper {
-
 	esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
 		Username:  config.Elasticsearch.Username,
 		Password:  config.Elasticsearch.Password,

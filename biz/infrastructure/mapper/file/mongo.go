@@ -48,6 +48,7 @@ type (
 		UpdateMany(ctx context.Context, ids []string, update bson.M) (*mongo.UpdateResult, error)
 		Delete(ctx context.Context, id string) (int64, error)
 		DeleteMany(ctx context.Context, ids []string) (int64, error)
+		Rename(data *File)
 		GetConn() *monc.Model
 		StartClient() *mongo.Client
 	}
