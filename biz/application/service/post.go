@@ -52,14 +52,13 @@ func (s *PostService) GetPostsByPostIds(ctx context.Context, req *gencontent.Get
 func (s *PostService) CreatePost(ctx context.Context, req *gencontent.CreatePostReq) (resp *gencontent.CreatePostResp, err error) {
 	resp = new(gencontent.CreatePostResp)
 	if resp.PostId, err = s.PostMongoMapper.Insert(ctx, &postmapper.Post{
-		Title:   req.Title,
-		Text:    req.Text,
-		Url:     req.Url,
-		Tags:    req.Tags,
-		UserId:  req.UserId,
-		Status:  req.Status,
-		ZoneIds: req.ZoneIds,
-		Score_:  0,
+		Title:  req.Title,
+		Text:   req.Text,
+		Url:    req.Url,
+		Tags:   req.Tags,
+		UserId: req.UserId,
+		Status: req.Status,
+		Score_: 0,
 	}); err != nil {
 		return resp, err
 	}
@@ -124,13 +123,12 @@ func (s *PostService) UpdatePost(ctx context.Context, req *gencontent.UpdatePost
 	oid, _ := primitive.ObjectIDFromHex(req.PostId)
 
 	if err = s.PostMongoMapper.Update(ctx, &postmapper.Post{
-		ID:      oid,
-		Title:   req.Title,
-		Text:    req.Text,
-		Url:     req.Url,
-		Tags:    req.Tags,
-		Status:  req.Status,
-		ZoneIds: req.ZoneIds,
+		ID:     oid,
+		Title:  req.Title,
+		Text:   req.Text,
+		Url:    req.Url,
+		Tags:   req.Tags,
+		Status: req.Status,
 	}); err != nil {
 		return resp, err
 	}

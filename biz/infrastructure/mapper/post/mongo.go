@@ -6,6 +6,7 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
+	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/mr"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -42,12 +43,11 @@ type (
 		Title    string             `bson:"title,omitempty" json:"title,omitempty"`
 		Text     string             `bson:"text,omitempty" json:"text,omitempty"`
 		Url      string             `bson:"url,omitempty" json:"url,omitempty"`
-		Tags     []string           `bson:"tags,omitempty" json:"tags,omitempty"`
+		Tags     []*content.Tag     `bson:"tags,omitempty" json:"tags,omitempty"`
 		UserId   string             `bson:"userId,omitempty" json:"userId,omitempty"`
 		UpdateAt time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
 		CreateAt time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
 		Status   int64              `bson:"status,omitempty" json:"status,omitempty"`
-		ZoneIds  []string           `bson:"zoneIds,omitempty" json:"zoneIds,omitempty"`
 		// 仅ES查询时使用
 		Score_ float64 `bson:"_score,omitempty" json:"_score,omitempty"`
 	}

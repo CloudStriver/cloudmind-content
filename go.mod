@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/CloudStriver/go-pkg v0.0.0-20240329084540-20ca37a52fea
-	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240401055235-cec09bb1e203
+	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240401064043-4842c27f4ccf
 	github.com/bytedance/sonic v1.10.2
 	github.com/cloudwego/kitex v0.8.0
 	github.com/elastic/go-elasticsearch/v8 v8.11.1
@@ -21,7 +21,7 @@ require (
 	google.golang.org/grpc v1.60.1
 )
 
-//replace github.com/CloudStriver/service-idl-gen-go => ../service-idl-gen-go
+replace github.com/CloudStriver/service-idl-gen-go => ../service-idl-gen-go
 
 require (
 	github.com/apache/thrift v0.16.0 // indirect

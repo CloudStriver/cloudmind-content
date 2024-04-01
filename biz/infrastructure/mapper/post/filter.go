@@ -45,8 +45,10 @@ func (f *MongoFilter) toBson() bson.M {
 
 func (f *MongoFilter) CheckOnlyZoneId() {
 	if f.OnlyZoneId != nil {
-		f.m[consts.ZoneIds] = bson.M{
-			"$in": *f.OnlyZoneId,
+		f.m[consts.Tags] = bson.M{
+			"$elemMatch": bson.M{
+				"zoneId": *f.OnlyZoneId,
+			},
 		}
 	}
 }
@@ -89,7 +91,11 @@ func (f *MongoFilter) CheckOnlyText() {
 
 func (f *MongoFilter) CheckOnlyTag() {
 	if f.OnlyTag != nil {
-		f.m[consts.Tags] = bson.M{"$in": *f.OnlyTag}
+		f.m[consts.Tags] = bson.M{
+			"$elemMatch": bson.M{
+				"tagId": *f.OnlyTag,
+			},
+		}
 	}
 }
 

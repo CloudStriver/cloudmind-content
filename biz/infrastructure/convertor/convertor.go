@@ -606,12 +606,3 @@ func ConvertUserMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsK
 	}
 	return q
 }
-
-func UserFilterToUserFilterMapper(in *gencontent.UserFilterOptions) *usermapper.FilterOptions {
-	if in == nil {
-		return &usermapper.FilterOptions{}
-	}
-	return &usermapper.FilterOptions{
-		OnlyUserIds: in.UserIds,
-	}
-}
