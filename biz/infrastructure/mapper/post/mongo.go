@@ -3,6 +3,7 @@ package post
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
@@ -87,6 +88,7 @@ func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*Post,
 func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error) {
 	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
 	filter := MakeBsonFilter(fopts)
+	fmt.Println(filter)
 	sort, err := p.MakeSortOptions(ctx, filter)
 	if err != nil {
 		return nil, err
