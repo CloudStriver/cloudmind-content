@@ -2,7 +2,6 @@ package post
 
 import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
-	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
@@ -10,14 +9,14 @@ import (
 )
 
 type FilterOptions struct {
-	OnlyUserId      *string
-	OnlyPostId      *string
-	OnlyPostIds     []string
-	OnlyTitle       *string
-	OnlyText        *string
-	OnlyTags        []string
-	OnlySetRelation *int64
-	OnlyStatus      *int64
+	OnlyUserId  *string
+	OnlyPostId  *string
+	OnlyPostIds []string
+	OnlyTitle   *string
+	OnlyText    *string
+	OnlyTag     *string
+	OnlyStatus  *int64
+	OnlyZoneId  *string
 }
 
 type MongoFilter struct {
@@ -38,9 +37,18 @@ func (f *MongoFilter) toBson() bson.M {
 	f.CheckOnlyPostId()
 	f.CheckOnlyTitle()
 	f.CheckOnlyText()
-	f.CheckOnlyTags()
+	f.CheckOnlyTag()
 	f.CheckOnlyStatus()
+	f.CheckOnlyZoneId()
 	return f.m
+}
+
+func (f *MongoFilter) CheckOnlyZoneId() {
+	if f.OnlyZoneId != nil {
+		f.m[consts.ZoneIds] = bson.M{
+			"$in": *f.OnlyZoneId,
+		}
+	}
 }
 
 func (f *MongoFilter) CheckOnlyUserId() {
@@ -79,15 +87,9 @@ func (f *MongoFilter) CheckOnlyText() {
 	}
 }
 
-func (f *MongoFilter) CheckOnlyTags() {
-	if f.OnlyTags != nil {
-		if f.OnlySetRelation != nil {
-			if *f.OnlySetRelation == int64(gencontent.SetRelation_Set_intersection) {
-				f.m[consts.Tags] = bson.M{"$all": f.OnlyTags}
-			} else if *f.OnlySetRelation == int64(gencontent.SetRelation_Set_unionSet) {
-				f.m[consts.Tags] = bson.M{"$in": f.OnlyTags}
-			}
-		}
+func (f *MongoFilter) CheckOnlyTag() {
+	if f.OnlyTag != nil {
+		f.m[consts.Tags] = bson.M{"$in": *f.OnlyTag}
 	}
 }
 

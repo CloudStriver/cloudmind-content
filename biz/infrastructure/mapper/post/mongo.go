@@ -39,14 +39,15 @@ type (
 
 	Post struct {
 		ID       primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
-		Title    string             `bson:"title,omitempty" `
-		Text     string             `bson:"text,omitempty"`
-		Url      string             `bson:"url,omitempty"`
-		Tags     []string           `bson:"tags,omitempty"`
-		UserId   string             `bson:"userId,omitempty"`
-		UpdateAt time.Time          `bson:"updateAt,omitempty"`
-		CreateAt time.Time          `bson:"createAt,omitempty"`
-		Status   int64              `bson:"status,omitempty"`
+		Title    string             `bson:"title,omitempty" json:"title,omitempty"`
+		Text     string             `bson:"text,omitempty" json:"text,omitempty"`
+		Url      string             `bson:"url,omitempty" json:"url,omitempty"`
+		Tags     []string           `bson:"tags,omitempty" json:"tags,omitempty"`
+		UserId   string             `bson:"userId,omitempty" json:"userId,omitempty"`
+		UpdateAt time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
+		CreateAt time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
+		Status   int64              `bson:"status,omitempty" json:"status,omitempty"`
+		ZoneIds  []string           `bson:"zoneIds,omitempty" json:"zoneIds,omitempty"`
 		// 仅ES查询时使用
 		Score_ float64 `bson:"_score,omitempty" json:"_score,omitempty"`
 	}

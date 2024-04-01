@@ -194,13 +194,11 @@ func PostFilterOptionsToFilterOptions(in *gencontent.PostFilterOptions) *postmap
 	}
 	return &postmapper.FilterOptions{
 		OnlyUserId: in.OnlyUserId,
-		//OnlyPostId:      in.OnlyPostId,
-		//OnlyPostIds:     in.OnlyPostIds,
-		OnlyTitle:       in.OnlyTitle,
-		OnlyText:        in.OnlyText,
-		OnlyTags:        in.OnlyTags,
-		OnlySetRelation: in.OnlySetRelation,
-		OnlyStatus:      in.OnlyStatus,
+		OnlyTitle:  in.OnlyTitle,
+		OnlyText:   in.OnlyText,
+		OnlyTag:    in.OnlyTag,
+		OnlyStatus: in.OnlyStatus,
+		OnlyZoneId: in.OnlyZoneId,
 	}
 }
 
