@@ -6,12 +6,16 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/kq"
 	filemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	sharefilemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
+	"github.com/CloudStriver/cloudmind-mq/app/util/message"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
+	"github.com/CloudStriver/go-pkg/utils/pconvertor"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
+	"github.com/bytedance/sonic"
 	"github.com/google/wire"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/mr"
@@ -47,6 +51,7 @@ type IFileService interface {
 	ParsingShareCode(ctx context.Context, req *gencontent.ParsingShareCodeReq) (resp *gencontent.ParsingShareCodeResp, err error)
 	SaveFileToPrivateSpace(ctx context.Context, req *gencontent.SaveFileToPrivateSpaceReq) (resp *gencontent.SaveFileToPrivateSpaceResp, err error)
 	AddFileToPublicSpace(ctx context.Context, req *gencontent.AddFileToPublicSpaceReq) (resp *gencontent.AddFileToPublicSpaceResp, err error)
+	MakeFilePrivate(ctx context.Context, req *gencontent.MakeFilePrivateReq) (resp *gencontent.MakeFilePrivateResp, err error)
 }
 
 type FileService struct {
@@ -54,6 +59,7 @@ type FileService struct {
 	FileMongoMapper      filemapper.IMongoMapper
 	FileEsMapper         filemapper.IFileEsMapper
 	ShareFileMongoMapper sharefilemapper.IMongoMapper
+	DeleteFileRelationKq *kq.DeleteFileRelationKq
 }
 
 var FileSet = wire.NewSet(
@@ -397,6 +403,18 @@ func (s *FileService) CompletelyRemoveFile(ctx context.Context, req *gencontent.
 		}
 		return nil
 	})
+
+	data, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
+		FromType: int64(gencontent.TargetType_UserType),
+		FromId:   req.UserId,
+		ToType:   int64(gencontent.TargetType_FileType),
+		Files:    ids,
+	})
+
+	if err2 := s.DeleteFileRelationKq.Push(pconvertor.Bytes2String(data)); err2 != nil {
+		return resp, err2
+	}
+
 	return resp, nil
 }
 
@@ -455,6 +473,20 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 		}
 		return nil
 	})
+
+	if req.DeleteType == int64(gencontent.Deletion_Deletion_hardDel) || req.ClearCommunity {
+		data, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
+			FromType: int64(gencontent.TargetType_UserType),
+			FromId:   req.UserId,
+			ToType:   int64(gencontent.TargetType_FileType),
+			Files:    ids,
+		})
+
+		if err2 := s.DeleteFileRelationKq.Push(pconvertor.Bytes2String(data)); err2 != nil {
+			return resp, err2
+		}
+	}
+
 	return resp, nil
 }
 
@@ -502,6 +534,17 @@ func (s *FileService) EmptyRecycleBin(ctx context.Context, req *gencontent.Empty
 		}
 		return nil
 	})
+
+	data, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
+		FromType: int64(gencontent.TargetType_UserType),
+		FromId:   req.UserId,
+		ToType:   int64(gencontent.TargetType_FileType),
+		Files:    ids,
+	})
+
+	if err2 = s.DeleteFileRelationKq.Push(pconvertor.Bytes2String(data)); err2 != nil {
+		return resp, err2
+	}
 
 	return resp, nil
 }
@@ -789,4 +832,19 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 	})
 	resp.FileIds = ids
 	return resp, err
+}
+
+func (s *FileService) MakeFilePrivate(ctx context.Context, req *gencontent.MakeFilePrivateReq) (resp *gencontent.MakeFilePrivateResp, err error) {
+	resp = &gencontent.MakeFilePrivateResp{}
+	data := convertor.FileToFileMapper(&gencontent.File{FileId: req.FileId})
+	update := bson.M{
+		consts.Zone:        "",
+		consts.SubZone:     "",
+		consts.Description: "",
+		consts.Labels:      "",
+	}
+	if _, err = s.FileMongoMapper.UpdateUnset(ctx, data, update); err != nil {
+		return resp, err
+	}
+	return resp, nil
 }
