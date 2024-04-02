@@ -846,5 +846,15 @@ func (s *FileService) MakeFilePrivate(ctx context.Context, req *gencontent.MakeF
 	if _, err = s.FileMongoMapper.UpdateUnset(ctx, data, update); err != nil {
 		return resp, err
 	}
+
+  res, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
+		FromType: int64(gencontent.TargetType_UserType),
+		FromId:   req.UserId,
+		ToType:   int64(gencontent.TargetType_FileType),
+	})
+	if err2 := s.DeleteFileRelationKq.Push(pconvertor.Bytes2String(res)); err2 != nil {
+		return resp, err2
+	}
+
 	return resp, nil
 }
