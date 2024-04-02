@@ -847,7 +847,7 @@ func (s *FileService) MakeFilePrivate(ctx context.Context, req *gencontent.MakeF
 		return resp, err
 	}
 
-	res, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
+  res, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
 		FromType: int64(gencontent.TargetType_UserType),
 		FromId:   req.UserId,
 		ToType:   int64(gencontent.TargetType_FileType),
