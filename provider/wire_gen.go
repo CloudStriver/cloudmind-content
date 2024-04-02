@@ -11,6 +11,7 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/application/service"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/gorse"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/kq"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/coupon"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/hot"
@@ -34,11 +35,13 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 	iMongoMapper := file.NewMongoMapper(configConfig)
 	iFileEsMapper := file.NewEsMapper(configConfig)
 	sharefileIMongoMapper := sharefile.NewMongoMapper(configConfig)
+	deleteFileRelationKq := kq.NewDeleteFileRelationKq(configConfig)
 	fileService := &service.FileService{
 		Config:               configConfig,
 		FileMongoMapper:      iMongoMapper,
 		FileEsMapper:         iFileEsMapper,
 		ShareFileMongoMapper: sharefileIMongoMapper,
+		DeleteFileRelationKq: deleteFileRelationKq,
 	}
 	iPostMongoMapper := post.NewMongoMapper(configConfig)
 	iEsMapper := post.NewEsMapper(configConfig)

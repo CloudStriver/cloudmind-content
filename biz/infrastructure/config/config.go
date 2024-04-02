@@ -14,6 +14,11 @@ type ElasticsearchConf struct {
 	Password  string
 }
 
+type KqConfig struct {
+	Brokers []string
+	Topic   string
+}
+
 type Config struct {
 	service.ServiceConf
 	ListenOn string
@@ -28,6 +33,7 @@ type Config struct {
 		Url    string
 		ApiKey string
 	}
+	DeleteFileRelationKq     KqConfig
 	DeletionCoolingOffPeriod int64
 	InitialSliceLength       int64
 	LocalCacheConf           struct {

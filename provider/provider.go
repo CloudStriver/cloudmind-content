@@ -4,6 +4,7 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/application/service"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/gorse"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/kq"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/coupon"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/hot"
@@ -40,6 +41,7 @@ var InfrastructureSet = wire.NewSet(
 	redis.NewRedis,
 	gorse.NewGorseClient,
 	cache.NewLocalCache,
+	kq.NewDeleteFileRelationKq,
 	MapperSet,
 )
 

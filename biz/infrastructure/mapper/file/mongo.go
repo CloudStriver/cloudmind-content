@@ -45,6 +45,7 @@ type (
 		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*File, int64, error)
 		FindAndUpdate(ctx context.Context, data *File) (*mongo.UpdateResult, error)
 		Update(ctx context.Context, data *File) (*mongo.UpdateResult, error)
+		UpdateUnset(ctx context.Context, data *File, update bson.M) (*mongo.UpdateResult, error)
 		UpdateMany(ctx context.Context, ids []string, update bson.M) (*mongo.UpdateResult, error)
 		Delete(ctx context.Context, id string) (int64, error)
 		DeleteMany(ctx context.Context, ids []string) (int64, error)
@@ -496,6 +497,24 @@ func (m *MongoMapper) Update(ctx context.Context, data *File) (*mongo.UpdateResu
 	if err != nil {
 		m.Rename(data)
 		if res, err = m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data}); err != nil {
+			log.CtxError(ctx, "更新文件信息: 发生异常[%v]\n", err)
+			return res, err
+		}
+	}
+	return res, nil
+}
+
+func (m *MongoMapper) UpdateUnset(ctx context.Context, data *File, update bson.M) (*mongo.UpdateResult, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.UpdateUnset", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	data.UpdateAt = time.Now()
+	key := prefixFileCacheKey + data.ID.Hex()
+	res, err := m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data, "$unset": update})
+	if err != nil {
+		m.Rename(data)
+		if res, err = m.conn.UpdateOne(ctx, key, bson.M{consts.ID: data.ID}, bson.M{"$set": data, "$unset": update}); err != nil {
 			log.CtxError(ctx, "更新文件信息: 发生异常[%v]\n", err)
 			return res, err
 		}

@@ -20,6 +20,10 @@ type ContentServerImpl struct {
 	HotService       service.IHotService
 }
 
+func (s *ContentServerImpl) MakeFilePrivate(ctx context.Context, req *content.MakeFilePrivateReq) (res *content.MakeFilePrivateResp, err error) {
+	return s.FileService.MakeFilePrivate(ctx, req)
+}
+
 func (s *ContentServerImpl) GetHotValues(ctx context.Context, req *content.GetHotValuesReq) (res *content.GetHotValuesResp, err error) {
 	return s.HotService.GetHotValues(ctx, req)
 }
