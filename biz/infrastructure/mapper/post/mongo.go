@@ -3,9 +3,11 @@ package post
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
+	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/mr"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -39,14 +41,14 @@ type (
 
 	Post struct {
 		ID       primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
-		Title    string             `bson:"title,omitempty" `
-		Text     string             `bson:"text,omitempty"`
-		Url      string             `bson:"url,omitempty"`
-		Tags     []string           `bson:"tags,omitempty"`
-		UserId   string             `bson:"userId,omitempty"`
-		UpdateAt time.Time          `bson:"updateAt,omitempty"`
-		CreateAt time.Time          `bson:"createAt,omitempty"`
-		Status   int64              `bson:"status,omitempty"`
+		Title    string             `bson:"title,omitempty" json:"title,omitempty"`
+		Text     string             `bson:"text,omitempty" json:"text,omitempty"`
+		Url      string             `bson:"url,omitempty" json:"url,omitempty"`
+		Tags     []*content.Tag     `bson:"tags,omitempty" json:"tags,omitempty"`
+		UserId   string             `bson:"userId,omitempty" json:"userId,omitempty"`
+		UpdateAt time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
+		CreateAt time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
+		Status   int64              `bson:"status,omitempty" json:"status,omitempty"`
 		// 仅ES查询时使用
 		Score_ float64 `bson:"_score,omitempty" json:"_score,omitempty"`
 	}
@@ -86,6 +88,7 @@ func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*Post,
 func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Post, error) {
 	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
 	filter := MakeBsonFilter(fopts)
+	fmt.Println(filter)
 	sort, err := p.MakeSortOptions(ctx, filter)
 	if err != nil {
 		return nil, err

@@ -5,6 +5,7 @@ const (
 	UserId             = "userId"
 	TypeString         = "typeString"
 	Category           = "category"
+	ZoneIds            = "zoneIds"
 	Name               = "name"
 	ProductId          = "productId"
 	ProductName        = "productName"

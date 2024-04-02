@@ -194,13 +194,11 @@ func PostFilterOptionsToFilterOptions(in *gencontent.PostFilterOptions) *postmap
 	}
 	return &postmapper.FilterOptions{
 		OnlyUserId: in.OnlyUserId,
-		//OnlyPostId:      in.OnlyPostId,
-		//OnlyPostIds:     in.OnlyPostIds,
-		OnlyTitle:       in.OnlyTitle,
-		OnlyText:        in.OnlyText,
-		OnlyTags:        in.OnlyTags,
-		OnlySetRelation: in.OnlySetRelation,
-		OnlyStatus:      in.OnlyStatus,
+		OnlyTitle:  in.OnlyTitle,
+		OnlyText:   in.OnlyText,
+		OnlyTag:    in.OnlyTag,
+		OnlyStatus: in.OnlyStatus,
+		OnlyZoneId: in.OnlyZoneId,
 	}
 }
 
@@ -607,13 +605,4 @@ func ConvertUserMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsK
 		})
 	}
 	return q
-}
-
-func UserFilterToUserFilterMapper(in *gencontent.UserFilterOptions) *usermapper.FilterOptions {
-	if in == nil {
-		return &usermapper.FilterOptions{}
-	}
-	return &usermapper.FilterOptions{
-		OnlyUserIds: in.UserIds,
-	}
 }

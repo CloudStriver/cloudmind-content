@@ -102,7 +102,7 @@ func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq)
 				filter, p, esp.ScoreCursorType)
 		}
 	} else {
-		posts, total, err = s.PostMongoMapper.FindManyAndCount(ctx, convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions),
+		posts, total, err = s.PostMongoMapper.FindManyAndCount(ctx, filter,
 			p, mongop.IdCursorType)
 	}
 	if err != nil {
