@@ -21,7 +21,7 @@ type ContentServerImpl struct {
 }
 
 func (s *ContentServerImpl) MakeFilePrivate(ctx context.Context, req *content.MakeFilePrivateReq) (res *content.MakeFilePrivateResp, err error) {
-	return s.MakeFilePrivate(ctx, req)
+	return s.FileService.MakeFilePrivate(ctx, req)
 }
 
 func (s *ContentServerImpl) GetHotValues(ctx context.Context, req *content.GetHotValuesReq) (res *content.GetHotValuesResp, err error) {
