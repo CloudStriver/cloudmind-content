@@ -68,6 +68,7 @@ type (
 		Zone        string             `bson:"zone,omitempty" json:"zone,omitempty"`
 		SubZone     string             `bson:"subZone,omitempty" json:"subZone,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
+		AuditStatus int64              `bson:"auditStatus,omitempty" json:"auditStatus,omitempty"`
 		Labels      []string           `bson:"labels,omitempty" json:"labels,omitempty"`
 		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
 		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`

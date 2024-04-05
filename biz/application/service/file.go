@@ -795,6 +795,7 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 	resp = new(gencontent.AddFileToPublicSpaceResp)
 	update := bson.M{
 		"$set": bson.M{
+			consts.AuditStatus: int64(gencontent.AuditStatus_AuditStatus_wait),
 			consts.Zone:        req.Zone,
 			consts.SubZone:     req.SubZone,
 			consts.Description: req.Description,
@@ -836,7 +837,7 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 
 func (s *FileService) MakeFilePrivate(ctx context.Context, req *gencontent.MakeFilePrivateReq) (resp *gencontent.MakeFilePrivateResp, err error) {
 	resp = &gencontent.MakeFilePrivateResp{}
-	data := convertor.FileToFileMapper(&gencontent.File{FileId: req.FileId})
+	data := convertor.FileToFileMapper(&gencontent.File{FileId: req.FileId, AuditStatus: int64(gencontent.AuditStatus_AuditStatus_notStart)})
 	update := bson.M{
 		consts.Zone:        "",
 		consts.SubZone:     "",
@@ -847,7 +848,7 @@ func (s *FileService) MakeFilePrivate(ctx context.Context, req *gencontent.MakeF
 		return resp, err
 	}
 
-  res, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
+	res, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
 		FromType: int64(gencontent.TargetType_UserType),
 		FromId:   req.UserId,
 		ToType:   int64(gencontent.TargetType_FileType),
