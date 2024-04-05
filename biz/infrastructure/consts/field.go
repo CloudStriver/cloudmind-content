@@ -28,6 +28,7 @@ const (
 	CreateAt           = "createAt"
 	UpdateAt           = "updateAt"
 	DeletedAt          = "deletedAt"
+	AuditStatus        = "auditStatus"
 	TargetId           = "targetId"
 	TargetType         = "targetType"
 	RelationType       = "relationType"

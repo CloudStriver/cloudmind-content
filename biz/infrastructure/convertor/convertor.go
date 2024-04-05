@@ -48,6 +48,7 @@ func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 		Zone:        data.Zone,
 		SubZone:     data.SubZone,
 		Description: data.Description,
+		AuditStatus: data.AuditStatus,
 		Labels:      data.Labels,
 		CreateAt:    data.CreateAt.UnixMilli(),
 		UpdateAt:    data.UpdateAt.UnixMilli(),
@@ -71,6 +72,7 @@ func FileToFileMapper(data *gencontent.File) *file.File {
 		SubZone:     data.SubZone,
 		Description: data.Description,
 		Labels:      data.Labels,
+		AuditStatus: data.AuditStatus,
 	}
 }
 
@@ -137,6 +139,7 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 			OnlyIsDel:        opts.OnlyIsDel,
 			OnlyDocumentType: opts.OnlyDocumentType,
 			OnlyType:         opts.OnlyType,
+			OnlyAuditStatus:  opts.OnlyAuditStatus,
 			OnlyCategory:     opts.OnlyCategory,
 			OnlyLabelId:      opts.OnlyLabelId,
 		}

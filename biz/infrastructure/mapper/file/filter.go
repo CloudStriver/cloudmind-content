@@ -21,6 +21,7 @@ type FilterOptions struct {
 	OnlyDocumentType *int64
 	OnlyType         []string
 	OnlyCategory     *int64
+	OnlyAuditStatus  *int64
 	OnlyLabelId      *string
 }
 
@@ -45,8 +46,15 @@ func (f *MongoFileFilter) toBson() bson.M {
 	f.CheckOnlyDocumentType()
 	f.CheckOnlyType()
 	f.CheckOnlyCategory()
+	f.CheckOnlyAuditStatus()
 	f.CheckOnlyLabelId()
 	return f.m
+}
+
+func (f *MongoFileFilter) CheckOnlyAuditStatus() {
+	if f.OnlyDocumentType != nil && *f.OnlyDocumentType == int64(gencontent.Space_Space_public) && f.OnlyAuditStatus != nil {
+		f.m[consts.AuditStatus] = *f.OnlyAuditStatus
+	}
 }
 
 func (f *MongoFileFilter) CheckOnlyType() {
