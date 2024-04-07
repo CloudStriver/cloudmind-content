@@ -3,6 +3,7 @@ module github.com/CloudStriver/cloudmind-content
 go 1.20
 
 require (
+	github.com/CloudStriver/cloudmind-mq v1.0.12-0.20240406143558-b7090c0fbb80
 	github.com/CloudStriver/go-pkg v0.0.0-20240329084540-20ca37a52fea
 	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240406140558-0b39494165c0
 	github.com/bytedance/sonic v1.10.2
@@ -13,6 +14,7 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/pkg/errors v0.9.1
 	github.com/samber/lo v1.39.0
+	github.com/zeromicro/go-queue v1.1.8
 	github.com/zeromicro/go-zero v1.6.1
 	go.mongodb.org/mongo-driver v1.13.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0
@@ -25,7 +27,6 @@ require (
 //replace github.com/CloudStriver/cloudmind-mq => ../cloudmind-mq
 
 require (
-	github.com/CloudStriver/cloudmind-mq v1.0.12-0.20240406143558-b7090c0fbb80 // indirect
 	github.com/apache/thrift v0.16.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bufbuild/protocompile v0.7.1 // indirect
@@ -44,7 +45,6 @@ require (
 	github.com/cloudwego/netpoll v0.5.1 // indirect
 	github.com/cloudwego/thriftgo v0.3.3 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/dgryski/go-metro v0.0.0-20200812162917-85c65e2d0165 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/elastic/elastic-transport-go/v8 v8.3.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
@@ -62,10 +62,8 @@ require (
 	github.com/jhump/protoreflect v1.15.4 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kitex-contrib/monitor-prometheus v0.2.0 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
-	github.com/linvon/cuckoo-filter v0.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
@@ -93,7 +91,6 @@ require (
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
-	github.com/zeromicro/go-queue v1.1.8 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.19.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.19.0 // indirect
