@@ -25,7 +25,7 @@ require (
 //replace github.com/CloudStriver/cloudmind-mq => ../cloudmind-mq
 
 require (
-	github.com/CloudStriver/cloudmind-mq v1.0.12-0.20240402110201-7972a2140b4d // indirect
+	github.com/CloudStriver/cloudmind-mq v1.0.12-0.20240406143558-b7090c0fbb80 // indirect
 	github.com/apache/thrift v0.16.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bufbuild/protocompile v0.7.1 // indirect
