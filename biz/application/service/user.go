@@ -104,11 +104,15 @@ func (s *UserService) GetUser(ctx context.Context, req *gencontent.GetUserReq) (
 
 func (s *UserService) CreateUser(ctx context.Context, req *gencontent.CreateUserReq) (resp *gencontent.CreateUserResp, err error) {
 	oid, _ := primitive.ObjectIDFromHex(req.UserId)
+	url := req.Url
+	if url == "" {
+		url = consts.DefaultAvatarUrl
+	}
 	if _, err = s.UserMongoMapper.Insert(ctx, &usermapper.User{
 		ID:          oid,
 		Name:        req.Name,
 		Sex:         req.Sex,
-		Url:         consts.DefaultAvatarUrl,
+		Url:         url,
 		Description: consts.DefaultDescription,
 	}); err != nil {
 		return resp, err
