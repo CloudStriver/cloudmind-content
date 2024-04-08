@@ -55,7 +55,7 @@ func (s *PostService) CreatePost(ctx context.Context, req *gencontent.CreatePost
 		Title:  req.Title,
 		Text:   req.Text,
 		Url:    req.Url,
-		Tags:   req.Tags,
+		TagIds: req.TagIds,
 		UserId: req.UserId,
 		Status: req.Status,
 		Score_: 0,
@@ -75,7 +75,7 @@ func (s *PostService) GetPost(ctx context.Context, req *gencontent.GetPostReq) (
 		UserId:     post.UserId,
 		Title:      post.Title,
 		Text:       post.Text,
-		Tags:       post.Tags,
+		TagIds:     post.TagIds,
 		Url:        post.Url,
 		Status:     post.Status,
 		CreateTime: post.CreateAt.UnixMilli(),
@@ -92,15 +92,9 @@ func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq)
 
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
 	filter := convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions)
-	if req.SearchOptions != nil {
-		switch o := req.SearchOptions.Type.(type) {
-		case *gencontent.SearchOptions_AllFieldsKey:
-			posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(o),
-				filter, p, esp.ScoreCursorType)
-		case *gencontent.SearchOptions_MultiFieldsKey:
-			posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostMultiFieldsSearchQuery(o),
-				filter, p, esp.ScoreCursorType)
-		}
+	if req.SearchKeyword != nil {
+		posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(*req.SearchKeyword),
+			filter, p, esp.ScoreCursorType)
 	} else {
 		posts, total, err = s.PostMongoMapper.FindManyAndCount(ctx, filter,
 			p, mongop.IdCursorType)
@@ -127,8 +121,9 @@ func (s *PostService) UpdatePost(ctx context.Context, req *gencontent.UpdatePost
 		Title:  req.Title,
 		Text:   req.Text,
 		Url:    req.Url,
-		Tags:   req.Tags,
+		TagIds: req.TagIds,
 		Status: req.Status,
+		Score_: 0,
 	}); err != nil {
 		return resp, err
 	}
