@@ -12,7 +12,7 @@ type FilterOptions struct {
 	OnlyUserId  *string
 	OnlyPostId  *string
 	OnlyPostIds []string
-	OnlyTagId   *string
+	OnlyLabelId *string
 	OnlyStatus  *int64
 }
 
@@ -32,7 +32,7 @@ func (f *MongoFilter) toBson() bson.M {
 	f.CheckOnlyUserId()
 	f.CheckOnlyPostIds()
 	f.CheckOnlyPostId()
-	f.CheckOnlyTagId()
+	f.CheckOnlyLabelId()
 	f.CheckOnlyStatus()
 	return f.m
 }
@@ -61,10 +61,10 @@ func (f *MongoFilter) CheckOnlyPostId() {
 	}
 }
 
-func (f *MongoFilter) CheckOnlyTagId() {
-	if f.OnlyTagId != nil {
-		f.m[consts.TagIds] = bson.M{
-			"$in": []string{*f.OnlyTagId},
+func (f *MongoFilter) CheckOnlyLabelId() {
+	if f.OnlyLabelId != nil {
+		f.m[consts.LabelIds] = bson.M{
+			"$in": []string{*f.OnlyLabelId},
 		}
 	}
 }

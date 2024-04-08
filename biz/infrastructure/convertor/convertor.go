@@ -196,9 +196,9 @@ func PostFilterOptionsToFilterOptions(in *gencontent.PostFilterOptions) *postmap
 		return &postmapper.FilterOptions{}
 	}
 	return &postmapper.FilterOptions{
-		OnlyUserId: in.OnlyUserId,
-		OnlyTagId:  in.OnlyTagId,
-		OnlyStatus: in.OnlyStatus,
+		OnlyUserId:  in.OnlyUserId,
+		OnlyLabelId: in.OnlyLabelId,
+		OnlyStatus:  in.OnlyStatus,
 	}
 }
 
@@ -211,7 +211,7 @@ func PostMapperToPost(in *postmapper.Post) *gencontent.Post {
 		UserId:     in.UserId,
 		Title:      in.Title,
 		Text:       in.Text,
-		TagIds:     in.TagIds,
+		LabelIds:   in.LabelIds,
 		Status:     in.Status,
 		Url:        in.Url,
 		CreateTime: in.CreateAt.UnixMilli(),

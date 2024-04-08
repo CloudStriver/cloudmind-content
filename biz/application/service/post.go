@@ -52,13 +52,13 @@ func (s *PostService) GetPostsByPostIds(ctx context.Context, req *gencontent.Get
 func (s *PostService) CreatePost(ctx context.Context, req *gencontent.CreatePostReq) (resp *gencontent.CreatePostResp, err error) {
 	resp = new(gencontent.CreatePostResp)
 	if resp.PostId, err = s.PostMongoMapper.Insert(ctx, &postmapper.Post{
-		Title:  req.Title,
-		Text:   req.Text,
-		Url:    req.Url,
-		TagIds: req.TagIds,
-		UserId: req.UserId,
-		Status: req.Status,
-		Score_: 0,
+		Title:    req.Title,
+		Text:     req.Text,
+		Url:      req.Url,
+		LabelIds: req.LabelIds,
+		UserId:   req.UserId,
+		Status:   req.Status,
+		Score_:   0,
 	}); err != nil {
 		return resp, err
 	}
@@ -75,7 +75,7 @@ func (s *PostService) GetPost(ctx context.Context, req *gencontent.GetPostReq) (
 		UserId:     post.UserId,
 		Title:      post.Title,
 		Text:       post.Text,
-		TagIds:     post.TagIds,
+		LabelIds:   post.LabelIds,
 		Url:        post.Url,
 		Status:     post.Status,
 		CreateTime: post.CreateAt.UnixMilli(),
@@ -117,13 +117,13 @@ func (s *PostService) UpdatePost(ctx context.Context, req *gencontent.UpdatePost
 	oid, _ := primitive.ObjectIDFromHex(req.PostId)
 
 	if err = s.PostMongoMapper.Update(ctx, &postmapper.Post{
-		ID:     oid,
-		Title:  req.Title,
-		Text:   req.Text,
-		Url:    req.Url,
-		TagIds: req.TagIds,
-		Status: req.Status,
-		Score_: 0,
+		ID:       oid,
+		Title:    req.Title,
+		Text:     req.Text,
+		Url:      req.Url,
+		LabelIds: req.LabelIds,
+		Status:   req.Status,
+		Score_:   0,
 	}); err != nil {
 		return resp, err
 	}

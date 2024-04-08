@@ -43,7 +43,7 @@ type (
 		Title    string             `bson:"title,omitempty" json:"title,omitempty"`
 		Text     string             `bson:"text,omitempty" json:"text,omitempty"`
 		Url      string             `bson:"url,omitempty" json:"url,omitempty"`
-		TagIds   []string           `bson:"tagIds,omitempty" json:"tagIds,omitempty"`
+		LabelIds []string           `bson:"labelIds,omitempty" json:"labelIds,omitempty"`
 		UserId   string             `bson:"userId,omitempty" json:"userId,omitempty"`
 		UpdateAt time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
 		CreateAt time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
