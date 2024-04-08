@@ -16,7 +16,7 @@ const (
 	FileMd5            = "fileMd5"
 	IsDel              = "isDel"
 	SpaceSize          = "spaceSize"
-	Tags               = "tags"
+	TagIds             = "tagIds"
 	Zone               = "zone"
 	Key                = "key"
 	SubZone            = "subZone"

@@ -63,11 +63,8 @@ func (s *UserService) GetUsers(ctx context.Context, req *gencontent.GetUsersReq)
 	)
 
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
-	switch o := req.SearchOptions.Type.(type) {
-	case *gencontent.SearchOptions_AllFieldsKey:
-		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(o), p, esp.ScoreCursorType)
-	case *gencontent.SearchOptions_MultiFieldsKey:
-		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserMultiFieldsSearchQuery(o), p, esp.ScoreCursorType)
+	if req.SearchKeyword != nil {
+		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(*req.SearchKeyword), p, esp.ScoreCursorType)
 	}
 	if err != nil {
 		return resp, err

@@ -68,9 +68,9 @@ func (s *ProductService) GetProducts(ctx context.Context, req *gencontent.GetPro
 		case *gencontent.SearchOptions_AllFieldsKey:
 			products, total, err = s.ProductEsMapper.Search(ctx, convertor.ConvertProductAllFieldsSearchQuery(o),
 				filter, p, esp.ScoreCursorType)
-		case *gencontent.SearchOptions_MultiFieldsKey:
-			products, total, err = s.ProductEsMapper.Search(ctx, convertor.ConvertProductMultiFieldsSearchQuery(o),
-				filter, p, esp.ScoreCursorType)
+			//case *gencontent.SearchOptions_MultiFieldsKey:
+			//	products, total, err = s.ProductEsMapper.Search(ctx, convertor.ConvertProductMultiFieldsSearchQuery(o),
+			//		filter, p, esp.ScoreCursorType)
 		}
 	} else {
 		products, total, err = s.ProductMongoMapper.FindManyAndCount(ctx, convertor.ProductFilterOptionsToFilterOptions(req.ProductFilterOptions),
