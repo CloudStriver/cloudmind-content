@@ -70,9 +70,9 @@ func (f *MongoFilter) CheckOnlyProductId() {
 }
 
 func (f *MongoFilter) CheckOnlyTags() {
-	if f.OnlyTags != nil {
-
-	}
+	//if f.OnlyTags != nil {
+	//
+	//}
 }
 
 func (f *MongoFilter) CheckOnlyStatus() {
