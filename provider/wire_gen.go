@@ -20,7 +20,6 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/product"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/zone"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/cache"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/redis"
 )
@@ -51,10 +50,6 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		PostMongoMapper: iPostMongoMapper,
 		PostEsMapper:    iEsMapper,
 		Redis:           redisRedis,
-	}
-	zoneIMongoMapper := zone.NewMongoMapper(configConfig)
-	zoneService := &service.ZoneService{
-		ZoneMongoMapper: zoneIMongoMapper,
 	}
 	iUserMongoMapper := user.NewMongoMapper(configConfig)
 	iUserEsMapper := user.NewEsMapper(configConfig)
@@ -105,7 +100,6 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		Config:           configConfig,
 		FileService:      fileService,
 		PostService:      postService,
-		ZoneService:      zoneService,
 		UserService:      userService,
 		ProductService:   productService,
 		CouponService:    couponService,

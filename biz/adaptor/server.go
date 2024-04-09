@@ -11,7 +11,6 @@ type ContentServerImpl struct {
 	*config.Config
 	FileService      service.IFileService
 	PostService      service.IPostService
-	ZoneService      service.IZoneService
 	UserService      service.IUserService
 	ProductService   service.IProductService
 	CouponService    service.ICouponService
@@ -231,26 +230,6 @@ func (s *ContentServerImpl) GetFileBySharingCode(ctx context.Context, req *conte
 
 func (s *ContentServerImpl) CreateFile(ctx context.Context, req *content.CreateFileReq) (*content.CreateFileResp, error) {
 	return s.FileService.CreateFile(ctx, req)
-}
-
-func (s *ContentServerImpl) GetZone(ctx context.Context, req *content.GetZoneReq) (res *content.GetZoneResp, err error) {
-	return s.ZoneService.GetZone(ctx, req)
-}
-
-func (s *ContentServerImpl) GetZones(ctx context.Context, req *content.GetZonesReq) (res *content.GetZonesResp, err error) {
-	return s.ZoneService.GetZones(ctx, req)
-}
-
-func (s *ContentServerImpl) CreateZone(ctx context.Context, req *content.CreateZoneReq) (*content.CreateZoneResp, error) {
-	return s.ZoneService.CreateZone(ctx, req)
-}
-
-func (s *ContentServerImpl) UpdateZone(ctx context.Context, req *content.UpdateZoneReq) (*content.UpdateZoneResp, error) {
-	return s.ZoneService.UpdateZone(ctx, req)
-}
-
-func (s *ContentServerImpl) DeleteZone(ctx context.Context, req *content.DeleteZoneReq) (*content.DeleteZoneResp, error) {
-	return s.ZoneService.DeleteZone(ctx, req)
 }
 
 func (s *ContentServerImpl) GetShareList(ctx context.Context, req *content.GetShareListReq) (*content.GetShareListResp, error) {
