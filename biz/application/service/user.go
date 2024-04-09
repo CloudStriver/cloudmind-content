@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
@@ -63,11 +62,8 @@ func (s *UserService) GetUsers(ctx context.Context, req *gencontent.GetUsersReq)
 	)
 
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
-	switch o := req.SearchOptions.Type.(type) {
-	case *gencontent.SearchOptions_AllFieldsKey:
-		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(o), p, esp.ScoreCursorType)
-	case *gencontent.SearchOptions_MultiFieldsKey:
-		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserMultiFieldsSearchQuery(o), p, esp.ScoreCursorType)
+	if req.SearchKeyword != nil {
+		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(*req.SearchKeyword), p, esp.ScoreCursorType)
 	}
 	if err != nil {
 		return resp, err
@@ -88,7 +84,6 @@ func (s *UserService) GetUser(ctx context.Context, req *gencontent.GetUserReq) (
 	if user, err = s.UserMongoMapper.FindOne(ctx, req.UserId); err != nil {
 		return resp, err
 	}
-	fmt.Print(user, err)
 	return &gencontent.GetUserResp{
 		Name:        user.Name,
 		Sex:         user.Sex,

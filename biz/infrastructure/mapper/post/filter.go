@@ -10,6 +10,8 @@ import (
 
 type FilterOptions struct {
 	OnlyUserId  *string
+	OnlyPostId  *string
+	OnlyPostIds []string
 	OnlyLabelId *string
 	OnlyStatus  *int64
 }
@@ -30,22 +32,9 @@ func (f *MongoFilter) toBson() bson.M {
 	f.CheckOnlyUserId()
 	f.CheckOnlyPostIds()
 	f.CheckOnlyPostId()
-	f.CheckOnlyTitle()
-	f.CheckOnlyText()
-	f.CheckOnlyTag()
+	f.CheckOnlyLabelId()
 	f.CheckOnlyStatus()
-	f.CheckOnlyZoneId()
 	return f.m
-}
-
-func (f *MongoFilter) CheckOnlyZoneId() {
-	if f.OnlyZoneId != nil {
-		f.m[consts.Tags] = bson.M{
-			"$elemMatch": bson.M{
-				"zoneid": *f.OnlyZoneId,
-			},
-		}
-	}
 }
 
 func (f *MongoFilter) CheckOnlyUserId() {
@@ -72,24 +61,10 @@ func (f *MongoFilter) CheckOnlyPostId() {
 	}
 }
 
-func (f *MongoFilter) CheckOnlyTitle() {
-	if f.OnlyTitle != nil {
-		f.m[consts.Title] = *f.OnlyTitle
-	}
-}
-
-func (f *MongoFilter) CheckOnlyText() {
-	if f.OnlyText != nil {
-		f.m[consts.Text] = *f.OnlyText
-	}
-}
-
-func (f *MongoFilter) CheckOnlyTag() {
-	if f.OnlyTag != nil {
-		f.m[consts.Tags] = bson.M{
-			"$elemMatch": bson.M{
-				"tagid": *f.OnlyTag,
-			},
+func (f *MongoFilter) CheckOnlyLabelId() {
+	if f.OnlyLabelId != nil {
+		f.m[consts.LabelIds] = bson.M{
+			"$in": []string{*f.OnlyLabelId},
 		}
 	}
 }
@@ -114,6 +89,7 @@ func newPostFilter(options *FilterOptions) []types.Query {
 
 func (f *postFilter) toEsQuery() []types.Query {
 	f.CheckOnlyUserId()
+	f.CheckOnlyStatus()
 	return f.q
 }
 
@@ -122,6 +98,15 @@ func (f *postFilter) CheckOnlyUserId() {
 		f.q = append(f.q, types.Query{
 			Term: map[string]types.TermQuery{
 				consts.UserId: {Value: *f.OnlyUserId},
+			},
+		})
+	}
+}
+func (f *postFilter) CheckOnlyStatus() {
+	if f.OnlyStatus != nil {
+		f.q = append(f.q, types.Query{
+			Term: map[string]types.TermQuery{
+				consts.Status: {Value: *f.OnlyStatus},
 			},
 		})
 	}

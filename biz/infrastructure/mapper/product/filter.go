@@ -2,7 +2,6 @@ package product
 
 import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
-	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
@@ -71,15 +70,9 @@ func (f *MongoFilter) CheckOnlyProductId() {
 }
 
 func (f *MongoFilter) CheckOnlyTags() {
-	if f.OnlyTags != nil {
-		if f.OnlySetRelation != nil {
-			if *f.OnlySetRelation == int64(gencontent.SetRelation_Set_intersection) {
-				f.m[consts.Tags] = bson.M{"$all": f.OnlyTags}
-			} else if *f.OnlySetRelation == int64(gencontent.SetRelation_Set_unionSet) {
-				f.m[consts.Tags] = bson.M{"$in": f.OnlyTags}
-			}
-		}
-	}
+	//if f.OnlyTags != nil {
+	//
+	//}
 }
 
 func (f *MongoFilter) CheckOnlyStatus() {

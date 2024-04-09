@@ -52,13 +52,13 @@ func (s *PostService) GetPostsByPostIds(ctx context.Context, req *gencontent.Get
 func (s *PostService) CreatePost(ctx context.Context, req *gencontent.CreatePostReq) (resp *gencontent.CreatePostResp, err error) {
 	resp = new(gencontent.CreatePostResp)
 	if resp.PostId, err = s.PostMongoMapper.Insert(ctx, &postmapper.Post{
-		Title:  req.Title,
-		Text:   req.Text,
-		Url:    req.Url,
-		Tags:   req.Tags,
-		UserId: req.UserId,
-		Status: req.Status,
-		Score_: 0,
+		Title:    req.Title,
+		Text:     req.Text,
+		Url:      req.Url,
+		LabelIds: req.LabelIds,
+		UserId:   req.UserId,
+		Status:   req.Status,
+		Score_:   0,
 	}); err != nil {
 		return resp, err
 	}
@@ -75,7 +75,7 @@ func (s *PostService) GetPost(ctx context.Context, req *gencontent.GetPostReq) (
 		UserId:     post.UserId,
 		Title:      post.Title,
 		Text:       post.Text,
-		Tags:       post.Tags,
+		LabelIds:   post.LabelIds,
 		Url:        post.Url,
 		Status:     post.Status,
 		CreateTime: post.CreateAt.UnixMilli(),
@@ -92,15 +92,9 @@ func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq)
 
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
 	filter := convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions)
-	if req.SearchOptions != nil {
-		switch o := req.SearchOptions.Type.(type) {
-		case *gencontent.SearchOptions_AllFieldsKey:
-			posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(o),
-				filter, p, esp.ScoreCursorType)
-		case *gencontent.SearchOptions_MultiFieldsKey:
-			posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostMultiFieldsSearchQuery(o),
-				filter, p, esp.ScoreCursorType)
-		}
+	if req.SearchKeyword != nil {
+		posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(*req.SearchKeyword),
+			filter, p, esp.ScoreCursorType)
 	} else {
 		posts, total, err = s.PostMongoMapper.FindManyAndCount(ctx, filter,
 			p, mongop.IdCursorType)
@@ -123,12 +117,13 @@ func (s *PostService) UpdatePost(ctx context.Context, req *gencontent.UpdatePost
 	oid, _ := primitive.ObjectIDFromHex(req.PostId)
 
 	if err = s.PostMongoMapper.Update(ctx, &postmapper.Post{
-		ID:     oid,
-		Title:  req.Title,
-		Text:   req.Text,
-		Url:    req.Url,
-		Tags:   req.Tags,
-		Status: req.Status,
+		ID:       oid,
+		Title:    req.Title,
+		Text:     req.Text,
+		Url:      req.Url,
+		LabelIds: req.LabelIds,
+		Status:   req.Status,
+		Score_:   0,
 	}); err != nil {
 		return resp, err
 	}

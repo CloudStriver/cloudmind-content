@@ -172,7 +172,7 @@ func PostMapperToPost(in *postmapper.Post) *gencontent.Post {
 		UserId:     in.UserId,
 		Title:      in.Title,
 		Text:       in.Text,
-		Tags:       in.Tags,
+		LabelIds:   in.LabelIds,
 		Status:     in.Status,
 		Url:        in.Url,
 		CreateTime: in.CreateAt.UnixMilli(),
@@ -221,63 +221,13 @@ func ConvertFileMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsK
 	return q
 }
 
-func ConvertPostAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey) []types.Query {
+func ConvertPostAllFieldsSearchQuery(in string) []types.Query {
 	return []types.Query{{
 		MultiMatch: &types.MultiMatchQuery{
-			Query:  in.AllFieldsKey,
-			Fields: []string{consts.Name + "^3", consts.ID, consts.Tags, consts.Title + "^3", consts.Text},
+			Query:  in,
+			Fields: []string{consts.Title + "^3", consts.Text},
 		}},
 	}
-}
-
-func ConvertPostMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsKey) []types.Query {
-	var q []types.Query
-	if in.MultiFieldsKey.Title != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.Title: {
-					Query: *in.MultiFieldsKey.Title + "^3",
-				},
-			},
-		})
-	}
-	if in.MultiFieldsKey.Text != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.Text: {
-					Query: *in.MultiFieldsKey.Text,
-				},
-			},
-		})
-	}
-	if in.MultiFieldsKey.Name != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.Name: {
-					Query: *in.MultiFieldsKey.Name + "^3",
-				},
-			},
-		})
-	}
-	if in.MultiFieldsKey.Id != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.ID: {
-					Query: *in.MultiFieldsKey.Id,
-				},
-			},
-		})
-	}
-	if in.MultiFieldsKey.Tag != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.Tags: {
-					Query: *in.MultiFieldsKey.Tag,
-				},
-			},
-		})
-	}
-	return q
 }
 
 func ProductFilterOptionsToFilterOptions(in *gencontent.ProductFilterOptions) *productmapper.FilterOptions {
@@ -319,50 +269,9 @@ func ConvertProductAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKe
 	return []types.Query{{
 		MultiMatch: &types.MultiMatchQuery{
 			Query:  in.AllFieldsKey,
-			Fields: []string{consts.Name + "^3", consts.ID, consts.Tags, consts.Description},
+			Fields: []string{consts.Name + "^3", consts.Description},
 		}},
 	}
-}
-
-func ConvertProductMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsKey) []types.Query {
-	var q []types.Query
-	if in.MultiFieldsKey.Name != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.Name: {
-					Query: *in.MultiFieldsKey.Name + "^3",
-				},
-			},
-		})
-	}
-	if in.MultiFieldsKey.Id != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.ID: {
-					Query: *in.MultiFieldsKey.Id,
-				},
-			},
-		})
-	}
-	if in.MultiFieldsKey.Tag != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.Tags: {
-					Query: *in.MultiFieldsKey.Tag,
-				},
-			},
-		})
-	}
-	if in.MultiFieldsKey.Description != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.Description: {
-					Query: *in.MultiFieldsKey.Description,
-				},
-			},
-		})
-	}
-	return q
 }
 
 func OrderFilterOptionsToFilterOptions(in *gencontent.OrderFilterOptions) *ordermapper.FilterOptions {
@@ -527,43 +436,11 @@ func ConvertCouponMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiField
 	return q
 }
 
-func ConvertUserAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey) []types.Query {
+func ConvertUserAllFieldsSearchQuery(in string) []types.Query {
 	return []types.Query{{
 		MultiMatch: &types.MultiMatchQuery{
-			Query:  in.AllFieldsKey,
-			Fields: []string{consts.Name + "^3", consts.ID, consts.Description},
+			Query:  in,
+			Fields: []string{consts.Name + "^3", consts.Description},
 		}},
 	}
-}
-
-func ConvertUserMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsKey) []types.Query {
-	var q []types.Query
-	if in.MultiFieldsKey.Name != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.Name: {
-					Query: *in.MultiFieldsKey.Name + "^3",
-				},
-			},
-		})
-	}
-	if in.MultiFieldsKey.Id != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.ID: {
-					Query: *in.MultiFieldsKey.Id,
-				},
-			},
-		})
-	}
-	if in.MultiFieldsKey.Description != nil {
-		q = append(q, types.Query{
-			Match: map[string]types.MatchQuery{
-				consts.Description: {
-					Query: *in.MultiFieldsKey.Description,
-				},
-			},
-		})
-	}
-	return q
 }
