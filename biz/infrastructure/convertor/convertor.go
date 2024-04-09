@@ -9,7 +9,6 @@ import (
 	productmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/product"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	usermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
-	labelmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/zone"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/basic"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
@@ -34,9 +33,9 @@ func UserMapperToUser(in *usermapper.User) *gencontent.User {
 	}
 }
 
-func FileMapperToFile(data *file.File) *gencontent.FileInfo {
-	return &gencontent.FileInfo{
-		FileId:      data.ID.Hex(),
+func FileMapperToFile(data *file.File) *gencontent.File {
+	return &gencontent.File{
+		Id:          data.ID.Hex(),
 		UserId:      data.UserId,
 		Name:        data.Name,
 		Type:        data.Type,
@@ -52,27 +51,6 @@ func FileMapperToFile(data *file.File) *gencontent.FileInfo {
 		Labels:      data.Labels,
 		CreateAt:    data.CreateAt.UnixMilli(),
 		UpdateAt:    data.UpdateAt.UnixMilli(),
-	}
-}
-
-func FileToFileMapper(data *gencontent.File) *file.File {
-	oid, _ := primitive.ObjectIDFromHex(data.FileId)
-	return &file.File{
-		ID:          oid,
-		UserId:      data.UserId,
-		Name:        data.Name,
-		Type:        data.Type,
-		Category:    data.Category,
-		Path:        data.Path,
-		FatherId:    data.FatherId,
-		Size:        data.SpaceSize,
-		FileMd5:     data.Md5,
-		IsDel:       data.IsDel,
-		Zone:        data.Zone,
-		SubZone:     data.SubZone,
-		Description: data.Description,
-		Labels:      data.Labels,
-		AuditStatus: data.AuditStatus,
 	}
 }
 
@@ -174,34 +152,14 @@ func ParsePagination(opts *basic.PaginationOptions) (p *pagination.PaginationOpt
 	return
 }
 
-func ZoneMapperToZone(data *labelmapper.Zone) *gencontent.Zone {
-	return &gencontent.Zone{
-		Id:       data.ID.Hex(),
-		FatherId: data.FatherId,
-		Value:    data.Value,
-	}
-}
-
-func ZoneToZoneMapper(data *gencontent.Zone) *labelmapper.Zone {
-	oid, _ := primitive.ObjectIDFromHex(data.Id)
-	return &labelmapper.Zone{
-		ID:       oid,
-		FatherId: data.FatherId,
-		Value:    data.Value,
-	}
-}
-
 func PostFilterOptionsToFilterOptions(in *gencontent.PostFilterOptions) *postmapper.FilterOptions {
 	if in == nil {
 		return &postmapper.FilterOptions{}
 	}
 	return &postmapper.FilterOptions{
-		OnlyUserId: in.OnlyUserId,
-		OnlyTitle:  in.OnlyTitle,
-		OnlyText:   in.OnlyText,
-		OnlyTag:    in.OnlyTag,
-		OnlyStatus: in.OnlyStatus,
-		OnlyZoneId: in.OnlyZoneId,
+		OnlyUserId:  in.OnlyUserId,
+		OnlyLabelId: in.OnlyLabelId,
+		OnlyStatus:  in.OnlyStatus,
 	}
 }
 

@@ -79,14 +79,31 @@ func (s *FileService) GetFileIsExist(ctx context.Context, req *gencontent.GetFil
 func (s *FileService) GetFile(ctx context.Context, req *gencontent.GetFileReq) (resp *gencontent.GetFileResp, err error) {
 	resp = new(gencontent.GetFileResp)
 	var file *filemapper.File
-	if file, err = s.FileMongoMapper.FindOne(ctx, req.FileId); err != nil {
+	if file, err = s.FileMongoMapper.FindOne(ctx, req.Id); err != nil {
 		return resp, err
 	}
-	resp.File = convertor.FileMapperToFile(file)
+	resp = &gencontent.GetFileResp{
+		UserId:      file.UserId,
+		Name:        file.Name,
+		Type:        file.Type,
+		Path:        file.Path,
+		FatherId:    file.FatherId,
+		SpaceSize:   file.Size,
+		Md5:         file.FileMd5,
+		IsDel:       file.IsDel,
+		Zone:        file.Zone,
+		SubZone:     file.SubZone,
+		Description: file.Description,
+		Labels:      file.Labels,
+		AuditStatus: file.AuditStatus,
+		CreateAt:    file.CreateAt.UnixMilli(),
+		UpdateAt:    file.UpdateAt.UnixMilli(),
+		DeleteAt:    file.DeletedAt.UnixMilli(),
+	}
 
 	// 如果是获取文件夹大小，需要计算文件夹大小
-	if req.IsGetSize && resp.File.SpaceSize == int64(gencontent.Folder_Folder_Size) {
-		if resp.File.SpaceSize, err = s.GetFolderSize(ctx, resp.File.Path); err != nil {
+	if req.IsGetSize && resp.SpaceSize == int64(gencontent.Folder_Folder_Size) {
+		if resp.SpaceSize, err = s.GetFolderSize(ctx, resp.Path); err != nil {
 			return resp, err
 		}
 	}
@@ -96,18 +113,18 @@ func (s *FileService) GetFile(ctx context.Context, req *gencontent.GetFileReq) (
 func (s *FileService) GetFilesByIds(ctx context.Context, req *gencontent.GetFilesByIdsReq) (resp *gencontent.GetFilesByIdsResp, err error) {
 	resp = new(gencontent.GetFilesByIdsResp)
 	var files []*filemapper.File
-	if files, err = s.FileMongoMapper.FindManyByIds(ctx, req.FileIds); err != nil {
+	if files, err = s.FileMongoMapper.FindManyByIds(ctx, req.Ids); err != nil {
 		return resp, err
 	}
 
 	// 创建映射：文件ID到文件
-	fileMap := make(map[string]*filemapper.File, len(req.FileIds))
+	fileMap := make(map[string]*filemapper.File, len(req.Ids))
 	lo.ForEach(files, func(file *filemapper.File, _ int) {
 		fileMap[file.ID.Hex()] = file
 	})
 
 	// 按req.FileIds中的ID顺序映射和转换
-	resp.Files = lo.Map(req.FileIds, func(id string, _ int) *gencontent.FileInfo {
+	resp.Files = lo.Map(req.Ids, func(id string, _ int) *gencontent.File {
 		if file, ok := fileMap[id]; ok {
 			return convertor.FileMapperToFile(file)
 		}
@@ -129,7 +146,7 @@ func (s *FileService) GetRecycleBinFiles(ctx context.Context, req *gencontent.Ge
 	if p.LastToken != nil {
 		resp.Token = *p.LastToken
 	}
-	resp.Files = lo.Map[*filemapper.File, *gencontent.FileInfo](files, func(item *filemapper.File, _ int) *gencontent.FileInfo {
+	resp.Files = lo.Map[*filemapper.File, *gencontent.File](files, func(item *filemapper.File, _ int) *gencontent.File {
 		return convertor.FileMapperToFile(item)
 	})
 	resp.Total = total
@@ -148,7 +165,7 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 
 	if err = mr.Finish(func() error {
 		getFileResp, err1 := s.GetFile(ctx, &gencontent.GetFileReq{
-			FileId: req.GetFilterOptions().GetOnlyFatherId(),
+			Id: req.GetFilterOptions().GetOnlyFatherId(),
 		})
 		if errors.Is(err1, consts.ErrNotFound) || errors.Is(err1, consts.ErrInvalidId) {
 			resp.FatherIdPath = req.GetFilterOptions().GetOnlyFatherId()
@@ -157,14 +174,14 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 		if err1 != nil {
 			return err1
 		}
-		resp.FatherIdPath = getFileResp.File.Path
-		paths := strings.Split(getFileResp.File.Path, "/")
+		resp.FatherIdPath = getFileResp.Path
+		paths := strings.Split(getFileResp.Path, "/")
 		if len(paths) > 1 {
 			var res *gencontent.GetFilesByIdsResp
-			if res, err1 = s.GetFilesByIds(ctx, &gencontent.GetFilesByIdsReq{FileIds: paths[1:]}); err1 != nil {
+			if res, err1 = s.GetFilesByIds(ctx, &gencontent.GetFilesByIdsReq{Ids: paths[1:]}); err1 != nil {
 				return err1
 			}
-			lo.ForEach(res.Files, func(item *gencontent.FileInfo, _ int) {
+			lo.ForEach(res.Files, func(item *gencontent.File, _ int) {
 				resp.FatherNamePath += "/" + item.Name
 			})
 		}
@@ -212,7 +229,7 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 			resp.Token = *p.LastToken
 		}
 		resp.Total = total
-		resp.Files = lo.Map[*filemapper.File, *gencontent.FileInfo](files, func(item *filemapper.File, _ int) *gencontent.FileInfo {
+		resp.Files = lo.Map[*filemapper.File, *gencontent.File](files, func(item *filemapper.File, _ int) *gencontent.File {
 			return convertor.FileMapperToFile(item)
 		})
 		return nil
@@ -245,13 +262,13 @@ func (s *FileService) CheckShareFile(ctx context.Context, req *gencontent.CheckS
 		})
 		return nil
 	}, func() error {
-		res, err1 = s.GetFile(ctx, &gencontent.GetFileReq{FileId: req.FileId, IsGetSize: false})
+		res, err1 = s.GetFile(ctx, &gencontent.GetFileReq{Id: req.Id, IsGetSize: false})
 		return err1
 	}); err != nil {
 		return resp, err
 	}
 	for _, file := range shareFiles {
-		if strings.HasPrefix(file.Path, res.File.Path) {
+		if strings.HasPrefix(file.Path, res.Path) {
 			resp.Ok = true
 			break
 		}
@@ -266,7 +283,7 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 	case req.OnlyFatherId != nil:
 		var res *gencontent.CheckShareFileResp
 		var data *gencontent.GetFileListResp
-		if res, err = s.CheckShareFile(ctx, &gencontent.CheckShareFileReq{FileIds: req.FileIds, FileId: *req.OnlyFatherId}); err != nil {
+		if res, err = s.CheckShareFile(ctx, &gencontent.CheckShareFileReq{FileIds: req.Ids, Id: *req.OnlyFatherId}); err != nil {
 			return resp, err
 		}
 		if res.Ok {
@@ -285,10 +302,10 @@ func (s *FileService) GetFileBySharingCode(ctx context.Context, req *gencontent.
 		}
 	default:
 		var shareFiles []*filemapper.File
-		if shareFiles, err = s.FileMongoMapper.FindManyByIds(ctx, req.FileIds); err != nil {
+		if shareFiles, err = s.FileMongoMapper.FindManyByIds(ctx, req.Ids); err != nil {
 			return resp, err
 		}
-		resp.Files = lo.FilterMap[*filemapper.File, *gencontent.FileInfo](shareFiles, func(item *filemapper.File, _ int) (*gencontent.FileInfo, bool) {
+		resp.Files = lo.FilterMap[*filemapper.File, *gencontent.File](shareFiles, func(item *filemapper.File, _ int) (*gencontent.File, bool) {
 			switch item.IsDel {
 			case int64(gencontent.Deletion_Deletion_notDel):
 				return convertor.FileMapperToFile(item), true
@@ -311,7 +328,18 @@ func (s *FileService) GetFolderSize(ctx context.Context, path string) (resp int6
 
 func (s *FileService) CreateFile(ctx context.Context, req *gencontent.CreateFileReq) (resp *gencontent.CreateFileResp, err error) {
 	resp = new(gencontent.CreateFileResp)
-	resp.FileId, resp.Name, err = s.FileMongoMapper.Insert(ctx, convertor.FileToFileMapper(req.File))
+	resp.Id, resp.Name, err = s.FileMongoMapper.Insert(ctx, &filemapper.File{
+		ID:       primitive.NilObjectID,
+		UserId:   req.UserId,
+		Name:     req.Name,
+		Category: req.Category,
+		Type:     req.Type,
+		Path:     req.Path,
+		FatherId: req.FatherId,
+		Size:     req.SpaceSize,
+		FileMd5:  req.Md5,
+		IsDel:    int64(gencontent.Deletion_Deletion_notDel),
+	})
 	if err != nil {
 		return resp, err
 	}
@@ -320,7 +348,16 @@ func (s *FileService) CreateFile(ctx context.Context, req *gencontent.CreateFile
 
 func (s *FileService) UpdateFile(ctx context.Context, req *gencontent.UpdateFileReq) (resp *gencontent.UpdateFileResp, err error) {
 	resp = new(gencontent.UpdateFileResp)
-	data := convertor.FileToFileMapper(req.File)
+	var fileId primitive.ObjectID
+	if fileId, err = primitive.ObjectIDFromHex(req.Id); err != nil {
+		return resp, err
+	}
+	data := &filemapper.File{
+		ID:          fileId,
+		UserId:      req.UserId,
+		Name:        req.Name,
+		AuditStatus: req.AuditStatus,
+	}
 	if _, err = s.FileMongoMapper.Update(ctx, data); err != nil {
 		return resp, err
 	}
@@ -331,7 +368,7 @@ func (s *FileService) UpdateFile(ctx context.Context, req *gencontent.UpdateFile
 func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq) (resp *gencontent.MoveFileResp, err error) {
 	resp = new(gencontent.MoveFileResp)
 	var oid primitive.ObjectID
-	if oid, err = primitive.ObjectIDFromHex(req.FileId); err != nil {
+	if oid, err = primitive.ObjectIDFromHex(req.Id); err != nil {
 		return resp, consts.ErrInvalidId
 	}
 	tx := s.FileMongoMapper.StartClient()
@@ -346,7 +383,7 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 				return err
 			}
 			for _, v := range data {
-				if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{ID: v.ID, Path: req.NewPath + v.Path[len(req.OldPath)-len(req.FileId)-1:]}); err != nil {
+				if _, err = s.FileMongoMapper.Update(sessionContext, &filemapper.File{ID: v.ID, Path: req.NewPath + v.Path[len(req.OldPath)-len(req.Id)-1:]}); err != nil {
 					if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
 						log.CtxError(ctx, "移动文件中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
 					}
@@ -379,7 +416,7 @@ func (s *FileService) CompletelyRemoveFile(ctx context.Context, req *gencontent.
 			return err
 		}
 		for _, file := range req.Files {
-			ids = append(ids, file.FileId)
+			ids = append(ids, file.Id)
 			if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
 				var data []*filemapper.File
 				filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
@@ -447,7 +484,7 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 			return err
 		}
 		for _, file := range req.Files {
-			ids = append(ids, file.FileId)
+			ids = append(ids, file.Id)
 			if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
 				var data []*filemapper.File
 				filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
@@ -632,7 +669,7 @@ func (s *FileService) GetShareList(ctx context.Context, req *gencontent.GetShare
 		total      int64
 	)
 	p := convertor.ParsePagination(req.PaginationOptions)
-	if shareCodes, total, err = s.ShareFileMongoMapper.FindManyAndCount(ctx, convertor.ShareFileFilterOptionsToShareCodeOptions(req.ShareFileFilterOptions),
+	if shareCodes, total, err = s.ShareFileMongoMapper.FindManyAndCount(ctx, convertor.ShareFileFilterOptionsToShareCodeOptions(req.FilterOptions),
 		p, mongop.CreateAtDescCursorType); err != nil {
 		return resp, err
 	}
@@ -649,10 +686,17 @@ func (s *FileService) GetShareList(ctx context.Context, req *gencontent.GetShare
 
 func (s *FileService) CreateShareCode(ctx context.Context, req *gencontent.CreateShareCodeReq) (resp *gencontent.CreateShareCodeResp, err error) {
 	resp = new(gencontent.CreateShareCodeResp)
-	data := convertor.ShareFileToShareFileMapper(req.ShareFile)
-	data.CreateAt = time.Now()
-	if req.ShareFile.EffectiveTime >= 0 {
-		data.DeletedAt = data.CreateAt.Add(time.Duration(req.ShareFile.EffectiveTime)*time.Second + time.Duration(s.Config.DeletionCoolingOffPeriod)*time.Hour)
+	data := &sharefilemapper.ShareFile{
+		ID:            primitive.NilObjectID,
+		UserId:        req.UserId,
+		Name:          req.Name,
+		FileList:      req.FileList,
+		EffectiveTime: req.EffectiveTime,
+		BrowseNumber:  lo.ToPtr(int64(0)),
+		CreateAt:      time.Now(),
+	}
+	if req.EffectiveTime >= 0 {
+		data.DeletedAt = data.CreateAt.Add(time.Duration(req.EffectiveTime)*time.Second + time.Duration(s.Config.DeletionCoolingOffPeriod)*time.Hour)
 	}
 	if resp.Code, resp.Key, err = s.ShareFileMongoMapper.Insert(ctx, data); err != nil {
 		return resp, err
@@ -662,8 +706,15 @@ func (s *FileService) CreateShareCode(ctx context.Context, req *gencontent.Creat
 }
 
 func (s *FileService) UpdateShareCode(ctx context.Context, req *gencontent.UpdateShareCodeReq) (resp *gencontent.UpdateShareCodeResp, err error) {
-	data := convertor.ShareFileToShareFileMapper(req.ShareFile)
-	if _, err = s.ShareFileMongoMapper.Update(ctx, data); err != nil {
+	var code primitive.ObjectID
+	if code, err = primitive.ObjectIDFromHex(req.Code); err != nil {
+		return resp, consts.ErrInvalidId
+	}
+	if _, err = s.ShareFileMongoMapper.Update(ctx, &sharefilemapper.ShareFile{
+		ID:           code,
+		Name:         req.Name,
+		BrowseNumber: lo.ToPtr(req.BrowseNumber),
+	}); err != nil {
 		return resp, err
 	}
 	return resp, nil
@@ -683,8 +734,16 @@ func (s *FileService) ParsingShareCode(ctx context.Context, req *gencontent.Pars
 	if shareFile, err = s.ShareFileMongoMapper.FindOne(ctx, req.Code); err != nil {
 		return resp, err
 	}
-	res := convertor.ShareFileMapperToShareFile(shareFile)
-	resp.ShareFile = res
+	resp = &gencontent.ParsingShareCodeResp{
+		UserId:        shareFile.UserId,
+		Name:          shareFile.Name,
+		Status:        convertor.IsExpired(shareFile.CreateAt, shareFile.EffectiveTime),
+		EffectiveTime: shareFile.EffectiveTime,
+		BrowseNumber:  *shareFile.BrowseNumber,
+		CreateAt:      shareFile.CreateAt.UnixMilli(),
+		FileList:      shareFile.FileList,
+		Key:           shareFile.Key,
+	}
 	return resp, nil
 }
 
@@ -700,7 +759,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 		if err1 = sessionContext.StartTransaction(); err1 != nil {
 			return err1
 		}
-		if resp.FileId, resp.Name, err1 = s.FileMongoMapper.FindAndInsert(sessionContext, &filemapper.File{ // 创建根文件
+		if resp.Id, resp.Name, err1 = s.FileMongoMapper.FindAndInsert(sessionContext, &filemapper.File{ // 创建根文件
 			UserId:   req.UserId,
 			Name:     req.Name,
 			Type:     req.Type,
@@ -718,7 +777,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 		if req.SpaceSize == int64(gencontent.Folder_Folder_Size) { // 若是文件夹，开始根据原文件夹层层创建
 			var front kv
 			queue := make([]kv, 0, s.Config.InitialSliceLength)
-			queue = append(queue, kv{id: req.FileId, path: req.NewPath + "/" + resp.FileId})
+			queue = append(queue, kv{id: req.Id, path: req.NewPath + "/" + resp.Id})
 			for len(queue) > 0 {
 				front = queue[0]
 				queue = queue[1:]
@@ -802,7 +861,7 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
-		ids = append(ids, req.FileId)
+		ids = append(ids, req.Id)
 		if req.SpaceSize == int64(gencontent.Folder_Folder_Size) {
 			var data []*filemapper.File
 			filter := bson.M{consts.Path: bson.M{"$regex": "^" + req.Path + "/"}}
@@ -825,7 +884,7 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 		}
 		return nil
 	})
-	resp.FileIds = ids
+	resp.Ids = ids
 	return resp, err
 }
 

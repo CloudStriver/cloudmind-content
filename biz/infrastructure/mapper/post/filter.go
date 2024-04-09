@@ -10,13 +10,8 @@ import (
 
 type FilterOptions struct {
 	OnlyUserId  *string
-	OnlyPostId  *string
-	OnlyPostIds []string
-	OnlyTitle   *string
-	OnlyText    *string
-	OnlyTag     *string
+	OnlyLabelId *string
 	OnlyStatus  *int64
-	OnlyZoneId  *string
 }
 
 type MongoFilter struct {
