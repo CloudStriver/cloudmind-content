@@ -27,7 +27,6 @@ var AllProvider = wire.NewSet(
 var ApplicationSet = wire.NewSet(
 	service.FileSet,
 	service.PostSet,
-	service.ZoneSet,
 	service.UserSet,
 	service.CouponSet,
 	service.ProductSet,
