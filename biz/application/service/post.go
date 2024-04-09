@@ -5,7 +5,6 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	postmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
-	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/pconvertor"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
@@ -92,9 +91,9 @@ func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq)
 
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
 	filter := convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions)
-	if req.SearchKeyword != nil {
-		posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(*req.SearchKeyword),
-			filter, p, esp.ScoreCursorType)
+	if req.SearchOption != nil {
+		posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(*req.SearchOption.SearchKeyword),
+			filter, p, req.SearchOption.SearchSortType)
 	} else {
 		posts, total, err = s.PostMongoMapper.FindManyAndCount(ctx, filter,
 			p, mongop.IdCursorType)
