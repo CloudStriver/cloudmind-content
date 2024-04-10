@@ -11,13 +11,24 @@ type ContentServerImpl struct {
 	*config.Config
 	FileService      service.IFileService
 	PostService      service.IPostService
-	ZoneService      service.IZoneService
 	UserService      service.IUserService
 	ProductService   service.IProductService
 	CouponService    service.ICouponService
 	OrderService     service.IOrderService
 	RecommendService service.IRecommendService
 	HotService       service.IHotService
+}
+
+func (s *ContentServerImpl) GetPublicFile(ctx context.Context, req *content.GetPublicFileReq) (res *content.GetPublicFileResp, err error) {
+	return s.FileService.GetPublicFile(ctx, req)
+}
+
+func (s *ContentServerImpl) GetPublicFilesByIds(ctx context.Context, req *content.GetPublicFilesByIdsReq) (res *content.GetPublicFilesByIdsResp, err error) {
+	return s.FileService.GetPublicFileByIds(ctx, req)
+}
+
+func (s *ContentServerImpl) GetPublicFileList(ctx context.Context, req *content.GetPublicFileListReq) (res *content.GetPublicFileListResp, err error) {
+	return s.FileService.GetPublicFileList(ctx, req)
 }
 
 func (s *ContentServerImpl) MakeFilePrivate(ctx context.Context, req *content.MakeFilePrivateReq) (res *content.MakeFilePrivateResp, err error) {

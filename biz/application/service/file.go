@@ -8,6 +8,7 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/kq"
 	filemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
+	publicfilemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/publicfile"
 	sharefilemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	"github.com/CloudStriver/cloudmind-mq/app/util/message"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
@@ -31,8 +32,11 @@ import (
 type IFileService interface {
 	GetFileIsExist(ctx context.Context, req *gencontent.GetFileIsExistReq) (resp *gencontent.GetFileIsExistResp, err error)
 	GetFile(ctx context.Context, req *gencontent.GetFileReq) (resp *gencontent.GetFileResp, err error)
+	GetPublicFile(ctx context.Context, req *gencontent.GetPublicFileReq) (resp *gencontent.GetPublicFileResp, err error)
 	GetFilesByIds(ctx context.Context, req *gencontent.GetFilesByIdsReq) (resp *gencontent.GetFilesByIdsResp, err error)
+	GetPublicFileByIds(ctx context.Context, req *gencontent.GetPublicFilesByIdsReq) (resp *gencontent.GetPublicFilesByIdsResp, err error)
 	GetFileList(ctx context.Context, req *gencontent.GetFileListReq) (resp *gencontent.GetFileListResp, err error)
+	GetPublicFileList(ctx context.Context, req *gencontent.GetPublicFileListReq) (resp *gencontent.GetPublicFileListResp, err error)
 	GetFileBySharingCode(ctx context.Context, req *gencontent.GetFileBySharingCodeReq) (resp *gencontent.GetFileBySharingCodeResp, err error)
 	GetRecycleBinFiles(ctx context.Context, req *gencontent.GetRecycleBinFilesReq) (resp *gencontent.GetRecycleBinFilesResp, err error)
 	GetFolderSize(ctx context.Context, path string) (resp int64, err error)
@@ -55,11 +59,13 @@ type IFileService interface {
 }
 
 type FileService struct {
-	Config               *config.Config
-	FileMongoMapper      filemapper.IMongoMapper
-	FileEsMapper         filemapper.IFileEsMapper
-	ShareFileMongoMapper sharefilemapper.IMongoMapper
-	DeleteFileRelationKq *kq.DeleteFileRelationKq
+	Config                *config.Config
+	FileMongoMapper       filemapper.IMongoMapper
+	PublicFileMongoMapper publicfilemapper.IMongoMapper
+	PublicFileEsMapper    publicfilemapper.IFileEsMapper
+	FileEsMapper          filemapper.IFileEsMapper
+	ShareFileMongoMapper  sharefilemapper.IMongoMapper
+	DeleteFileRelationKq  *kq.DeleteFileRelationKq
 }
 
 var FileSet = wire.NewSet(
@@ -83,22 +89,17 @@ func (s *FileService) GetFile(ctx context.Context, req *gencontent.GetFileReq) (
 		return resp, err
 	}
 	resp = &gencontent.GetFileResp{
-		UserId:      file.UserId,
-		Name:        file.Name,
-		Type:        file.Type,
-		Path:        file.Path,
-		FatherId:    file.FatherId,
-		SpaceSize:   file.Size,
-		Md5:         file.FileMd5,
-		IsDel:       file.IsDel,
-		Zone:        file.Zone,
-		SubZone:     file.SubZone,
-		Description: file.Description,
-		Labels:      file.Labels,
-		AuditStatus: file.AuditStatus,
-		CreateAt:    file.CreateAt.UnixMilli(),
-		UpdateAt:    file.UpdateAt.UnixMilli(),
-		DeleteAt:    file.DeletedAt.UnixMilli(),
+		UserId:    file.UserId,
+		Name:      file.Name,
+		Type:      file.Type,
+		Path:      file.Path,
+		FatherId:  file.FatherId,
+		SpaceSize: file.Size,
+		Md5:       file.FileMd5,
+		IsDel:     file.IsDel,
+		CreateAt:  file.CreateAt.UnixMilli(),
+		UpdateAt:  file.UpdateAt.UnixMilli(),
+		DeleteAt:  file.DeletedAt.UnixMilli(),
 	}
 
 	// 如果是获取文件夹大小，需要计算文件夹大小
@@ -106,6 +107,27 @@ func (s *FileService) GetFile(ctx context.Context, req *gencontent.GetFileReq) (
 		if resp.SpaceSize, err = s.GetFolderSize(ctx, resp.Path); err != nil {
 			return resp, err
 		}
+	}
+	return resp, nil
+}
+
+func (s *FileService) GetPublicFile(ctx context.Context, req *gencontent.GetPublicFileReq) (resp *gencontent.GetPublicFileResp, err error) {
+	resp = new(gencontent.GetPublicFileResp)
+	var file *publicfilemapper.PublicFile
+	if file, err = s.PublicFileMongoMapper.FindOne(ctx, req.Id); err != nil {
+		return resp, err
+	}
+	resp = &gencontent.GetPublicFileResp{
+		UserId:      file.UserId,
+		Name:        file.Name,
+		Type:        file.Type,
+		SpaceSize:   file.Size,
+		Md5:         file.FileMd5,
+		Zone:        file.Zone,
+		Description: file.Description,
+		Labels:      file.Labels,
+		AuditStatus: file.AuditStatus,
+		CreateAt:    file.CreateAt.UnixMilli(),
 	}
 	return resp, nil
 }
@@ -132,6 +154,30 @@ func (s *FileService) GetFilesByIds(ctx context.Context, req *gencontent.GetFile
 	})
 	return resp, nil
 }
+
+func (s *FileService) GetPublicFileByIds(ctx context.Context, req *gencontent.GetPublicFilesByIdsReq) (resp *gencontent.GetPublicFilesByIdsResp, err error) {
+	resp = new(gencontent.GetPublicFilesByIdsResp)
+	var files []*publicfilemapper.PublicFile
+	if files, err = s.PublicFileMongoMapper.FindManyByIds(ctx, req.Ids); err != nil {
+		return resp, err
+	}
+
+	// 创建映射：文件ID到文件
+	fileMap := make(map[string]*publicfilemapper.PublicFile, len(req.Ids))
+	lo.ForEach(files, func(file *publicfilemapper.PublicFile, _ int) {
+		fileMap[file.ID.Hex()] = file
+	})
+
+	// 按req.FileIds中的ID顺序映射和转换
+	resp.Files = lo.Map(req.Ids, func(id string, _ int) *gencontent.PublicFile {
+		if file, ok := fileMap[id]; ok {
+			return convertor.PublicFileMapperToPublicFile(file)
+		}
+		return nil // 或者处理找不到文件的情况
+	})
+	return resp, nil
+}
+
 func (s *FileService) GetRecycleBinFiles(ctx context.Context, req *gencontent.GetRecycleBinFilesReq) (resp *gencontent.GetRecycleBinFilesResp, err error) {
 	resp = new(gencontent.GetRecycleBinFilesResp)
 	var (
@@ -237,6 +283,63 @@ func (s *FileService) GetFileList(ctx context.Context, req *gencontent.GetFileLi
 		return resp, err
 	}
 
+	return resp, nil
+}
+
+func (s *FileService) GetPublicFileList(ctx context.Context, req *gencontent.GetPublicFileListReq) (resp *gencontent.GetPublicFileListResp, err error) {
+	resp = new(gencontent.GetPublicFileListResp)
+
+	var (
+		files  []*publicfilemapper.PublicFile
+		total  int64
+		cursor mongop.MongoCursor
+	)
+
+	switch req.GetSortOptions() {
+	case gencontent.SortOptions_SortOptions_createAtAsc:
+		cursor = mongop.CreateAtAscCursorType
+	case gencontent.SortOptions_SortOptions_createAtDesc:
+		cursor = mongop.CreateAtDescCursorType
+	case gencontent.SortOptions_SortOptions_updateAtAsc:
+		cursor = mongop.UpdateAtAscCursorType
+	case gencontent.SortOptions_SortOptions_updateAtDesc:
+		cursor = mongop.UpdateAtDescCursorType
+	case gencontent.SortOptions_SortOptions_NameDesc:
+		cursor = mongop.NameDescCursorType
+	case gencontent.SortOptions_SortOptions_NameAsc:
+		cursor = mongop.NameAscCursorType
+	case gencontent.SortOptions_SortOptions_TypeAsc:
+		cursor = mongop.TypeAscCursorType
+	case gencontent.SortOptions_SortOptions_TypeDesc:
+		cursor = mongop.TypeDescCursorType
+	}
+
+	filter := convertor.PublicFilterOptionsToFilterOptions(req.FilterOptions)
+	p := convertor.ParsePagination(req.PaginationOptions)
+	if req.SearchOptions == nil {
+		if files, total, err = s.PublicFileMongoMapper.FindManyAndCount(ctx, filter, p, cursor); err != nil {
+			return resp, err
+		}
+	} else {
+		switch o := req.SearchOptions.Type.(type) {
+		case *gencontent.SearchOptions_AllFieldsKey:
+			files, total, err = s.PublicFileEsMapper.Search(ctx, convertor.ConvertFileAllFieldsSearchQuery(o), filter, p, esp.ScoreCursorType)
+		case *gencontent.SearchOptions_MultiFieldsKey:
+			files, total, err = s.PublicFileEsMapper.Search(ctx, convertor.ConvertFileMultiFieldsSearchQuery(o), filter, p, esp.ScoreCursorType)
+		}
+		if err != nil {
+			log.CtxError(ctx, "搜索文件列表异常[%v]\n", err)
+			return resp, err
+		}
+	}
+
+	if p.LastToken != nil {
+		resp.Token = *p.LastToken
+	}
+	resp.Total = total
+	resp.Files = lo.Map[*publicfilemapper.PublicFile, *gencontent.PublicFile](files, func(item *publicfilemapper.PublicFile, _ int) *gencontent.PublicFile {
+		return convertor.PublicFileMapperToPublicFile(item)
+	})
 	return resp, nil
 }
 
@@ -353,10 +456,9 @@ func (s *FileService) UpdateFile(ctx context.Context, req *gencontent.UpdateFile
 		return resp, err
 	}
 	data := &filemapper.File{
-		ID:          fileId,
-		UserId:      req.UserId,
-		Name:        req.Name,
-		AuditStatus: req.AuditStatus,
+		ID:     fileId,
+		UserId: req.UserId,
+		Name:   req.Name,
 	}
 	if _, err = s.FileMongoMapper.Update(ctx, data); err != nil {
 		return resp, err
@@ -472,7 +574,6 @@ func (s *FileService) DeleteFile(ctx context.Context, req *gencontent.DeleteFile
 	if req.ClearCommunity || req.DeleteType == int64(gencontent.Deletion_Deletion_hardDel) {
 		update["$unset"] = bson.M{
 			consts.Zone:        "",
-			consts.SubZone:     "",
 			consts.Description: "",
 			consts.Labels:      "",
 		}
@@ -785,7 +886,7 @@ func (s *FileService) SaveFileToPrivateSpace(ctx context.Context, req *genconten
 				var data []*filemapper.File
 				var filter bson.M
 				if req.DocumentType == int64(gencontent.Space_Space_public) {
-					filter = bson.M{consts.FatherId: front.id, consts.Zone: bson.M{"$exists": true, "$ne": ""}, consts.SubZone: bson.M{"$exists": true, "$ne": ""}}
+					filter = bson.M{consts.FatherId: front.id, consts.Zone: bson.M{"$exists": true, "$ne": ""}}
 				} else if req.DocumentType == int64(gencontent.Space_Space_private) {
 					filter = bson.M{consts.FatherId: front.id}
 				} else {
@@ -850,7 +951,6 @@ func (s *FileService) AddFileToPublicSpace(ctx context.Context, req *gencontent.
 		"$set": bson.M{
 			consts.AuditStatus: int64(gencontent.AuditStatus_AuditStatus_wait),
 			consts.Zone:        req.Zone,
-			consts.SubZone:     req.SubZone,
 			consts.Description: req.Description,
 			consts.Labels:      req.Labels,
 		},
@@ -897,7 +997,7 @@ func (s *FileService) MakeFilePrivate(ctx context.Context, req *gencontent.MakeF
 	//	consts.Description: "",
 	//	consts.Labels:      "",
 	//}
-
+	//
 	//ids := make([]string, 0, s.Config.InitialSliceLength)
 	//tx := s.FileMongoMapper.StartClient()
 	//err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {

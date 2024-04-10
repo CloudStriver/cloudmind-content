@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/CloudStriver/cloudmind-mq v1.0.12-0.20240406143558-b7090c0fbb80
 	github.com/CloudStriver/go-pkg v0.0.0-20240329084540-20ca37a52fea
-	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240409064440-61e77dad030b
+	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240409092656-04655be255c3
 	github.com/bytedance/sonic v1.10.2
 	github.com/cloudwego/kitex v0.8.0
 	github.com/elastic/go-elasticsearch/v8 v8.11.1
@@ -62,7 +62,6 @@ require (
 	github.com/jhump/protoreflect v1.15.4 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kitex-contrib/monitor-prometheus v0.2.0 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

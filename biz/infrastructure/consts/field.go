@@ -19,7 +19,6 @@ const (
 	LabelIds           = "labelIds"
 	Zone               = "zone"
 	Key                = "key"
-	SubZone            = "subZone"
 	Status             = "status"
 	Title              = "title"
 	Text               = "text"

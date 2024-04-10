@@ -55,25 +55,20 @@ type (
 	}
 
 	File struct {
-		ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-		UserId      string             `bson:"userId,omitempty" json:"userId,omitempty"`
-		Name        string             `bson:"name,omitempty" json:"name,omitempty"`
-		Category    int64              `bson:"category,omitempty" json:"category,omitempty"`
-		Type        string             `bson:"type,omitempty" json:"type,omitempty"`
-		Path        string             `bson:"path,omitempty" json:"path,omitempty"`
-		FatherId    string             `bson:"fatherId,omitempty" json:"fatherId,omitempty"`
-		Size        int64              `bson:"size,omitempty" json:"size,omitempty"`
-		FileMd5     string             `bson:"fileMd5,omitempty" json:"fileMd5,omitempty"`
-		IsDel       int64              `bson:"isDel,omitempty" json:"isDel,omitempty"`
-		Zone        string             `bson:"zone,omitempty" json:"zone,omitempty"`
-		SubZone     string             `bson:"subZone,omitempty" json:"subZone,omitempty"`
-		Description string             `bson:"description,omitempty" json:"description,omitempty"`
-		AuditStatus int64              `bson:"auditStatus,omitempty" json:"auditStatus,omitempty"`
-		Labels      []string           `bson:"labels,omitempty" json:"labels,omitempty"`
-		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
-		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
-		DeletedAt   time.Time          `bson:"deletedAt,omitempty" json:"deletedAt,omitempty"`
-		Score_      float64            `bson:"score_,omitempty" json:"score_,omitempty"`
+		ID        primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+		UserId    string             `bson:"userId,omitempty" json:"userId,omitempty"`
+		Name      string             `bson:"name,omitempty" json:"name,omitempty"`
+		Category  int64              `bson:"category,omitempty" json:"category,omitempty"`
+		Type      string             `bson:"type,omitempty" json:"type,omitempty"`
+		Path      string             `bson:"path,omitempty" json:"path,omitempty"`
+		FatherId  string             `bson:"fatherId,omitempty" json:"fatherId,omitempty"`
+		Size      int64              `bson:"size,omitempty" json:"size,omitempty"`
+		FileMd5   string             `bson:"fileMd5,omitempty" json:"fileMd5,omitempty"`
+		IsDel     int64              `bson:"isDel,omitempty" json:"isDel,omitempty"`
+		CreateAt  time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
+		UpdateAt  time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
+		DeletedAt time.Time          `bson:"deletedAt,omitempty" json:"deletedAt,omitempty"`
+		Score_    float64            `bson:"score_,omitempty" json:"score_,omitempty"`
 	}
 
 	MongoMapper struct {
@@ -144,16 +139,7 @@ func (m *MongoMapper) FindManyByIds(ctx context.Context, ids []string) ([]*File,
 	var data []*File
 	fopts := &FilterOptions{OnlyFileIds: ids}
 	filter := makeMongoFilter(fopts)
-	// 创建聚合管道
-	pipeline := mongo.Pipeline{
-		{{"$match", filter}}, // 应用筛选条件
-		{{"$addFields", bson.M{
-			"description": bson.M{"$substrCP": []interface{}{"description", 0, 200}},
-		}}},
-	}
-
-	// 使用聚合管道执行查询
-	err := m.conn.Aggregate(ctx, &data, pipeline)
+	err := m.conn.Find(ctx, &data, filter)
 	switch {
 	case errors.Is(err, monc.ErrNotFound):
 		return nil, consts.ErrNotFound
@@ -327,24 +313,11 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 	}
 
 	var data []*File
-	pipeline := mongo.Pipeline{
-		{{"$match", filter}}, // 应用筛选条件
-		{{"$addFields", bson.M{
-			"description": bson.M{"$substrCP": []interface{}{"description", 0, 200}},
-		}}},
-	}
-
-	// 考虑到排序和分页
-	pipeline = append(pipeline, bson.D{{"$sort", sort}})
-	if popts.Limit != nil {
-		pipeline = append(pipeline, bson.D{{"$limit", *popts.Limit}})
-	}
-	if popts.Offset != nil {
-		pipeline = append(pipeline, bson.D{{"$skip", *popts.Offset}})
-	}
-
-	// 使用聚合管道执行查询
-	err = m.conn.Aggregate(ctx, &data, pipeline)
+	err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
+		Sort:  sort,
+		Limit: popts.Limit,
+		Skip:  popts.Offset,
+	})
 	switch {
 	case errors.Is(err, monc.ErrNotFound):
 		return nil, consts.ErrNotFound
