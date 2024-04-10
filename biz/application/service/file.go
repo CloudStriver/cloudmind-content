@@ -5,28 +5,22 @@ import (
 	"errors"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/kq"
 	filemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	publicfilemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/publicfile"
 	sharefilemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	"github.com/CloudStriver/cloudmind-mq/app/util/message"
-	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
-	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
 	"github.com/CloudStriver/go-pkg/utils/pconvertor"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/bytedance/sonic"
 	"github.com/google/wire"
-	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/mr"
 	"github.com/zeromicro/go-zero/core/stores/monc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"strings"
-	"time"
 )
 
 type IFileService interface {
@@ -431,18 +425,7 @@ func (s *FileService) GetFolderSize(ctx context.Context, path string) (resp int6
 
 func (s *FileService) CreateFile(ctx context.Context, req *gencontent.CreateFileReq) (resp *gencontent.CreateFileResp, err error) {
 	resp = new(gencontent.CreateFileResp)
-	resp.Id, resp.Name, err = s.FileMongoMapper.Insert(ctx, &filemapper.File{
-		ID:       primitive.NilObjectID,
-		UserId:   req.UserId,
-		Name:     req.Name,
-		Category: req.Category,
-		Type:     req.Type,
-		Path:     req.Path,
-		FatherId: req.FatherId,
-		Size:     req.SpaceSize,
-		FileMd5:  req.Md5,
-		IsDel:    int64(gencontent.Deletion_Deletion_notDel),
-	})
+	resp.FileId, resp.Name, err = s.FileMongoMapper.Insert(ctx, convertor.FileToFileMapper(req.File))
 	if err != nil {
 		return resp, err
 	}
