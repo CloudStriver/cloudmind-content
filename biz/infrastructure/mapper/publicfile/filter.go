@@ -10,7 +10,6 @@ import (
 
 type FilterOptions struct {
 	OnlyUserId      *string
-	OnlyFileId      *string
 	OnlyFileIds     []string
 	OnlyZone        *string
 	OnlyType        []string
@@ -32,7 +31,6 @@ func makeMongoFilter(options *FilterOptions) bson.M {
 
 func (f *MongoFileFilter) toBson() bson.M {
 	f.CheckOnlyUserId()
-	f.CheckOnlyFileId()
 	f.CheckOnlyFileIds()
 	f.CheckOnlyDocumentType()
 	f.CheckOnlyType()
@@ -64,13 +62,6 @@ func (f *MongoFileFilter) CheckOnlyLabelId() {
 func (f *MongoFileFilter) CheckOnlyUserId() {
 	if f.OnlyUserId != nil {
 		f.m[consts.UserId] = *f.OnlyUserId
-	}
-}
-
-func (f *MongoFileFilter) CheckOnlyFileId() {
-	if f.OnlyFileId != nil {
-		oid, _ := primitive.ObjectIDFromHex(*f.OnlyFileId)
-		f.m[consts.ID] = oid
 	}
 }
 

@@ -123,7 +123,6 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 	} else {
 		filter = &file.FilterOptions{
 			OnlyUserId:   opts.OnlyUserId,
-			OnlyFileId:   opts.OnlyFileId,
 			OnlyFatherId: opts.OnlyFatherId,
 			OnlyIsDel:    opts.OnlyIsDel,
 			OnlyType:     opts.OnlyType,
@@ -134,13 +133,12 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 	return filter
 }
 
-func PublicFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filter *publicfile.FilterOptions) {
+func PublicFilterOptionsToFilterOptions(opts *gencontent.PublicFileFilterOptions) (filter *publicfile.FilterOptions) {
 	if opts == nil {
 		filter = &publicfile.FilterOptions{}
 	} else {
 		filter = &publicfile.FilterOptions{
 			OnlyUserId:      opts.OnlyUserId,
-			OnlyFileId:      opts.OnlyFileId,
 			OnlyZone:        opts.OnlyZone,
 			OnlyType:        opts.OnlyType,
 			OnlyAuditStatus: opts.OnlyAuditStatus,
@@ -205,11 +203,20 @@ func PostMapperToPost(in *postmapper.Post) *gencontent.Post {
 	}
 }
 
-func ConvertFileAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey) []types.Query {
+func ConvertFileAllFieldsSearchQuery(in string) []types.Query {
 	return []types.Query{{
 		MultiMatch: &types.MultiMatchQuery{
-			Query:  in.AllFieldsKey,
-			Fields: []string{consts.Name + "^3", consts.ID, consts.Description + "^3"},
+			Query:  in,
+			Fields: []string{consts.Name},
+		}},
+	}
+}
+
+func ConvertPublicFileAllFieldsSearchQuery(in string) []types.Query {
+	return []types.Query{{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:  in,
+			Fields: []string{consts.Name + "^3", consts.Description + "^3"},
 		}},
 	}
 }

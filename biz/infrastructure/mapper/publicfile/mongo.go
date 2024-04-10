@@ -31,6 +31,7 @@ type (
 	IMongoMapper interface {
 		Count(ctx context.Context, filter *FilterOptions) (int64, error)
 		Insert(ctx context.Context, data *PublicFile) (string, error)
+		InsertMany(ctx context.Context, data []*PublicFile) ([]string, error)
 		FindOne(ctx context.Context, id string) (*PublicFile, error)
 		Find(ctx context.Context, filter bson.M) ([]*PublicFile, error)
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*PublicFile, error)
@@ -92,6 +93,24 @@ func (m *MongoMapper) Insert(ctx context.Context, data *PublicFile) (string, err
 		return "", err
 	}
 	return data.ID.Hex(), nil
+}
+
+func (m *MongoMapper) InsertMany(ctx context.Context, data []*PublicFile) ([]string, error) {
+	tracer := otel.GetTracerProvider().Tracer(trace.TraceName)
+	_, span := tracer.Start(ctx, "mongo.InsertMany", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	defer span.End()
+
+	ids := make([]string, len(data))
+	for i := 0; i < len(data); i++ {
+		if data[i].ID.IsZero() {
+			data[i].ID = primitive.NewObjectID()
+			data[i].CreateAt = time.Now()
+			ids[i] = data[i].ID.Hex()
+		}
+	}
+	dataAny := lo.Map(data, func(item *PublicFile, _ int) any { return item })
+	_, err := m.conn.InsertMany(ctx, dataAny)
+	return ids, err
 }
 
 func (m *MongoMapper) FindOne(ctx context.Context, id string) (*PublicFile, error) {

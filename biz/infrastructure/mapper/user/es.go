@@ -8,23 +8,28 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
+	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/bytedance/sonic"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/core/count"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/multivaluemode"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/scoremode"
 	"github.com/mitchellh/mapstructure"
 	"github.com/samber/lo"
-	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/trace"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	oteltrace "go.opentelemetry.io/otel/trace"
+	"log"
 	"net/http"
 	"time"
 )
 
 type (
-	IUserEsMapper interface {
-		Search(ctx context.Context, query []types.Query, popts *pagination.PaginationOptions, sorter esp.EsCursor) ([]*User, int64, error)
+	IEsMapper interface {
+		Search(ctx context.Context, query []types.Query, popts *pagination.PaginationOptions, sorter gencontent.SearchSortType) ([]*User, int64, error)
+		CountWithQuery(ctx context.Context, query []types.Query) (int64, error)
 	}
 
 	EsMapper struct {
@@ -33,26 +38,112 @@ type (
 	}
 )
 
-func (m *EsMapper) Search(ctx context.Context, query []types.Query, popts *pagination.PaginationOptions, sorter esp.EsCursor) ([]*User, int64, error) {
-	ctx, span := trace.TracerFromContext(ctx).Start(ctx, "elasticsearch/Search", oteltrace.WithTimestamp(time.Now()), oteltrace.WithSpanKind(oteltrace.SpanKindClient))
+func NewEsMapper(config *config.Config) IEsMapper {
+	esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
+		Username:  config.Elasticsearch.Username,
+		Password:  config.Elasticsearch.Password,
+		Addresses: config.Elasticsearch.Addresses,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	return &EsMapper{
+		es:        esClient,
+		indexName: fmt.Sprintf("%s.%s", config.Mongo.DB, CollectionName),
+	}
+}
+
+func (m *EsMapper) CountWithQuery(ctx context.Context, query []types.Query) (int64, error) {
+	ctx, span := trace.TracerFromContext(ctx).Start(ctx, "elasticsearch/Count", oteltrace.WithTimestamp(time.Now()), oteltrace.WithSpanKind(oteltrace.SpanKindClient))
 	defer func() {
 		span.End(oteltrace.WithTimestamp(time.Now()))
 	}()
-
-	p := esp.NewEsPaginator(pagination.NewRawStore(sorter), popts)
-	s, sa, err := p.MakeSortOptions(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-	res, err := m.es.Search().From(int(*popts.Offset)).Size(int(*popts.Limit)).Index(m.indexName).Request(&search.Request{
+	res, err := m.es.Count().Index(m.indexName).Request(&count.Request{
 		Query: &types.Query{
 			Bool: &types.BoolQuery{
 				Must: query,
 			},
 		},
-		SearchAfter: sa,
-		Sort:        s,
 	}).Do(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.Count, nil
+}
+
+func SortTypeToCursorType(sortType gencontent.SearchSortType) esp.EsCursor {
+	switch sortType {
+	case gencontent.SearchSortType_ScoreSearchSortType:
+		return esp.ScoreCursorType
+	case gencontent.SearchSortType_CreateTimeSearchSortType:
+		return esp.IdCursorType
+	case gencontent.SearchSortType_SynthesisSearchSortType:
+		return esp.ScoreCursorType
+	default:
+		return nil
+	}
+}
+
+func (m *EsMapper) Search(ctx context.Context, query []types.Query, popts *pagination.PaginationOptions, sorter gencontent.SearchSortType) ([]*User, int64, error) {
+	ctx, span := trace.TracerFromContext(ctx).Start(ctx, "elasticsearch/Search", oteltrace.WithTimestamp(time.Now()), oteltrace.WithSpanKind(oteltrace.SpanKindClient))
+	defer func() {
+		span.End(oteltrace.WithTimestamp(time.Now()))
+	}()
+	p := esp.NewEsPaginator(pagination.NewRawStore(SortTypeToCursorType(sorter)), popts)
+	s, sa, err := p.MakeSortOptions(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	var req *search.Request
+	if sorter == gencontent.SearchSortType_SynthesisSearchSortType {
+		dateDecayFunc := types.NewDateDecayFunction()
+		decayPlacement := types.DecayPlacementDateMathDuration{
+			Origin: lo.ToPtr("now"),              // 衰减起点
+			Scale:  "2d",                         // 衰减尺度
+			Offset: "1d",                         // 可选，定义不应用衰减的初始距离
+			Decay:  lo.ToPtr(types.Float64(0.5)), // 衰减率
+		}
+		dateDecayFunc.DateDecayFunction[consts.CreateAt] = decayPlacement
+		dateDecayFunc.MultiValueMode = &multivaluemode.Avg
+		req = &search.Request{
+			Query: &types.Query{
+				Bool: &types.BoolQuery{
+					Must: query,
+				},
+			},
+			Rescore: []types.Rescore{
+				{
+					Query: types.RescoreQuery{
+						Query: types.Query{
+							FunctionScore: &types.FunctionScoreQuery{
+								Functions: []types.FunctionScore{
+									{
+										Gauss: dateDecayFunc,
+									},
+								},
+							},
+						},
+						ScoreMode: &scoremode.Multiply,
+					},
+				},
+			},
+		}
+	} else {
+		req = &search.Request{
+			Query: &types.Query{
+				Bool: &types.BoolQuery{
+					Must: query,
+				},
+			},
+			Sort:        s,
+			SearchAfter: sa,
+		}
+	}
+	res, err := m.es.Search().From(int(*popts.Offset)).Size(int(*popts.Limit)).Index(m.indexName).Request(req).Do(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -87,33 +178,17 @@ func (m *EsMapper) Search(ctx context.Context, query []types.Query, popts *pagin
 		user.Score_ = float64(hit.Score_)
 		users = append(users, user)
 	}
-	// 如果是反向查询，反转数据
-	if *popts.Backward {
-		lo.Reverse(users)
-	}
-	if len(users) > 0 {
-		err = p.StoreCursor(ctx, users[0], users[len(users)-1])
-		if err != nil {
-			return nil, 0, err
+	if sorter != gencontent.SearchSortType_SynthesisSearchSortType {
+		// 如果是反向查询，反转数据
+		if *popts.Backward {
+			lo.Reverse(users)
+		}
+		if len(users) > 0 {
+			err = p.StoreCursor(ctx, users[0], users[len(users)-1])
+			if err != nil {
+				return nil, 0, err
+			}
 		}
 	}
 	return users, total, nil
-}
-
-func NewEsMapper(config *config.Config) IUserEsMapper {
-	es, err := elasticsearch.NewTypedClient(elasticsearch.Config{
-		Addresses: config.Elasticsearch.Addresses,
-		Username:  config.Elasticsearch.Username,
-		Password:  config.Elasticsearch.Password,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-	})
-	if err != nil {
-		logx.Errorf("elasticsearch连接异常[%v]\n", err)
-	}
-	return &EsMapper{
-		es:        es,
-		indexName: fmt.Sprintf("%s.%s", config.Mongo.DB, CollectionName),
-	}
 }
