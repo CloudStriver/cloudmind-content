@@ -18,6 +18,7 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/order"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/product"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/publicfile"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/cache"
@@ -32,15 +33,19 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		return nil, err
 	}
 	iMongoMapper := file.NewMongoMapper(configConfig)
-	iFileEsMapper := file.NewEsMapper(configConfig)
+	publicfileIMongoMapper := publicfile.NewMongoMapper(configConfig)
+	iFileEsMapper := publicfile.NewEsMapper(configConfig)
+	fileIFileEsMapper := file.NewEsMapper(configConfig)
 	sharefileIMongoMapper := sharefile.NewMongoMapper(configConfig)
 	deleteFileRelationKq := kq.NewDeleteFileRelationKq(configConfig)
 	fileService := &service.FileService{
-		Config:               configConfig,
-		FileMongoMapper:      iMongoMapper,
-		FileEsMapper:         iFileEsMapper,
-		ShareFileMongoMapper: sharefileIMongoMapper,
-		DeleteFileRelationKq: deleteFileRelationKq,
+		Config:                configConfig,
+		FileMongoMapper:       iMongoMapper,
+		PublicFileMongoMapper: publicfileIMongoMapper,
+		PublicFileEsMapper:    iFileEsMapper,
+		FileEsMapper:          fileIFileEsMapper,
+		ShareFileMongoMapper:  sharefileIMongoMapper,
+		DeleteFileRelationKq:  deleteFileRelationKq,
 	}
 	iPostMongoMapper := post.NewMongoMapper(configConfig)
 	iEsMapper := post.NewEsMapper(configConfig)

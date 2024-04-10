@@ -7,6 +7,7 @@ import (
 	ordermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/order"
 	postmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
 	productmapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/product"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/publicfile"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	usermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
@@ -33,47 +34,38 @@ func UserMapperToUser(in *usermapper.User) *gencontent.User {
 	}
 }
 
-//func FileMapperToFile(data *file.File) *gencontent.FileInfo {
-//	return &gencontent.FileInfo{
-//		FileId:      data.ID.Hex(),
-//		UserId:      data.UserId,
-//		Name:        data.Name,
-//		Type:        data.Type,
-//		Path:        data.Path,
-//		FatherId:    data.FatherId,
-//		SpaceSize:   data.Size,
-//		Md5:         data.FileMd5,
-//		IsDel:       data.IsDel,
-//		Zone:        data.Zone,
-//		SubZone:     data.SubZone,
-//		Description: data.Description,
-//		AuditStatus: data.AuditStatus,
-//		Labels:      data.Labels,
-//		CreateAt:    data.CreateAt.UnixMilli(),
-//		UpdateAt:    data.UpdateAt.UnixMilli(),
-//	}
-//}
+func FileMapperToFile(data *file.File) *gencontent.File {
+	return &gencontent.File{
+		Id:        data.ID.Hex(),
+		UserId:    data.UserId,
+		Name:      data.Name,
+		Type:      data.Type,
+		Path:      data.Path,
+		FatherId:  data.FatherId,
+		SpaceSize: data.Size,
+		Md5:       data.FileMd5,
+		IsDel:     data.IsDel,
+		CreateAt:  data.CreateAt.UnixMilli(),
+		UpdateAt:  data.UpdateAt.UnixMilli(),
+		DeleteAt:  data.DeletedAt.UnixMilli(),
+	}
+}
 
-//func FileToFileMapper(data *gencontent.File) *file.File {
-//	oid, _ := primitive.ObjectIDFromHex(data.FileId)
-//	return &file.File{
-//		ID:          oid,
-//		UserId:      data.UserId,
-//		Name:        data.Name,
-//		Type:        data.Type,
-//		Category:    data.Category,
-//		Path:        data.Path,
-//		FatherId:    data.FatherId,
-//		Size:        data.SpaceSize,
-//		FileMd5:     data.Md5,
-//		IsDel:       data.IsDel,
-//		Zone:        data.Zone,
-//		SubZone:     data.SubZone,
-//		Description: data.Description,
-//		Labels:      data.Labels,
-//		AuditStatus: data.AuditStatus,
-//	}
-//}
+func PublicFileMapperToPublicFile(data *publicfile.PublicFile) *gencontent.PublicFile {
+	return &gencontent.PublicFile{
+		Id:          data.ID.Hex(),
+		UserId:      data.UserId,
+		Name:        data.Name,
+		Type:        data.Type,
+		SpaceSize:   data.Size,
+		Md5:         data.FileMd5,
+		Zone:        data.Zone,
+		Description: data.Description,
+		AuditStatus: data.AuditStatus,
+		Labels:      data.Labels,
+		CreateAt:    data.CreateAt.UnixMilli(),
+	}
+}
 
 func IsExpired(ctime time.Time, effectiveTime int64) int64 {
 	if effectiveTime < 0 {
@@ -130,17 +122,27 @@ func FileFilterOptionsToFilterOptions(opts *gencontent.FileFilterOptions) (filte
 		filter = &file.FilterOptions{}
 	} else {
 		filter = &file.FilterOptions{
-			OnlyUserId:       opts.OnlyUserId,
-			OnlyFileId:       opts.OnlyFileId,
-			OnlyFatherId:     opts.OnlyFatherId,
-			OnlyZone:         opts.OnlyZone,
-			OnlySubZone:      opts.OnlySubZone,
-			OnlyIsDel:        opts.OnlyIsDel,
-			OnlyDocumentType: opts.OnlyDocumentType,
-			OnlyType:         opts.OnlyType,
-			OnlyAuditStatus:  opts.OnlyAuditStatus,
-			OnlyCategory:     opts.OnlyCategory,
-			OnlyLabelId:      opts.OnlyLabelId,
+			OnlyUserId:   opts.OnlyUserId,
+			OnlyFatherId: opts.OnlyFatherId,
+			OnlyIsDel:    opts.OnlyIsDel,
+			OnlyType:     opts.OnlyType,
+			OnlyCategory: opts.OnlyCategory,
+		}
+	}
+
+	return filter
+}
+
+func PublicFilterOptionsToFilterOptions(opts *gencontent.PublicFileFilterOptions) (filter *publicfile.FilterOptions) {
+	if opts == nil {
+		filter = &publicfile.FilterOptions{}
+	} else {
+		filter = &publicfile.FilterOptions{
+			OnlyUserId:      opts.OnlyUserId,
+			OnlyZone:        opts.OnlyZone,
+			OnlyType:        opts.OnlyType,
+			OnlyAuditStatus: opts.OnlyAuditStatus,
+			OnlyLabelId:     opts.OnlyLabelId,
 		}
 	}
 
@@ -173,23 +175,6 @@ func ParsePagination(opts *basic.PaginationOptions) (p *pagination.PaginationOpt
 	return
 }
 
-//func ZoneMapperToZone(data *labelmapper.Zone) *gencontent.Zone {
-//	return &gencontent.Zone{
-//		Id:       data.ID.Hex(),
-//		FatherId: data.FatherId,
-//		Value:    data.Value,
-//	}
-//}
-
-//func ZoneToZoneMapper(data *gencontent.Zone) *labelmapper.Zone {
-//	oid, _ := primitive.ObjectIDFromHex(data.Id)
-//	return &labelmapper.Zone{
-//		ID:       oid,
-//		FatherId: data.FatherId,
-//		Value:    data.Value,
-//	}
-//}
-
 func PostFilterOptionsToFilterOptions(in *gencontent.PostFilterOptions) *postmapper.FilterOptions {
 	if in == nil {
 		return &postmapper.FilterOptions{}
@@ -218,11 +203,20 @@ func PostMapperToPost(in *postmapper.Post) *gencontent.Post {
 	}
 }
 
-func ConvertFileAllFieldsSearchQuery(in *gencontent.SearchOptions_AllFieldsKey) []types.Query {
+func ConvertFileAllFieldsSearchQuery(in string) []types.Query {
 	return []types.Query{{
 		MultiMatch: &types.MultiMatchQuery{
-			Query:  in.AllFieldsKey,
-			Fields: []string{consts.Name + "^3", consts.ID, consts.Description + "^3"},
+			Query:  in,
+			Fields: []string{consts.Name},
+		}},
+	}
+}
+
+func ConvertPublicFileAllFieldsSearchQuery(in string) []types.Query {
+	return []types.Query{{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:  in,
+			Fields: []string{consts.Name + "^3", consts.Description + "^3"},
 		}},
 	}
 }

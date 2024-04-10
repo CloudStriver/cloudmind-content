@@ -1,4 +1,4 @@
-package user
+package publicfile
 
 import (
 	"context"
@@ -28,8 +28,8 @@ import (
 
 type (
 	IEsMapper interface {
-		Search(ctx context.Context, query []types.Query, popts *pagination.PaginationOptions, sorter gencontent.SearchSortType) ([]*User, int64, error)
-		CountWithQuery(ctx context.Context, query []types.Query) (int64, error)
+		Search(ctx context.Context, query []types.Query, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter gencontent.SearchSortType) ([]*PublicFile, int64, error)
+		CountWithQuery(ctx context.Context, query []types.Query, fopts *FilterOptions) (int64, error)
 	}
 
 	EsMapper struct {
@@ -56,15 +56,17 @@ func NewEsMapper(config *config.Config) IEsMapper {
 	}
 }
 
-func (m *EsMapper) CountWithQuery(ctx context.Context, query []types.Query) (int64, error) {
+func (m *EsMapper) CountWithQuery(ctx context.Context, query []types.Query, fopts *FilterOptions) (int64, error) {
 	ctx, span := trace.TracerFromContext(ctx).Start(ctx, "elasticsearch/Count", oteltrace.WithTimestamp(time.Now()), oteltrace.WithSpanKind(oteltrace.SpanKindClient))
 	defer func() {
 		span.End(oteltrace.WithTimestamp(time.Now()))
 	}()
+	filter := makeEsFilter(fopts)
 	res, err := m.es.Count().Index(m.indexName).Request(&count.Request{
 		Query: &types.Query{
 			Bool: &types.BoolQuery{
-				Must: query,
+				Must:   query,
+				Filter: filter,
 			},
 		},
 	}).Do(ctx)
@@ -88,12 +90,13 @@ func SortTypeToCursorType(sortType gencontent.SearchSortType) esp.EsCursor {
 	}
 }
 
-func (m *EsMapper) Search(ctx context.Context, query []types.Query, popts *pagination.PaginationOptions, sorter gencontent.SearchSortType) ([]*User, int64, error) {
+func (m *EsMapper) Search(ctx context.Context, query []types.Query, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter gencontent.SearchSortType) ([]*PublicFile, int64, error) {
 	ctx, span := trace.TracerFromContext(ctx).Start(ctx, "elasticsearch/Search", oteltrace.WithTimestamp(time.Now()), oteltrace.WithSpanKind(oteltrace.SpanKindClient))
 	defer func() {
 		span.End(oteltrace.WithTimestamp(time.Now()))
 	}()
 	p := esp.NewEsPaginator(pagination.NewRawStore(SortTypeToCursorType(sorter)), popts)
+	filter := makeEsFilter(fopts)
 	s, sa, err := p.MakeSortOptions(ctx)
 	if err != nil {
 		return nil, 0, err
@@ -112,7 +115,8 @@ func (m *EsMapper) Search(ctx context.Context, query []types.Query, popts *pagin
 		req = &search.Request{
 			Query: &types.Query{
 				Bool: &types.BoolQuery{
-					Must: query,
+					Must:   query,
+					Filter: filter,
 				},
 			},
 			Rescore: []types.Rescore{
@@ -136,7 +140,8 @@ func (m *EsMapper) Search(ctx context.Context, query []types.Query, popts *pagin
 		req = &search.Request{
 			Query: &types.Query{
 				Bool: &types.BoolQuery{
-					Must: query,
+					Must:   query,
+					Filter: filter,
 				},
 			},
 			Sort:        s,
@@ -150,10 +155,10 @@ func (m *EsMapper) Search(ctx context.Context, query []types.Query, popts *pagin
 
 	hits := res.Hits.Hits
 	total := res.Hits.Total.Value
-	users := make([]*User, 0, len(hits))
+	files := make([]*PublicFile, 0, len(hits))
 	for i := range hits {
 		hit := hits[i]
-		user := &User{}
+		file := &PublicFile{}
 		source := make(map[string]any)
 		err = sonic.Unmarshal(hit.Source_, &source)
 		if err != nil {
@@ -165,30 +170,30 @@ func (m *EsMapper) Search(ctx context.Context, query []types.Query, popts *pagin
 		if source[consts.UpdateAt], err = time.Parse("2006-01-02T15:04:05Z07:00", source[consts.UpdateAt].(string)); err != nil {
 			return nil, 0, err
 		}
-		err = mapstructure.Decode(source, user)
+		err = mapstructure.Decode(source, file)
 		if err != nil {
 			return nil, 0, err
 		}
 
 		oid := hit.Id_
-		user.ID, err = primitive.ObjectIDFromHex(oid)
+		file.ID, err = primitive.ObjectIDFromHex(oid)
 		if err != nil {
 			return nil, 0, consts.ErrInvalidId
 		}
-		user.Score_ = float64(hit.Score_)
-		users = append(users, user)
+		file.Score_ = float64(hit.Score_)
+		files = append(files, file)
 	}
 	if sorter != gencontent.SearchSortType_SynthesisSearchSortType {
 		// 如果是反向查询，反转数据
 		if *popts.Backward {
-			lo.Reverse(users)
+			lo.Reverse(files)
 		}
-		if len(users) > 0 {
-			err = p.StoreCursor(ctx, users[0], users[len(users)-1])
+		if len(files) > 0 {
+			err = p.StoreCursor(ctx, files[0], files[len(files)-1])
 			if err != nil {
 				return nil, 0, err
 			}
 		}
 	}
-	return users, total, nil
+	return files, total, nil
 }

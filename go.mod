@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/CloudStriver/cloudmind-mq v1.0.12-0.20240406143558-b7090c0fbb80
 	github.com/CloudStriver/go-pkg v0.0.0-20240329084540-20ca37a52fea
-	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240409124043-9373d87d4bde
+	github.com/CloudStriver/service-idl-gen-go v0.0.0-20240410085131-d8c155bd9da5
 	github.com/bytedance/sonic v1.10.2
 	github.com/cloudwego/kitex v0.8.0
 	github.com/elastic/go-elasticsearch/v8 v8.11.1
@@ -24,7 +24,6 @@ require (
 )
 
 //replace github.com/CloudStriver/service-idl-gen-go => ../service-idl-gen-go
-
 //replace github.com/CloudStriver/cloudmind-mq => ../cloudmind-mq
 
 require (

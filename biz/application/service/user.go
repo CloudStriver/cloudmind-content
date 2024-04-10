@@ -6,7 +6,6 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
 	usermapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
-	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
 	"github.com/CloudStriver/go-pkg/utils/pconvertor"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/google/wire"
@@ -27,7 +26,7 @@ type IUserService interface {
 type UserService struct {
 	Config          *config.Config
 	UserMongoMapper usermapper.IUserMongoMapper
-	UserEsMapper    usermapper.IUserEsMapper
+	UserEsMapper    usermapper.IEsMapper
 	Redis           *redis.Redis
 }
 
@@ -62,8 +61,8 @@ func (s *UserService) GetUsers(ctx context.Context, req *gencontent.GetUsersReq)
 	)
 
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
-	if req.SearchKeyword != nil {
-		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(*req.SearchKeyword), p, esp.ScoreCursorType)
+	if req.SearchOption != nil {
+		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(*req.SearchOption.SearchKeyword), p, req.SearchOption.SearchSortType)
 	}
 	if err != nil {
 		return resp, err

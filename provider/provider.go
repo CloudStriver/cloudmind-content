@@ -11,9 +11,9 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/order"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/post"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/product"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/publicfile"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/sharefile"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/user"
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/zone"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/cache"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/stores/redis"
 	"github.com/google/wire"
@@ -48,9 +48,10 @@ var MapperSet = wire.NewSet(
 	file.NewMongoMapper,
 	file.NewEsMapper,
 	sharefile.NewMongoMapper,
+	publicfile.NewMongoMapper,
+	publicfile.NewEsMapper,
 	post.NewMongoMapper,
 	post.NewEsMapper,
-	zone.NewMongoMapper,
 	user.NewEsMapper,
 	user.NewMongoMapper,
 	order.NewMongoMapper,

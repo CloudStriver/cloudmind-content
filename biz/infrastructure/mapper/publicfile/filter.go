@@ -1,22 +1,20 @@
-package file
+package publicfile
 
 import (
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-
-	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 )
 
 type FilterOptions struct {
-	OnlyUserId   *string
-	OnlyFileId   *string
-	OnlyFileIds  []string
-	OnlyFatherId *string
-	OnlyIsDel    *int64
-	OnlyType     []string
-	OnlyCategory *int64
+	OnlyUserId      *string
+	OnlyFileIds     []string
+	OnlyZone        *string
+	OnlyType        []string
+	OnlyAuditStatus *int64
+	OnlyLabelId     *string
 }
 
 type MongoFileFilter struct {
@@ -33,13 +31,18 @@ func makeMongoFilter(options *FilterOptions) bson.M {
 
 func (f *MongoFileFilter) toBson() bson.M {
 	f.CheckOnlyUserId()
-	f.CheckOnlyFileId()
 	f.CheckOnlyFileIds()
-	f.CheckOnlyFatherId()
-	f.CheckOnlyIsDel()
+	f.CheckOnlyDocumentType()
 	f.CheckOnlyType()
-	f.CheckOnlyCategory()
+	f.CheckOnlyAuditStatus()
+	f.CheckOnlyLabelId()
 	return f.m
+}
+
+func (f *MongoFileFilter) CheckOnlyAuditStatus() {
+	if f.OnlyAuditStatus != nil {
+		f.m[consts.AuditStatus] = *f.OnlyAuditStatus
+	}
 }
 
 func (f *MongoFileFilter) CheckOnlyType() {
@@ -50,22 +53,15 @@ func (f *MongoFileFilter) CheckOnlyType() {
 	}
 }
 
-func (f *MongoFileFilter) CheckOnlyCategory() {
-	if f.OnlyCategory != nil {
-		f.m[consts.Category] = *f.OnlyCategory
+func (f *MongoFileFilter) CheckOnlyLabelId() {
+	if f.OnlyLabelId != nil {
+		f.m[consts.Labels] = bson.M{"$in": *f.OnlyLabelId}
 	}
 }
 
 func (f *MongoFileFilter) CheckOnlyUserId() {
 	if f.OnlyUserId != nil {
 		f.m[consts.UserId] = *f.OnlyUserId
-	}
-}
-
-func (f *MongoFileFilter) CheckOnlyFileId() {
-	if f.OnlyFileId != nil {
-		oid, _ := primitive.ObjectIDFromHex(*f.OnlyFileId)
-		f.m[consts.ID] = oid
 	}
 }
 
@@ -80,15 +76,9 @@ func (f *MongoFileFilter) CheckOnlyFileIds() {
 	}
 }
 
-func (f *MongoFileFilter) CheckOnlyFatherId() {
-	if f.OnlyFatherId != nil {
-		f.m[consts.FatherId] = *f.OnlyFatherId
-	}
-}
-
-func (f *MongoFileFilter) CheckOnlyIsDel() {
-	if f.OnlyIsDel != nil {
-		f.m[consts.IsDel] = *f.OnlyIsDel
+func (f *MongoFileFilter) CheckOnlyDocumentType() {
+	if f.OnlyZone != nil {
+		f.m[consts.Zone] = *f.OnlyZone
 	}
 }
 
@@ -106,7 +96,6 @@ func makeEsFilter(opts *FilterOptions) []types.Query {
 
 func (f *EsFilter) toEsQuery() []types.Query {
 	f.checkOnlyUserId()
-	f.checkOnlyIsDel()
 	return f.q
 }
 
@@ -115,16 +104,6 @@ func (f *EsFilter) checkOnlyUserId() {
 		f.q = append(f.q, types.Query{
 			Term: map[string]types.TermQuery{
 				consts.UserId: {Value: *f.OnlyUserId},
-			},
-		})
-	}
-}
-
-func (f *EsFilter) checkOnlyIsDel() {
-	if f.OnlyIsDel != nil {
-		f.q = append(f.q, types.Query{
-			Term: map[string]types.TermQuery{
-				consts.IsDel: {Value: *f.OnlyIsDel},
 			},
 		})
 	}
