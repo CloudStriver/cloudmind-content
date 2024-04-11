@@ -76,7 +76,6 @@ func (s *PublicFileService) GetPublicFile(ctx context.Context, req *gencontent.G
 			return resp, err
 		}
 	}
-
 	return resp, nil
 }
 
@@ -179,6 +178,7 @@ func (s *PublicFileService) GetPublicFileList(ctx context.Context, req *genconte
 		return resp, err
 	}
 
+
 	return resp, nil
 }
 
@@ -214,11 +214,13 @@ func (s *PublicFileService) AddFileToPublicSpace(ctx context.Context, req *genco
 	if res, err = s.FileMongoMapper.FindOne(ctx, req.Id); err != nil {
 		return resp, err
 	}
+
 	tx := s.PublicFileMongoMapper.StartClient()
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
+
 		if rootId, err = s.PublicFileMongoMapper.Insert(ctx, &publicfilemapper.PublicFile{ // 创建根文件
 			ID:          primitive.NilObjectID,
 			UserId:      res.UserId,
@@ -240,6 +242,7 @@ func (s *PublicFileService) AddFileToPublicSpace(ctx context.Context, req *genco
 
 		queue := make([]kv, 0, s.Config.InitialSliceLength)
 		queue = append(queue, kv{req.Id, req.Zone + "/" + rootId})
+
 		if res.Size == int64(gencontent.Folder_Folder_Size) {
 			for len(queue) > 0 {
 				front = queue[0]
