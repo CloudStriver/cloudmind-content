@@ -6,16 +6,14 @@ import (
 	"fmt"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
+	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/utils"
 	"github.com/CloudStriver/go-pkg/utils/pagination"
 	"github.com/CloudStriver/go-pkg/utils/pagination/esp"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/bytedance/sonic"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/count"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/multivaluemode"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/scoremode"
 	"github.com/mitchellh/mapstructure"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/trace"
@@ -28,7 +26,7 @@ import (
 
 type (
 	IEsMapper interface {
-		Search(ctx context.Context, query []types.Query, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter gencontent.SearchSortType) ([]*PublicFile, int64, error)
+		Search(ctx context.Context, query []types.Query, fopts *FilterOptions, popts *pagination.PaginationOptions, sopts *gencontent.SearchOption) ([]*PublicFile, int64, error)
 		CountWithQuery(ctx context.Context, query []types.Query, fopts *FilterOptions) (int64, error)
 	}
 
@@ -90,64 +88,18 @@ func SortTypeToCursorType(sortType gencontent.SearchSortType) esp.EsCursor {
 	}
 }
 
-func (m *EsMapper) Search(ctx context.Context, query []types.Query, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter gencontent.SearchSortType) ([]*PublicFile, int64, error) {
+func (m *EsMapper) Search(ctx context.Context, query []types.Query, fopts *FilterOptions, popts *pagination.PaginationOptions, sopts *gencontent.SearchOption) ([]*PublicFile, int64, error) {
 	ctx, span := trace.TracerFromContext(ctx).Start(ctx, "elasticsearch/Search", oteltrace.WithTimestamp(time.Now()), oteltrace.WithSpanKind(oteltrace.SpanKindClient))
 	defer func() {
 		span.End(oteltrace.WithTimestamp(time.Now()))
 	}()
-	p := esp.NewEsPaginator(pagination.NewRawStore(SortTypeToCursorType(sorter)), popts)
+	p := esp.NewEsPaginator(pagination.NewRawStore(SortTypeToCursorType(sopts.SearchSortType)), popts)
 	filter := makeEsFilter(fopts)
 	s, sa, err := p.MakeSortOptions(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
-	var req *search.Request
-	if sorter == gencontent.SearchSortType_SynthesisSearchSortType {
-		dateDecayFunc := types.NewDateDecayFunction()
-		decayPlacement := types.DecayPlacementDateMathDuration{
-			Origin: lo.ToPtr("now"),              // 衰减起点
-			Scale:  "2d",                         // 衰减尺度
-			Offset: "1d",                         // 可选，定义不应用衰减的初始距离
-			Decay:  lo.ToPtr(types.Float64(0.5)), // 衰减率
-		}
-		dateDecayFunc.DateDecayFunction[consts.CreateAt] = decayPlacement
-		dateDecayFunc.MultiValueMode = &multivaluemode.Avg
-		req = &search.Request{
-			Query: &types.Query{
-				Bool: &types.BoolQuery{
-					Must:   query,
-					Filter: filter,
-				},
-			},
-			Rescore: []types.Rescore{
-				{
-					Query: types.RescoreQuery{
-						Query: types.Query{
-							FunctionScore: &types.FunctionScoreQuery{
-								Functions: []types.FunctionScore{
-									{
-										Gauss: dateDecayFunc,
-									},
-								},
-							},
-						},
-						ScoreMode: &scoremode.Multiply,
-					},
-				},
-			},
-		}
-	} else {
-		req = &search.Request{
-			Query: &types.Query{
-				Bool: &types.BoolQuery{
-					Must:   query,
-					Filter: filter,
-				},
-			},
-			Sort:        s,
-			SearchAfter: sa,
-		}
-	}
+	req := utils.GetQuery(query, filter, s, sa, sopts)
 	res, err := m.es.Search().From(int(*popts.Offset)).Size(int(*popts.Limit)).Index(m.indexName).Request(req).Do(ctx)
 	if err != nil {
 		return nil, 0, err
@@ -183,7 +135,7 @@ func (m *EsMapper) Search(ctx context.Context, query []types.Query, fopts *Filte
 		file.Score_ = float64(hit.Score_)
 		files = append(files, file)
 	}
-	if sorter != gencontent.SearchSortType_SynthesisSearchSortType {
+	if sopts.SearchSortType != gencontent.SearchSortType_SynthesisSearchSortType {
 		// 如果是反向查询，反转数据
 		if *popts.Backward {
 			lo.Reverse(files)

@@ -161,7 +161,7 @@ func (s *PublicFileService) GetPublicFileList(ctx context.Context, req *genconte
 			files, total, err = s.PublicFileMongoMapper.FindManyAndCount(ctx, filter, p, cursor)
 		} else {
 			files, total, err = s.PublicFileEsMapper.Search(ctx, convertor.ConvertPublicFileAllFieldsSearchQuery(*req.SearchOption.SearchKeyword),
-				filter, p, req.SearchOption.SearchSortType)
+				filter, p, req.SearchOption)
 		}
 		if err != nil {
 			return err
@@ -177,7 +177,6 @@ func (s *PublicFileService) GetPublicFileList(ctx context.Context, req *genconte
 	}); err != nil {
 		return resp, err
 	}
-
 
 	return resp, nil
 }

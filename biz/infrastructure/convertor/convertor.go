@@ -185,15 +185,6 @@ func ConvertFileAllFieldsSearchQuery(in string) []types.Query {
 	}
 }
 
-func ConvertPublicFileAllFieldsSearchQuery(in string) []types.Query {
-	return []types.Query{{
-		MultiMatch: &types.MultiMatchQuery{
-			Query:  in,
-			Fields: []string{consts.Name + "^3", consts.Description + "^3"},
-		}},
-	}
-}
-
 func ConvertFileMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsKey) []types.Query {
 	var q []types.Query
 	if in.MultiFieldsKey.Name != nil {
@@ -224,15 +215,6 @@ func ConvertFileMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiFieldsK
 		})
 	}
 	return q
-}
-
-func ConvertPostAllFieldsSearchQuery(in string) []types.Query {
-	return []types.Query{{
-		MultiMatch: &types.MultiMatchQuery{
-			Query:  in,
-			Fields: []string{consts.Title + "^3", consts.Text},
-		}},
-	}
 }
 
 func ProductFilterOptionsToFilterOptions(in *gencontent.ProductFilterOptions) *productmapper.FilterOptions {
@@ -441,11 +423,29 @@ func ConvertCouponMultiFieldsSearchQuery(in *gencontent.SearchOptions_MultiField
 	return q
 }
 
+func ConvertPublicFileAllFieldsSearchQuery(in string) []types.Query {
+	return []types.Query{{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:  in,
+			Fields: []string{consts.Name + "^3", consts.Description + "^3"},
+		}},
+	}
+}
+
 func ConvertUserAllFieldsSearchQuery(in string) []types.Query {
 	return []types.Query{{
 		MultiMatch: &types.MultiMatchQuery{
 			Query:  in,
 			Fields: []string{consts.Name + "^3", consts.Description},
+		}},
+	}
+}
+
+func ConvertPostAllFieldsSearchQuery(in string) []types.Query {
+	return []types.Query{{
+		MultiMatch: &types.MultiMatchQuery{
+			Query:  in,
+			Fields: []string{consts.Title + "^3", consts.Text},
 		}},
 	}
 }
