@@ -390,36 +390,24 @@ func (s *FileService) MoveFile(ctx context.Context, req *gencontent.MoveFileReq)
 func (s *FileService) CompletelyRemoveFile(ctx context.Context, req *gencontent.CompletelyRemoveFileReq) (resp *gencontent.CompletelyRemoveFileResp, err error) {
 	resp = new(gencontent.CompletelyRemoveFileResp)
 	ids := make([]string, 0, s.Config.InitialSliceLength)
-	tx := s.FileMongoMapper.StartClient()
-	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
-		if err = sessionContext.StartTransaction(); err != nil {
-			return err
-		}
-		for _, file := range req.Files {
-			ids = append(ids, file.Id)
-			if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
-				var data []*filemapper.File
-				filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
-				if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
-					return err
-				}
-				for _, v := range data {
-					ids = append(ids, v.ID.Hex())
-				}
+
+	for _, file := range req.Files {
+		ids = append(ids, file.Id)
+		if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
+			var data []*filemapper.File
+			filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
+			if err = s.FileMongoMapper.GetConn().Find(ctx, &data, filter); err != nil {
+				return resp, err
+			}
+			for _, v := range data {
+				ids = append(ids, v.ID.Hex())
 			}
 		}
-		if _, err = s.FileMongoMapper.DeleteMany(sessionContext, ids); err != nil {
-			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-				log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-			}
-			return err
-		}
-		if err = sessionContext.CommitTransaction(sessionContext); err != nil {
-			log.CtxError(ctx, "删除文件: 提交事务异常[%v]\n", err)
-			return err
-		}
-		return nil
-	})
+	}
+
+	if _, err = s.FileMongoMapper.DeleteMany(ctx, ids); err != nil {
+		return resp, err
+	}
 
 	return resp, nil
 }
@@ -494,32 +482,17 @@ func (s *FileService) EmptyRecycleBin(ctx context.Context, req *gencontent.Empty
 		return resp, err
 	}
 
-	n := len(sortList)
-	m := len(hardList)
-	ids := make([]string, n+m)
+	ids := make([]string, len(sortList)+len(hardList))
 	for i, v := range sortList {
 		ids[i] = v.ID.Hex()
 	}
 	for i, v := range hardList {
-		ids[i+n] = v.ID.Hex()
+		ids[i+len(sortList)] = v.ID.Hex()
 	}
-	tx := s.FileMongoMapper.StartClient()
-	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
-		if err = sessionContext.StartTransaction(); err != nil {
-			return err
-		}
-		if _, err = s.FileMongoMapper.DeleteMany(sessionContext, ids); err != nil {
-			if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-				log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-			}
-			return err
-		}
-		if err = sessionContext.CommitTransaction(sessionContext); err != nil {
-			log.CtxError(ctx, "删除文件: 提交事务异常[%v]\n", err)
-			return err
-		}
-		return nil
-	})
+
+	if _, err = s.FileMongoMapper.DeleteMany(ctx, ids); err != nil {
+		return resp, err
+	}
 
 	return resp, nil
 }
@@ -562,24 +535,25 @@ func (s *FileService) RecoverRecycleBinFile(ctx context.Context, req *gencontent
 			ids = append(ids, id)
 		}
 	}
+
+	for _, file := range req.Files {
+		if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
+			var data []*filemapper.File
+			filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
+			if err = s.FileMongoMapper.GetConn().Find(ctx, &data, filter); err != nil {
+				return resp, err
+			}
+			for _, v := range data {
+				ids = append(ids, v.ID.Hex())
+			}
+		}
+	}
+
 	tx := s.FileMongoMapper.StartClient()
 	err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
 		if err = sessionContext.StartTransaction(); err != nil {
 			return err
 		}
-		for _, file := range req.Files {
-			if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
-				var data []*filemapper.File
-				filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
-				if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
-					return err
-				}
-				for _, v := range data {
-					ids = append(ids, v.ID.Hex())
-				}
-			}
-		}
-
 		for key, v := range updates {
 			oid, _ := primitive.ObjectIDFromHex(key)
 			if _, err = s.FileMongoMapper.GetConn().UpdateOneNoCache(ctx, bson.M{consts.ID: oid}, v); err != nil {
