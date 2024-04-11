@@ -23,7 +23,7 @@ require (
 	google.golang.org/grpc v1.61.0
 )
 
-//replace github.com/CloudStriver/service-idl-gen-go => ../service-idl-gen-go
+replace github.com/CloudStriver/service-idl-gen-go => ../service-idl-gen-go
 //replace github.com/CloudStriver/cloudmind-mq => ../cloudmind-mq
 
 require (
