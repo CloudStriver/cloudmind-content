@@ -14,7 +14,6 @@ import (
 	"github.com/CloudStriver/service-idl-gen-go/kitex_gen/basic"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
-	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
@@ -77,32 +76,6 @@ func IsExpired(ctime time.Time, effectiveTime int64) int64 {
 		return int64(gencontent.Validity_Validity_expired)
 	} else {
 		return int64(gencontent.Validity_Validity_temporary)
-	}
-}
-
-func ShareFileMapperToShareFile(data *sharefile.ShareFile) *gencontent.ShareFile {
-	return &gencontent.ShareFile{
-		Code:          data.ID.Hex(),
-		UserId:        data.UserId,
-		Name:          data.Name,
-		Status:        IsExpired(data.CreateAt, data.EffectiveTime),
-		EffectiveTime: data.EffectiveTime,
-		BrowseNumber:  *data.BrowseNumber,
-		CreateAt:      data.CreateAt.Unix(),
-		FileList:      data.FileList,
-		Key:           data.Key,
-	}
-}
-
-func ShareFileToShareFileMapper(data *gencontent.ShareFile) *sharefile.ShareFile {
-	oid, _ := primitive.ObjectIDFromHex(data.Code)
-	return &sharefile.ShareFile{
-		ID:            oid,
-		UserId:        data.UserId,
-		Name:          data.Name,
-		FileList:      data.FileList,
-		EffectiveTime: data.EffectiveTime,
-		BrowseNumber:  lo.ToPtr(data.BrowseNumber),
 	}
 }
 
