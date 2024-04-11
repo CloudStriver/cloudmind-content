@@ -9,9 +9,12 @@ import (
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/kq"
 	filemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/file"
 	publicfilemapper "github.com/CloudStriver/cloudmind-content/biz/infrastructure/mapper/publicfile"
+	"github.com/CloudStriver/cloudmind-mq/app/util/message"
 	"github.com/CloudStriver/go-pkg/utils/pagination/mongop"
+	"github.com/CloudStriver/go-pkg/utils/pconvertor"
 	"github.com/CloudStriver/go-pkg/utils/util/log"
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
+	"github.com/bytedance/sonic"
 	"github.com/google/wire"
 	"github.com/samber/lo"
 	"github.com/zeromicro/go-zero/core/mr"
@@ -178,7 +181,6 @@ func (s *PublicFileService) GetPublicFileList(ctx context.Context, req *genconte
 		return resp, err
 	}
 
-
 	return resp, nil
 }
 
@@ -301,67 +303,36 @@ func (s *PublicFileService) AddFileToPublicSpace(ctx context.Context, req *genco
 
 func (s *PublicFileService) MakeFilePrivate(ctx context.Context, req *gencontent.MakeFilePrivateReq) (resp *gencontent.MakeFilePrivateResp, err error) {
 	resp = &gencontent.MakeFilePrivateResp{}
-	//data := convertor.FileToFileMapper(&gencontent.File{FileId: req.FileId, AuditStatus: int64(gencontent.AuditStatus_AuditStatus_notStart)})
-	//update := bson.M{
-	//	consts.Zone:        "",
-	//	consts.SubZone:     "",
-	//	consts.Description: "",
-	//	consts.Labels:      "",
-	//}
-	//
-	//ids := make([]string, 0, s.Config.InitialSliceLength)
-	//tx := s.FileMongoMapper.StartClient()
-	//err = tx.UseSession(ctx, func(sessionContext mongo.SessionContext) error {
-	//	if err = sessionContext.StartTransaction(); err != nil {
-	//		return err
-	//	}
-	//	for _, file := range req.Files {
-	//		ids = append(ids, file.FileId)
-	//		if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
-	//			var data []*filemapper.File
-	//			filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
-	//			if err = s.FileMongoMapper.GetConn().Find(sessionContext, &data, filter); err != nil {
-	//				return err
-	//			}
-	//			for _, v := range data {
-	//				ids = append(ids, v.ID.Hex())
-	//			}
-	//		}
-	//	}
-	//	if _, err = s.FileMongoMapper.UpdateMany(sessionContext, ids, update); err != nil {
-	//		if rbErr := sessionContext.AbortTransaction(sessionContext); rbErr != nil {
-	//			log.CtxError(ctx, "删除文件过程中产生错误[%v]: 回滚异常[%v]\n", err, rbErr)
-	//		}
-	//		return err
-	//	}
-	//	if err = sessionContext.CommitTransaction(sessionContext); err != nil {
-	//		log.CtxError(ctx, "删除文件: 提交事务异常[%v]\n", err)
-	//		return err
-	//	}
-	//	return nil
-	//})
-	//
-	//if _, err = s.FileMongoMapper.UpdateUnset(ctx, data, update); err != nil {
-	//	return resp, err
-	//}
-	//
-	//res, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
-	//	FromType: int64(gencontent.TargetType_UserType),
-	//	FromId:   req.UserId,
-	//	ToType:   int64(gencontent.TargetType_FileType),
-	//})
-	//if err2 := s.DeleteFileRelationKq.Push(pconvertor.Bytes2String(res)); err2 != nil {
-	//	return resp, err2
-	//}
 
-	//data, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
-	//	FromType: int64(gencontent.TargetType_UserType),
-	//	FromIds:  ids,
-	//})
-	//
-	//if err2 := s.DeleteFileRelationKq.Push(pconvertor.Bytes2String(data)); err2 != nil {
-	//	return resp, err2
-	//}
+	ids := make([]string, 0, len(req.Files))
+	for _, file := range req.Files {
+		ids = append(ids, file.Id)
+		if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
+			var data []*filemapper.File
+			filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
+			if err = s.FileMongoMapper.GetConn().Find(ctx, &data, filter); err != nil {
+				return resp, err
+			}
+			for _, v := range data {
+				ids = append(ids, v.ID.Hex())
+			}
+		}
+	}
+
+	if _, err = s.PublicFileMongoMapper.DeleteMany(ctx, ids); err != nil {
+		return resp, err
+	}
+
+	for _, v := range req.Files {
+		msg, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
+			FromType: int64(gencontent.TargetType_FileType),
+			FromId:   v.Id,
+		})
+
+		if err2 := s.DeleteFileRelationKq.Push(pconvertor.Bytes2String(msg)); err2 != nil {
+			return resp, err2
+		}
+	}
 
 	return resp, nil
 }
