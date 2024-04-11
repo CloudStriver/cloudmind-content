@@ -161,7 +161,7 @@ func (s *FileService) GetRecycleBinFiles(ctx context.Context, req *gencontent.Ge
 			files, total, err2 = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, mongop.IdCursorType)
 		} else {
 			files, total, err2 = s.FileEsMapper.Search(ctx, convertor.ConvertFileAllFieldsSearchQuery(*req.SearchOption.SearchKeyword),
-				filter, p, req.SearchOption.SearchSortType)
+				filter, p, req.SearchOption)
 		}
 		if err2 != nil {
 			return err
