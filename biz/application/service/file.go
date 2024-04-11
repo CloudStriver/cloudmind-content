@@ -124,22 +124,60 @@ func (s *FileService) GetFilesByIds(ctx context.Context, req *gencontent.GetFile
 }
 func (s *FileService) GetRecycleBinFiles(ctx context.Context, req *gencontent.GetRecycleBinFilesReq) (resp *gencontent.GetRecycleBinFilesResp, err error) {
 	resp = new(gencontent.GetRecycleBinFilesResp)
+	resp.FatherNamePath = "回收站"
 	var (
-		total int64
 		files []*filemapper.File
+		total int64
+		err2  error
 	)
-	p := convertor.ParsePagination(req.PaginationOptions)
-	if files, total, err = s.FileMongoMapper.FindManyAndCount(ctx, convertor.FileFilterOptionsToFilterOptions(req.FilterOptions),
-		p, mongop.CreateAtDescCursorType); err != nil {
+
+	if err = mr.Finish(func() error {
+		getFileResp, err1 := s.GetFile(ctx, &gencontent.GetFileReq{
+			Id: req.GetFilterOptions().GetOnlyFatherId(),
+		})
+		if errors.Is(err1, consts.ErrNotFound) || errors.Is(err1, consts.ErrInvalidId) {
+			resp.FatherIdPath = req.GetFilterOptions().GetOnlyFatherId()
+			return nil
+		}
+		if err1 != nil {
+			return err1
+		}
+		resp.FatherIdPath = getFileResp.Path
+		paths := strings.Split(getFileResp.Path, "/")
+		if len(paths) > 1 {
+			var res *gencontent.GetFilesByIdsResp
+			if res, err1 = s.GetFilesByIds(ctx, &gencontent.GetFilesByIdsReq{Ids: paths[1:]}); err1 != nil {
+				return err1
+			}
+			lo.ForEach(res.Files, func(item *gencontent.File, _ int) {
+				resp.FatherNamePath += "/" + item.Name
+			})
+		}
+		return nil
+	}, func() error {
+		filter := convertor.FileFilterOptionsToFilterOptions(req.FilterOptions)
+		p := convertor.ParsePagination(req.PaginationOptions)
+		if req.SearchOption == nil {
+			files, total, err2 = s.FileMongoMapper.FindManyAndCount(ctx, filter, p, mongop.IdCursorType)
+		} else {
+			files, total, err2 = s.FileEsMapper.Search(ctx, convertor.ConvertFileAllFieldsSearchQuery(*req.SearchOption.SearchKeyword),
+				filter, p, req.SearchOption.SearchSortType)
+		}
+		if err2 != nil {
+			return err
+		}
+		if p.LastToken != nil {
+			resp.Token = *p.LastToken
+		}
+		resp.Total = total
+		resp.Files = lo.Map[*filemapper.File, *gencontent.File](files, func(item *filemapper.File, _ int) *gencontent.File {
+			return convertor.FileMapperToFile(item)
+		})
+		return nil
+	}); err != nil {
 		return resp, err
 	}
-	if p.LastToken != nil {
-		resp.Token = *p.LastToken
-	}
-	resp.Files = lo.Map[*filemapper.File, *gencontent.File](files, func(item *filemapper.File, _ int) *gencontent.File {
-		return convertor.FileMapperToFile(item)
-	})
-	resp.Total = total
+
 	return resp, nil
 }
 
