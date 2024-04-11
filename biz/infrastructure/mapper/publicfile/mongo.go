@@ -52,6 +52,7 @@ type (
 		Name        string             `bson:"name,omitempty" json:"name,omitempty"`
 		Type        string             `bson:"type,omitempty" json:"type,omitempty"`
 		Size        int64              `bson:"size,omitempty" json:"size,omitempty"`
+		Path        string             `bson:"path,omitempty" json:"path,omitempty"`
 		FileMd5     string             `bson:"fileMd5,omitempty" json:"fileMd5,omitempty"`
 		Zone        string             `bson:"zone,omitempty" json:"zone,omitempty"`
 		Description string             `bson:"description,omitempty" json:"description,omitempty"`
@@ -86,6 +87,7 @@ func (m *MongoMapper) Insert(ctx context.Context, data *PublicFile) (string, err
 		data.ID = primitive.NewObjectID()
 	}
 	data.CreateAt = time.Now()
+	data.Path = data.Path + "/" + data.ID.Hex()
 	key := prefixFileCacheKey + data.ID.Hex()
 	_, err := m.conn.InsertOne(ctx, key, data)
 	if err != nil {

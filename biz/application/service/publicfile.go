@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/config"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/consts"
 	"github.com/CloudStriver/cloudmind-content/biz/infrastructure/convertor"
@@ -13,12 +14,15 @@ import (
 	gencontent "github.com/CloudStriver/service-idl-gen-go/kitex_gen/cloudmind/content"
 	"github.com/google/wire"
 	"github.com/samber/lo"
+	"github.com/zeromicro/go-zero/core/mr"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"strings"
 )
 
 type IPublicFileService interface {
+	GetFolderSize(ctx context.Context, path string) (resp int64, err error)
 	GetPublicFile(ctx context.Context, req *gencontent.GetPublicFileReq) (resp *gencontent.GetPublicFileResp, err error)
 	GetPublicFileByIds(ctx context.Context, req *gencontent.GetPublicFilesByIdsReq) (resp *gencontent.GetPublicFilesByIdsResp, err error)
 	GetPublicFileList(ctx context.Context, req *gencontent.GetPublicFileListReq) (resp *gencontent.GetPublicFileListResp, err error)
@@ -40,6 +44,13 @@ var PublicFileSet = wire.NewSet(
 	wire.Bind(new(IPublicFileService), new(*PublicFileService)),
 )
 
+func (s *PublicFileService) GetFolderSize(ctx context.Context, path string) (resp int64, err error) {
+	if resp, err = s.PublicFileMongoMapper.FindFolderSize(ctx, path); err != nil {
+		return 0, err
+	}
+	return resp, nil
+}
+
 func (s *PublicFileService) GetPublicFile(ctx context.Context, req *gencontent.GetPublicFileReq) (resp *gencontent.GetPublicFileResp, err error) {
 	resp = new(gencontent.GetPublicFileResp)
 	var file *publicfilemapper.PublicFile
@@ -57,6 +68,13 @@ func (s *PublicFileService) GetPublicFile(ctx context.Context, req *gencontent.G
 		Labels:      file.Labels,
 		AuditStatus: file.AuditStatus,
 		CreateAt:    file.CreateAt.UnixMilli(),
+	}
+
+	// 如果是获取文件夹大小，需要计算文件夹大小
+	if req.IsGetSize && resp.SpaceSize == int64(gencontent.Folder_Folder_Size) {
+		if resp.SpaceSize, err = s.GetFolderSize(ctx, resp.Path); err != nil {
+			return resp, err
+		}
 	}
 	return resp, nil
 }
@@ -86,6 +104,7 @@ func (s *PublicFileService) GetPublicFileByIds(ctx context.Context, req *gencont
 
 func (s *PublicFileService) GetPublicFileList(ctx context.Context, req *gencontent.GetPublicFileListReq) (resp *gencontent.GetPublicFileListResp, err error) {
 	resp = new(gencontent.GetPublicFileListResp)
+	resp.FatherNamePath = "CloudMind"
 
 	var (
 		files  []*publicfilemapper.PublicFile
@@ -93,44 +112,73 @@ func (s *PublicFileService) GetPublicFileList(ctx context.Context, req *genconte
 		cursor mongop.MongoCursor
 	)
 
-	switch req.GetSortOptions() {
-	case gencontent.SortOptions_SortOptions_createAtAsc:
-		cursor = mongop.CreateAtAscCursorType
-	case gencontent.SortOptions_SortOptions_createAtDesc:
-		cursor = mongop.CreateAtDescCursorType
-	case gencontent.SortOptions_SortOptions_updateAtAsc:
-		cursor = mongop.UpdateAtAscCursorType
-	case gencontent.SortOptions_SortOptions_updateAtDesc:
-		cursor = mongop.UpdateAtDescCursorType
-	case gencontent.SortOptions_SortOptions_NameDesc:
-		cursor = mongop.NameDescCursorType
-	case gencontent.SortOptions_SortOptions_NameAsc:
-		cursor = mongop.NameAscCursorType
-	case gencontent.SortOptions_SortOptions_TypeAsc:
-		cursor = mongop.TypeAscCursorType
-	case gencontent.SortOptions_SortOptions_TypeDesc:
-		cursor = mongop.TypeDescCursorType
-	}
+	if err = mr.Finish(func() error {
+		getFileResp, err1 := s.GetPublicFile(ctx, &gencontent.GetPublicFileReq{
+			Id: req.GetFilterOptions().GetOnlyZone(),
+		})
+		if errors.Is(err1, consts.ErrNotFound) || errors.Is(err1, consts.ErrInvalidId) {
+			resp.FatherIdPath = req.GetFilterOptions().GetOnlyZone()
+			return nil
+		}
+		if err1 != nil {
+			return err1
+		}
+		resp.FatherIdPath = getFileResp.Path
+		paths := strings.Split(getFileResp.Path, "/")
+		if len(paths) > 1 {
+			var res *gencontent.GetPublicFilesByIdsResp
+			if res, err1 = s.GetPublicFileByIds(ctx, &gencontent.GetPublicFilesByIdsReq{Ids: paths[1:]}); err1 != nil {
+				return err1
+			}
+			lo.ForEach(res.Files, func(item *gencontent.PublicFile, _ int) {
+				resp.FatherNamePath += "/" + item.Name
+			})
+		}
+		return nil
+	}, func() error {
+		switch req.GetSortOptions() {
+		case gencontent.SortOptions_SortOptions_createAtAsc:
+			cursor = mongop.CreateAtAscCursorType
+		case gencontent.SortOptions_SortOptions_createAtDesc:
+			cursor = mongop.CreateAtDescCursorType
+		case gencontent.SortOptions_SortOptions_updateAtAsc:
+			cursor = mongop.UpdateAtAscCursorType
+		case gencontent.SortOptions_SortOptions_updateAtDesc:
+			cursor = mongop.UpdateAtDescCursorType
+		case gencontent.SortOptions_SortOptions_NameDesc:
+			cursor = mongop.NameDescCursorType
+		case gencontent.SortOptions_SortOptions_NameAsc:
+			cursor = mongop.NameAscCursorType
+		case gencontent.SortOptions_SortOptions_TypeAsc:
+			cursor = mongop.TypeAscCursorType
+		case gencontent.SortOptions_SortOptions_TypeDesc:
+			cursor = mongop.TypeDescCursorType
+		}
 
-	filter := convertor.PublicFilterOptionsToFilterOptions(req.FilterOptions)
-	p := convertor.ParsePagination(req.PaginationOptions)
-	if req.SearchOption == nil {
-		files, total, err = s.PublicFileMongoMapper.FindManyAndCount(ctx, filter, p, cursor)
-	} else {
-		files, total, err = s.PublicFileEsMapper.Search(ctx, convertor.ConvertPublicFileAllFieldsSearchQuery(*req.SearchOption.SearchKeyword),
-			filter, p, req.SearchOption.SearchSortType)
-	}
-	if err != nil {
+		filter := convertor.PublicFilterOptionsToFilterOptions(req.FilterOptions)
+		p := convertor.ParsePagination(req.PaginationOptions)
+		if req.SearchOption == nil {
+			files, total, err = s.PublicFileMongoMapper.FindManyAndCount(ctx, filter, p, cursor)
+		} else {
+			files, total, err = s.PublicFileEsMapper.Search(ctx, convertor.ConvertPublicFileAllFieldsSearchQuery(*req.SearchOption.SearchKeyword),
+				filter, p, req.SearchOption.SearchSortType)
+		}
+		if err != nil {
+			return err
+		}
+		if p.LastToken != nil {
+			resp.Token = *p.LastToken
+		}
+		resp.Total = total
+		resp.Files = lo.Map[*publicfilemapper.PublicFile, *gencontent.PublicFile](files, func(item *publicfilemapper.PublicFile, _ int) *gencontent.PublicFile {
+			return convertor.PublicFileMapperToPublicFile(item)
+		})
+		return nil
+	}); err != nil {
 		return resp, err
 	}
 
-	if p.LastToken != nil {
-		resp.Token = *p.LastToken
-	}
-	resp.Total = total
-	resp.Files = lo.Map[*publicfilemapper.PublicFile, *gencontent.PublicFile](files, func(item *publicfilemapper.PublicFile, _ int) *gencontent.PublicFile {
-		return convertor.PublicFileMapperToPublicFile(item)
-	})
+
 	return resp, nil
 }
 
@@ -154,7 +202,7 @@ func (s *PublicFileService) AddFileToPublicSpace(ctx context.Context, req *genco
 	resp = new(gencontent.AddFileToPublicSpaceResp)
 	type kv struct {
 		id   string
-		zone string
+		path string
 	}
 
 	var (
@@ -179,6 +227,7 @@ func (s *PublicFileService) AddFileToPublicSpace(ctx context.Context, req *genco
 			Name:        res.Name,
 			Type:        res.Type,
 			Size:        res.Size,
+			Path:        req.Zone,
 			FileMd5:     res.FileMd5,
 			Zone:        req.Zone,
 			Description: req.Description,
@@ -192,7 +241,8 @@ func (s *PublicFileService) AddFileToPublicSpace(ctx context.Context, req *genco
 		}
 
 		queue := make([]kv, 0, s.Config.InitialSliceLength)
-		queue = append(queue, kv{req.Id, rootId})
+		queue = append(queue, kv{req.Id, req.Zone + "/" + rootId})
+
 		if res.Size == int64(gencontent.Folder_Folder_Size) {
 			for len(queue) > 0 {
 				front = queue[0]
@@ -215,8 +265,9 @@ func (s *PublicFileService) AddFileToPublicSpace(ctx context.Context, req *genco
 						Name:        item.Name,
 						Type:        item.Type,
 						Size:        item.Size,
+						Path:        front.path,
 						FileMd5:     item.FileMd5,
-						Zone:        front.zone,
+						Zone:        front.path[len(front.path)-len(front.id):],
 						Description: req.Description,
 						AuditStatus: int64(gencontent.AuditStatus_AuditStatus_wait),
 						Labels:      req.Labels,
@@ -232,7 +283,7 @@ func (s *PublicFileService) AddFileToPublicSpace(ctx context.Context, req *genco
 
 				for i := range newPublicFiles {
 					if newPublicFiles[i].Size == int64(gencontent.Folder_Folder_Size) {
-						queue = append(queue, kv{id: data[i].ID.Hex(), zone: newPublicFiles[i].ID.Hex()})
+						queue = append(queue, kv{id: data[i].ID.Hex(), path: front.path + "/" + newPublicFiles[i].ID.Hex()})
 					}
 				}
 			}
