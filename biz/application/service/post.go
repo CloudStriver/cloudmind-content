@@ -92,8 +92,7 @@ func (s *PostService) GetPosts(ctx context.Context, req *gencontent.GetPostsReq)
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
 	filter := convertor.PostFilterOptionsToFilterOptions(req.PostFilterOptions)
 	if req.SearchOption != nil {
-		posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(*req.SearchOption.SearchKeyword),
-			filter, p, req.SearchOption.SearchSortType)
+		posts, total, err = s.PostEsMapper.Search(ctx, convertor.ConvertPostAllFieldsSearchQuery(*req.SearchOption.SearchKeyword), filter, p, req.SearchOption)
 	} else {
 		posts, total, err = s.PostMongoMapper.FindManyAndCount(ctx, filter,
 			p, mongop.IdCursorType)

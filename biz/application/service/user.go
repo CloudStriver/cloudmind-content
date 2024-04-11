@@ -62,7 +62,7 @@ func (s *UserService) GetUsers(ctx context.Context, req *gencontent.GetUsersReq)
 
 	p := pconvertor.PaginationOptionsToModelPaginationOptions(req.PaginationOptions)
 	if req.SearchOption != nil {
-		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(*req.SearchOption.SearchKeyword), p, req.SearchOption.SearchSortType)
+		users, total, err = s.UserEsMapper.Search(ctx, convertor.ConvertUserAllFieldsSearchQuery(*req.SearchOption.SearchKeyword), p, req.SearchOption)
 	}
 	if err != nil {
 		return resp, err
