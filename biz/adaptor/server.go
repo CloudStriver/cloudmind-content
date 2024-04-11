@@ -36,6 +36,18 @@ func (s *ContentServerImpl) GetPublicFileList(ctx context.Context, req *content.
 	return s.PublicFileService.GetPublicFileList(ctx, req)
 }
 
+func (s *ContentServerImpl) GetPublicFile(ctx context.Context, req *content.GetPublicFileReq) (res *content.GetPublicFileResp, err error) {
+	return s.FileService.GetPublicFile(ctx, req)
+}
+
+func (s *ContentServerImpl) GetPublicFilesByIds(ctx context.Context, req *content.GetPublicFilesByIdsReq) (res *content.GetPublicFilesByIdsResp, err error) {
+	return s.FileService.GetPublicFileByIds(ctx, req)
+}
+
+func (s *ContentServerImpl) GetPublicFileList(ctx context.Context, req *content.GetPublicFileListReq) (res *content.GetPublicFileListResp, err error) {
+	return s.FileService.GetPublicFileList(ctx, req)
+}
+
 func (s *ContentServerImpl) MakeFilePrivate(ctx context.Context, req *content.MakeFilePrivateReq) (res *content.MakeFilePrivateResp, err error) {
 	return s.PublicFileService.MakeFilePrivate(ctx, req)
 }

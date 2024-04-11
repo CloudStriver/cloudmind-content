@@ -122,7 +122,6 @@ func (s *FileService) GetFilesByIds(ctx context.Context, req *gencontent.GetFile
 	})
 	return resp, nil
 }
-
 func (s *FileService) GetRecycleBinFiles(ctx context.Context, req *gencontent.GetRecycleBinFilesReq) (resp *gencontent.GetRecycleBinFilesResp, err error) {
 	resp = new(gencontent.GetRecycleBinFilesResp)
 	var (
