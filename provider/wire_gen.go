@@ -33,35 +33,40 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		return nil, err
 	}
 	iMongoMapper := file.NewMongoMapper(configConfig)
+	iEsMapper := file.NewEsMapper(configConfig)
 	publicfileIMongoMapper := publicfile.NewMongoMapper(configConfig)
-	iFileEsMapper := publicfile.NewEsMapper(configConfig)
-	fileIFileEsMapper := file.NewEsMapper(configConfig)
 	sharefileIMongoMapper := sharefile.NewMongoMapper(configConfig)
-	deleteFileRelationKq := kq.NewDeleteFileRelationKq(configConfig)
 	fileService := &service.FileService{
 		Config:                configConfig,
 		FileMongoMapper:       iMongoMapper,
+		FileEsMapper:          iEsMapper,
 		PublicFileMongoMapper: publicfileIMongoMapper,
-		PublicFileEsMapper:    iFileEsMapper,
-		FileEsMapper:          fileIFileEsMapper,
 		ShareFileMongoMapper:  sharefileIMongoMapper,
+	}
+	publicfileIEsMapper := publicfile.NewEsMapper(configConfig)
+	deleteFileRelationKq := kq.NewDeleteFileRelationKq(configConfig)
+	publicFileService := &service.PublicFileService{
+		Config:                configConfig,
+		PublicFileMongoMapper: publicfileIMongoMapper,
+		PublicFileEsMapper:    publicfileIEsMapper,
+		FileMongoMapper:       iMongoMapper,
 		DeleteFileRelationKq:  deleteFileRelationKq,
 	}
 	iPostMongoMapper := post.NewMongoMapper(configConfig)
-	iEsMapper := post.NewEsMapper(configConfig)
+	postIEsMapper := post.NewEsMapper(configConfig)
 	redisRedis := redis.NewRedis(configConfig)
 	postService := &service.PostService{
 		Config:          configConfig,
 		PostMongoMapper: iPostMongoMapper,
-		PostEsMapper:    iEsMapper,
+		PostEsMapper:    postIEsMapper,
 		Redis:           redisRedis,
 	}
 	iUserMongoMapper := user.NewMongoMapper(configConfig)
-	iUserEsMapper := user.NewEsMapper(configConfig)
+	userIEsMapper := user.NewEsMapper(configConfig)
 	userService := &service.UserService{
 		Config:          configConfig,
 		UserMongoMapper: iUserMongoMapper,
-		UserEsMapper:    iUserEsMapper,
+		UserEsMapper:    userIEsMapper,
 		Redis:           redisRedis,
 	}
 	iProductMongoMapper := product.NewMongoMapper(configConfig)
@@ -102,15 +107,16 @@ func NewContentServerImpl() (*adaptor.ContentServerImpl, error) {
 		Cache:          collectionCache,
 	}
 	contentServerImpl := &adaptor.ContentServerImpl{
-		Config:           configConfig,
-		FileService:      fileService,
-		PostService:      postService,
-		UserService:      userService,
-		ProductService:   productService,
-		CouponService:    couponService,
-		OrderService:     orderService,
-		RecommendService: recommendService,
-		HotService:       hotService,
+		Config:            configConfig,
+		FileService:       fileService,
+		PublicFileService: publicFileService,
+		PostService:       postService,
+		UserService:       userService,
+		ProductService:    productService,
+		CouponService:     couponService,
+		OrderService:      orderService,
+		RecommendService:  recommendService,
+		HotService:        hotService,
 	}
 	return contentServerImpl, nil
 }

@@ -173,14 +173,14 @@ func (m *MongoMapper) FindAndInsertMany(ctx context.Context, data []*File) ([]st
 	_, span := tracer.Start(ctx, "mongo.FindAndInsertMany", oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	defer span.End()
 
-	mp := make(map[string]int)
+	ids := make([]string, len(data))
 	for i := 0; i < len(data); i++ {
 		if data[i].ID.IsZero() {
 			data[i].ID = primitive.NewObjectID()
 			data[i].CreateAt = time.Now()
 		}
+		ids[i] = data[i].ID.Hex()
 		data[i].UpdateAt = time.Now()
-		mp[data[i].ID.Hex()] = i
 		data[i].Path = data[i].Path + "/" + data[i].ID.Hex()
 	}
 
@@ -202,11 +202,7 @@ func (m *MongoMapper) FindAndInsertMany(ctx context.Context, data []*File) ([]st
 	}
 
 	dataAny := lo.Map(data, func(item *File, _ int) any { return item })
-	res, err := m.conn.InsertMany(ctx, dataAny)
-	ids := make([]string, len(dataAny))
-	for _, v := range res.InsertedIDs {
-		ids[mp[v.(primitive.ObjectID).Hex()]] = v.(primitive.ObjectID).Hex()
-	}
+	_, err := m.conn.InsertMany(ctx, dataAny)
 	return ids, err
 }
 

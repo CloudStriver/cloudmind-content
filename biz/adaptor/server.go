@@ -9,30 +9,39 @@ import (
 
 type ContentServerImpl struct {
 	*config.Config
-	FileService      service.IFileService
-	PostService      service.IPostService
-	UserService      service.IUserService
-	ProductService   service.IProductService
-	CouponService    service.ICouponService
-	OrderService     service.IOrderService
-	RecommendService service.IRecommendService
-	HotService       service.IHotService
+	FileService       service.IFileService
+	PublicFileService service.IPublicFileService
+	PostService       service.IPostService
+	UserService       service.IUserService
+	ProductService    service.IProductService
+	CouponService     service.ICouponService
+	OrderService      service.IOrderService
+	RecommendService  service.IRecommendService
+	HotService        service.IHotService
+}
+
+func (s *ContentServerImpl) UpdatePublicFile(ctx context.Context, req *content.UpdatePublicFileReq) (res *content.UpdatePublicFileResp, err error) {
+	return s.PublicFileService.UpdatePublicFile(ctx, req)
 }
 
 func (s *ContentServerImpl) GetPublicFile(ctx context.Context, req *content.GetPublicFileReq) (res *content.GetPublicFileResp, err error) {
-	return s.FileService.GetPublicFile(ctx, req)
+	return s.PublicFileService.GetPublicFile(ctx, req)
 }
 
 func (s *ContentServerImpl) GetPublicFilesByIds(ctx context.Context, req *content.GetPublicFilesByIdsReq) (res *content.GetPublicFilesByIdsResp, err error) {
-	return s.FileService.GetPublicFileByIds(ctx, req)
+	return s.PublicFileService.GetPublicFileByIds(ctx, req)
+}
+
+func (s *ContentServerImpl) AddFileToPublicSpace(ctx context.Context, req *content.AddFileToPublicSpaceReq) (*content.AddFileToPublicSpaceResp, error) {
+	return s.PublicFileService.AddFileToPublicSpace(ctx, req)
 }
 
 func (s *ContentServerImpl) GetPublicFileList(ctx context.Context, req *content.GetPublicFileListReq) (res *content.GetPublicFileListResp, err error) {
-	return s.FileService.GetPublicFileList(ctx, req)
+	return s.PublicFileService.GetPublicFileList(ctx, req)
 }
 
 func (s *ContentServerImpl) MakeFilePrivate(ctx context.Context, req *content.MakeFilePrivateReq) (res *content.MakeFilePrivateResp, err error) {
-	return s.FileService.MakeFilePrivate(ctx, req)
+	return s.PublicFileService.MakeFilePrivate(ctx, req)
 }
 
 func (s *ContentServerImpl) GetHotValues(ctx context.Context, req *content.GetHotValuesReq) (res *content.GetHotValuesResp, err error) {
@@ -264,12 +273,12 @@ func (s *ContentServerImpl) ParsingShareCode(ctx context.Context, req *content.P
 	return s.FileService.ParsingShareCode(ctx, req)
 }
 
-func (s *ContentServerImpl) SaveFileToPrivateSpace(ctx context.Context, req *content.SaveFileToPrivateSpaceReq) (res *content.SaveFileToPrivateSpaceResp, err error) {
-	return s.FileService.SaveFileToPrivateSpace(ctx, req)
+func (s *ContentServerImpl) SaveShareFileToPrivateSpace(ctx context.Context, req *content.SaveShareFileToPrivateSpaceReq) (res *content.SaveShareFileToPrivateSpaceResp, err error) {
+	return s.FileService.SaveShareFileToPrivateSpace(ctx, req)
 }
 
-func (s *ContentServerImpl) AddFileToPublicSpace(ctx context.Context, req *content.AddFileToPublicSpaceReq) (*content.AddFileToPublicSpaceResp, error) {
-	return s.FileService.AddFileToPublicSpace(ctx, req)
+func (s *ContentServerImpl) SavePublicFileToPrivateSpace(ctx context.Context, req *content.SavePublicFileToPrivateSpaceReq) (res *content.SavePublicFileToPrivateSpaceResp, err error) {
+	return s.FileService.SavePublicFileToPrivateSpace(ctx, req)
 }
 
 func (s *ContentServerImpl) RecoverRecycleBinFile(ctx context.Context, req *content.RecoverRecycleBinFileReq) (*content.RecoverRecycleBinFileResp, error) {
