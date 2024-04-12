@@ -35,7 +35,7 @@ func UserMapperToUser(in *usermapper.User) *gencontent.User {
 
 func FileMapperToFile(data *file.File) *gencontent.File {
 	return &gencontent.File{
-		Id:        data.ID.Hex(),
+		FileId:    data.ID.Hex(),
 		UserId:    data.UserId,
 		Name:      data.Name,
 		Type:      data.Type,
@@ -52,7 +52,7 @@ func FileMapperToFile(data *file.File) *gencontent.File {
 
 func PublicFileMapperToPublicFile(data *publicfile.PublicFile) *gencontent.PublicFile {
 	return &gencontent.PublicFile{
-		Id:          data.ID.Hex(),
+		FileId:      data.ID.Hex(),
 		UserId:      data.UserId,
 		Name:        data.Name,
 		Type:        data.Type,
