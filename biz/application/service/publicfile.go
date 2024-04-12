@@ -57,7 +57,7 @@ func (s *PublicFileService) GetFolderSize(ctx context.Context, path string) (res
 func (s *PublicFileService) GetPublicFile(ctx context.Context, req *gencontent.GetPublicFileReq) (resp *gencontent.GetPublicFileResp, err error) {
 	resp = new(gencontent.GetPublicFileResp)
 	var file *publicfilemapper.PublicFile
-	if file, err = s.PublicFileMongoMapper.FindOne(ctx, req.Id); err != nil {
+	if file, err = s.PublicFileMongoMapper.FindOne(ctx, req.FileId); err != nil {
 		return resp, err
 	}
 	resp = &gencontent.GetPublicFileResp{
@@ -85,18 +85,18 @@ func (s *PublicFileService) GetPublicFile(ctx context.Context, req *gencontent.G
 func (s *PublicFileService) GetPublicFileByIds(ctx context.Context, req *gencontent.GetPublicFilesByIdsReq) (resp *gencontent.GetPublicFilesByIdsResp, err error) {
 	resp = new(gencontent.GetPublicFilesByIdsResp)
 	var files []*publicfilemapper.PublicFile
-	if files, err = s.PublicFileMongoMapper.FindManyByIds(ctx, req.Ids); err != nil {
+	if files, err = s.PublicFileMongoMapper.FindManyByIds(ctx, req.FileIds); err != nil {
 		return resp, err
 	}
 
 	// 创建映射：文件ID到文件
-	fileMap := make(map[string]*publicfilemapper.PublicFile, len(req.Ids))
+	fileMap := make(map[string]*publicfilemapper.PublicFile, len(req.FileIds))
 	lo.ForEach(files, func(file *publicfilemapper.PublicFile, _ int) {
 		fileMap[file.ID.Hex()] = file
 	})
 
 	// 按req.FileIds中的ID顺序映射和转换
-	resp.Files = lo.Map(req.Ids, func(id string, _ int) *gencontent.PublicFile {
+	resp.Files = lo.Map(req.FileIds, func(id string, _ int) *gencontent.PublicFile {
 		if file, ok := fileMap[id]; ok {
 			return convertor.PublicFileMapperToPublicFile(file)
 		}
@@ -117,7 +117,7 @@ func (s *PublicFileService) GetPublicFileList(ctx context.Context, req *genconte
 
 	if err = mr.Finish(func() error {
 		getFileResp, err1 := s.GetPublicFile(ctx, &gencontent.GetPublicFileReq{
-			Id: req.GetFilterOptions().GetOnlyZone(),
+			FileId: req.GetFilterOptions().GetOnlyZone(),
 		})
 		if errors.Is(err1, consts.ErrNotFound) || errors.Is(err1, consts.ErrInvalidId) {
 			resp.FatherIdPath = req.GetFilterOptions().GetOnlyZone()
@@ -130,7 +130,7 @@ func (s *PublicFileService) GetPublicFileList(ctx context.Context, req *genconte
 		paths := strings.Split(getFileResp.Path, "/")
 		if len(paths) > 1 {
 			var res *gencontent.GetPublicFilesByIdsResp
-			if res, err1 = s.GetPublicFileByIds(ctx, &gencontent.GetPublicFilesByIdsReq{Ids: paths[1:]}); err1 != nil {
+			if res, err1 = s.GetPublicFileByIds(ctx, &gencontent.GetPublicFilesByIdsReq{FileIds: paths[1:]}); err1 != nil {
 				return err1
 			}
 			lo.ForEach(res.Files, func(item *gencontent.PublicFile, _ int) {
@@ -187,7 +187,7 @@ func (s *PublicFileService) GetPublicFileList(ctx context.Context, req *genconte
 func (s *PublicFileService) UpdatePublicFile(ctx context.Context, req *gencontent.UpdatePublicFileReq) (resp *gencontent.UpdatePublicFileResp, err error) {
 	resp = new(gencontent.UpdatePublicFileResp)
 	var fileId primitive.ObjectID
-	if fileId, err = primitive.ObjectIDFromHex(req.Id); err != nil {
+	if fileId, err = primitive.ObjectIDFromHex(req.FileId); err != nil {
 		return resp, err
 	}
 
@@ -213,7 +213,7 @@ func (s *PublicFileService) AddFileToPublicSpace(ctx context.Context, req *genco
 		res    *filemapper.File
 	)
 
-	if res, err = s.FileMongoMapper.FindOne(ctx, req.Id); err != nil {
+	if res, err = s.FileMongoMapper.FindOne(ctx, req.FileId); err != nil {
 		return resp, err
 	}
 
@@ -243,7 +243,7 @@ func (s *PublicFileService) AddFileToPublicSpace(ctx context.Context, req *genco
 		}
 
 		queue := make([]kv, 0, s.Config.InitialSliceLength)
-		queue = append(queue, kv{req.Id, req.Zone + "/" + rootId})
+		queue = append(queue, kv{req.FileId, req.Zone + "/" + rootId})
 
 		if res.Size == int64(gencontent.Folder_Folder_Size) {
 			for len(queue) > 0 {
@@ -297,7 +297,7 @@ func (s *PublicFileService) AddFileToPublicSpace(ctx context.Context, req *genco
 		}
 		return nil
 	})
-	resp.Id = rootId
+	resp.FileId = rootId
 	return resp, err
 }
 
@@ -306,7 +306,7 @@ func (s *PublicFileService) MakeFilePrivate(ctx context.Context, req *gencontent
 
 	ids := make([]string, 0, len(req.Files))
 	for _, file := range req.Files {
-		ids = append(ids, file.Id)
+		ids = append(ids, file.FileId)
 		if file.SpaceSize == int64(gencontent.Folder_Folder_Size) {
 			var data []*filemapper.File
 			filter := bson.M{"path": bson.M{"$regex": "^" + file.Path + "/"}}
@@ -326,7 +326,7 @@ func (s *PublicFileService) MakeFilePrivate(ctx context.Context, req *gencontent
 	for _, v := range req.Files {
 		msg, _ := sonic.Marshal(&message.DeleteFileRelationsMessage{
 			FromType: int64(gencontent.TargetType_FileType),
-			FromId:   v.Id,
+			FromId:   v.FileId,
 		})
 
 		if err2 := s.DeleteFileRelationKq.Push(pconvertor.Bytes2String(msg)); err2 != nil {
