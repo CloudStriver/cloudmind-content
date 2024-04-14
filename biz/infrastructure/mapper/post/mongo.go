@@ -104,12 +104,14 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 
 	// 考虑到排序和分页
 	pipeline = append(pipeline, bson.D{{"$sort", sort}})
-	if popts.Limit != nil {
-		pipeline = append(pipeline, bson.D{{"$limit", *popts.Limit}})
-	}
 	if popts.Offset != nil {
 		pipeline = append(pipeline, bson.D{{"$skip", *popts.Offset}})
 	}
+	if popts.Limit != nil {
+		pipeline = append(pipeline, bson.D{{"$limit", *popts.Limit}})
+	}
+
+	fmt.Println(pipeline)
 
 	// 使用聚合管道执行查询
 	if err = m.conn.Aggregate(ctx, &data, pipeline); err != nil {
