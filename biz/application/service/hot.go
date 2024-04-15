@@ -104,6 +104,8 @@ func (s *HotService) IncrHotValue(ctx context.Context, req *gencontent.IncrHotVa
 		rankKey = consts.FileRankKey
 	case gencontent.TargetType_PostType:
 		rankKey = consts.PostRankKey
+	case gencontent.TargetType_CommentContentType:
+		rankKey = consts.CommentRankKey
 	}
 
 	value, ok := s.Cache.Get(rankKey)

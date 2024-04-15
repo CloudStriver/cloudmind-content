@@ -36,6 +36,7 @@ const (
 	UserRankKey        = "cache:rank:user"
 	FileRankKey        = "cache:rank:file"
 	PostRankKey        = "cache:rank:post"
+	CommentRankKey     = "cache:rank:comment"
 )
 
 var (
