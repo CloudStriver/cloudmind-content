@@ -84,15 +84,16 @@ func (s *UserService) GetUser(ctx context.Context, req *gencontent.GetUserReq) (
 		return resp, err
 	}
 	return &gencontent.GetUserResp{
-		Name:        user.Name,
-		Sex:         user.Sex,
-		FullName:    user.FullName,
-		IdCard:      user.IdCard,
-		Description: user.Description,
-		Url:         user.Url,
-		CreateTime:  user.CreateAt.UnixMilli(),
-		UpdateTime:  user.UpdateAt.UnixMilli(),
-		Labels:      user.Labels,
+		Name:          user.Name,
+		Sex:           user.Sex,
+		FullName:      user.FullName,
+		IdCard:        user.IdCard,
+		Description:   user.Description,
+		Url:           user.Url,
+		CreateTime:    user.CreateAt.UnixMilli(),
+		UpdateTime:    user.UpdateAt.UnixMilli(),
+		Labels:        user.Labels,
+		BackgroundUrl: user.BackgroundUrl,
 	}, nil
 }
 
@@ -117,14 +118,15 @@ func (s *UserService) CreateUser(ctx context.Context, req *gencontent.CreateUser
 func (s *UserService) UpdateUser(ctx context.Context, req *gencontent.UpdateUserReq) (resp *gencontent.UpdateUserResp, err error) {
 	oid, _ := primitive.ObjectIDFromHex(req.UserId)
 	if _, err = s.UserMongoMapper.Update(ctx, &usermapper.User{
-		ID:          oid,
-		Name:        req.Name,
-		Sex:         req.Sex,
-		FullName:    req.FullName,
-		IdCard:      req.IdCard,
-		Description: req.Description,
-		Url:         req.Url,
-		Labels:      req.Labels,
+		ID:            oid,
+		Name:          req.Name,
+		Sex:           req.Sex,
+		FullName:      req.FullName,
+		IdCard:        req.IdCard,
+		Description:   req.Description,
+		Url:           req.Url,
+		Labels:        req.Labels,
+		BackgroundUrl: req.BackgroundUrl,
 	}); err != nil {
 		return resp, err
 	}
