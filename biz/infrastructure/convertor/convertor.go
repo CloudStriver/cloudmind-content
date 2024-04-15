@@ -163,11 +163,15 @@ func PostMapperToPost(in *postmapper.Post) *gencontent.Post {
 	if in == nil {
 		return &gencontent.Post{}
 	}
+	text := in.Text
+	if len(text) > 200 {
+		text = text[0:200]
+	}
 	return &gencontent.Post{
 		PostId:     in.ID.Hex(),
 		UserId:     in.UserId,
 		Title:      in.Title,
-		Text:       in.Text[0:200],
+		Text:       text,
 		LabelIds:   in.LabelIds,
 		Status:     in.Status,
 		Url:        in.Url,
