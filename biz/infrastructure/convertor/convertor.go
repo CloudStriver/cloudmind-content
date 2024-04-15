@@ -167,7 +167,7 @@ func PostMapperToPost(in *postmapper.Post) *gencontent.Post {
 		PostId:     in.ID.Hex(),
 		UserId:     in.UserId,
 		Title:      in.Title,
-		Text:       in.Text,
+		Text:       in.Text[0:200],
 		LabelIds:   in.LabelIds,
 		Status:     in.Status,
 		Url:        in.Url,

@@ -111,8 +111,6 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 		pipeline = append(pipeline, bson.D{{"$limit", *popts.Limit}})
 	}
 
-	fmt.Println(pipeline)
-
 	// 使用聚合管道执行查询
 	if err = m.conn.Aggregate(ctx, &data, pipeline); err != nil {
 		return nil, err
