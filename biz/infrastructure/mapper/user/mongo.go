@@ -32,17 +32,18 @@ type (
 		FindManyByIds(ctx context.Context, ids []string) ([]*User, error)
 	}
 	User struct {
-		ID          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-		Name        string             `bson:"name,omitempty" json:"name,omitempty"`
-		Sex         int64              `bson:"sex,omitempty" json:"sex,omitempty"`
-		FullName    string             `bson:"fullName,omitempty" json:"fullName,omitempty"`
-		IdCard      string             `bson:"idCard,omitempty" json:"idCard,omitempty"`
-		Description string             `bson:"description,omitempty" json:"description,omitempty"`
-		Url         string             `bson:"url,omitempty" json:"url,omitempty"`
-		UpdateAt    time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
-		CreateAt    time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
-		Labels      []string           `bson:"labels,omitempty" json:"labels,omitempty"`
-		Score_      float64            `bson:"_score,omitempty" json:"_score,omitempty"`
+		ID            primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
+		Name          string             `bson:"name,omitempty" json:"name,omitempty"`
+		Sex           int64              `bson:"sex,omitempty" json:"sex,omitempty"`
+		FullName      string             `bson:"fullName,omitempty" json:"fullName,omitempty"`
+		IdCard        string             `bson:"idCard,omitempty" json:"idCard,omitempty"`
+		Description   string             `bson:"description,omitempty" json:"description,omitempty"`
+		Url           string             `bson:"url,omitempty" json:"url,omitempty"`
+		BackgroundUrl string             `bson:"backgroundUrl,omitempty" json:"backgroundUrl,omitempty"`
+		UpdateAt      time.Time          `bson:"updateAt,omitempty" json:"updateAt,omitempty"`
+		CreateAt      time.Time          `bson:"createAt,omitempty" json:"createAt,omitempty"`
+		Labels        []string           `bson:"labels,omitempty" json:"labels,omitempty"`
+		Score_        float64            `bson:"_score,omitempty" json:"_score,omitempty"`
 	}
 
 	MongoMapper struct {
