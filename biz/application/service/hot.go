@@ -147,7 +147,7 @@ const luaScript = `local limit = 100
 redis.call('ZADD', KEYS[1], ARGV[1], ARGV[2])
 local currentSize = redis.call('ZCARD', KEYS[1])
 if currentSize > limit then
-    redis.call('ZREMRANGEBYRANK', KEYS[1], 0, -(limit + 1))
+    redis.call('ZREMRANGEBYRANK', KEYS[1], 0, (current - limit + 1))
 end
 local lastScore = redis.call('ZREVRANGE', KEYS[1], -1, -1, 'WITHSCORES')
 return lastScore
