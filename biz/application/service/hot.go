@@ -12,7 +12,6 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"math"
-	"math/rand"
 	"strconv"
 	"time"
 )
@@ -108,17 +107,18 @@ func (s *HotService) IncrHotValue(ctx context.Context, req *gencontent.IncrHotVa
 		rankKey = consts.CommentRankKey
 	}
 
-	value, ok := s.Cache.Get(rankKey)
-	if !ok || nowHot > (value.(float64)) {
-		if !ok {
-			flag = true
-		} else {
-			d := math.Float64bits(nowHot/(value.(float64))) * 10
-			if d >= 100 || d <= uint64(rand.Intn(100)) {
-				flag = true
-			}
-		}
-	}
+	//value, ok := s.Cache.Get(rankKey)
+	//if !ok || nowHot > (value.(float64)) {
+	//	if !ok {
+	//		flag = true
+	//	} else {
+	//		d := math.Float64bits(nowHot/(value.(float64))) * 10
+	//		if d >= 100 || d <= uint64(rand.Intn(100)) {
+	//			flag = true
+	//		}
+	//	}
+	//}
+	flag = true
 	if flag {
 		val, err := s.Redis.EvalCtx(ctx, luaScript, []string{rankKey}, []any{nowHot, req.HotId})
 		if err != nil {
