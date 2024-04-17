@@ -12,7 +12,6 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"math"
-	"strconv"
 	"time"
 )
 
@@ -120,15 +119,21 @@ func (s *HotService) IncrHotValue(ctx context.Context, req *gencontent.IncrHotVa
 	//}
 	flag = true
 	if flag {
-		val, err := s.Redis.EvalCtx(ctx, luaScript, []string{rankKey}, []any{nowHot, req.HotId})
-		if err != nil {
-			return resp, err
+		//val, err := s.Redis.EvalCtx(ctx, luaScript, []string{rankKey}, []any{nowHot, req.HotId})
+		//if err != nil {
+		//	return resp, err
+		//}
+		_, _ = s.Redis.ZaddFloatCtx(ctx, rankKey, nowHot, req.HotId)
+		sz, _ := s.Redis.ZcardCtx(ctx, rankKey)
+		if sz > 100 {
+			// sz - 100
+			_, _ = s.Redis.ZremrangebyrankCtx(ctx, rankKey, 0, int64(sz-101))
 		}
-		lastRank, err := strconv.ParseFloat(val.([]any)[1].(string), 64)
-		if err != nil {
-			return resp, err
-		}
-		s.Cache.SetWithExpire(rankKey, lastRank, time.Duration(s.Config.HotServiceConf.RankKeyExpire)*time.Second)
+		//lastRank, err := strconv.ParseFloat(val.([]any)[1].(string), 64)
+		//if err != nil {
+		//	return resp, err
+		//}
+		//s.Cache.SetWithExpire(rankKey, lastRank, time.Duration(s.Config.HotServiceConf.RankKeyExpire)*time.Second)
 	}
 
 	if err = s.HotMongoMapper.Update(ctx, &hotmapper.Hot{
